@@ -1,0 +1,6 @@
+# Exclude all STL files
+*.stl
+
+# Exclude all png files except for test files
+*.png
+!render/testdata/defacto*.png
