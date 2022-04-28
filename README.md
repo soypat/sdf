@@ -10,20 +10,19 @@ A rewrite of the original CAD package [`sdfx`](https://github.com/deadsy/sdfx) f
  * Objects are defined with Go code.
  * Objects are rendered to an STL file to be viewed and/or 3d printed.
 
-## How To
- 1. See the examples.
- 2. Write some Go code to define your own object.
- 3. Build and run the Go code.
- 4. Preview the STL output in an STL viewer (e.g. http://www.meshlab.net/)
- 5. Print the STL file if you like it enough.
+## Test examples
+Se images of rendered shapes in [`render/testdata`](./render/testdata/).
+
+Here is a rendered bolt from one of the unit tests under [form3_test.go](./render/form3_test.go)
+![renderedBolt](./render/testdata/defactoBolt.png)
 
 ## Roadmap
-0. Remove superfluous outward facing API in `sdf` and `render` which clutters namespace, like `Capsule3D` and triangle rendering functions.
+0. ~~Remove superfluous outward facing API in `sdf` and `render` which clutters namespace, like `Capsule3D` and triangle rendering functions.~~
 1. Fix examples using `go fix`.
-2. Remove returned errors from basic `sdf` functions like `Cylinder3D`, `Box3D`, `Sphere3D` and similar (see [Questionable API design](#questionable-api-design).
-3. Perform a rewrite of 2D rendering functions and data structures like `sdf.V2`-> `r2.Vec` among others.
-4. Clean up use of vector functions like `rotateFromVec`.
-5. Add/fix/update other 3D renderer implementations present in `sdfx`
+2. ~~Remove returned errors from basic `sdf` functions like `Cylinder3D`, `Box3D`, `Sphere3D` and similar (see [Questionable API design](#questionable-api-design).~~ Keep adding shapes!
+3. ~~Perform a rewrite of 2D rendering functions and data structures like `sdf.V2`-> `r2.Vec` among others.~~
+4. Add a 2D renderer and it's respective `Renderer2` interface.
+5. Make 3D renderer multicore.
 
 # Why was sdfx rewritten?
 The original `sdfx` package is amazing. I thank deadsy for putting all that great work into making an amazing tool I use daily. That said, there are some things that were not compatible with my needs:
@@ -32,10 +31,6 @@ The original `sdfx` package is amazing. I thank deadsy for putting all that grea
 sdfx is needlessly slow. Here is a benchmark rendering a threaded bolt:
 
 ```
-$ go test -bench=. -benchmem ./render/
-goos: linux
-goarch: amd64
-pkg: github.com/soypat/sdf/render
 cpu: AMD Ryzen 5 3400G with Radeon Vega Graphics    
 BenchmarkLegacy-8              2         831917874 ns/op        62468752 B/op     466469 allocs/op
 BenchmarkRenderer-8            2         530473109 ns/op        320487584 B/op    146134 allocs/op
