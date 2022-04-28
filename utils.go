@@ -325,10 +325,6 @@ func ZeroSmall(x, y, epsilon float64) float64 {
 	return x
 }
 
-func ErrMsg(s string) error {
-	return errors.New(s)
-}
-
 // MulVertices multiples a set of V2 vertices by a rotate/translate matrix.
 func mulVertices2(v d2.Set, a m33) {
 	for i := range v {

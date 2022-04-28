@@ -40,8 +40,9 @@ ok      github.com/soypat/sdf/render   4.702s
 `Legacy` is the original `sdfx` implementation.
 
 ### Questionable API design
-* https://github.com/deadsy/sdfx/issues/35 Vector API redesign
-* https://github.com/deadsy/sdfx/issues/48 Better STL save functions.
+* https://github.com/deadsy/sdfx/issues/48 Vector API redesign
+* https://github.com/deadsy/sdfx/issues/35 Better STL save functions.
+* https://github.com/deadsy/sdfx/issues/50 Removing returned errors from shape generation functions
 
 The vector math functions are methods which yield hard to follow operations. i.e:
 ```go
@@ -90,33 +91,12 @@ func Cylinder3D(height, radius, round float64) (SDF3, error) {
 ```
 An error on a function like `Cylinder3D` can only be handled one way really: correcting the argument to it in the source code as one generates the shape! This is even implied with the implementation of the `ErrMsg` function: it includes the line number of the function that yielded the error. **`panic`** already does that and saves us having to formally handle the error message.
 
+The `sdfx` author [claims](https://github.com/deadsy/sdfx/issues/50#issuecomment-1110341868):
+> I don't want to write a fragile library that crashes with invalid user input, I want it to return an error with some data telling them exactly what their problem is. The user then gets to work out how they want to treat that error, rather than the library causing a panic.
 
+This is contrasted by the fact the many of the SDF manipulation functions of `sdfx` will return a nil `SDF3` or `SDF2` interface when receiving invalid inputs. This avoids a panic on the `sdfx` library side and instead passes a ticking timebomb to the user who's program will panic the instant the returned value is used anywhere. I do not need to explain why this particular design decision is [objectively bad](https://hackernoon.com/null-the-billion-dollar-mistake-8t5z32d6).
 
-<!--
-## Development
- * [Roadmap](docs/ROADMAP.md)
+### `sdf` and `sdfx` consolidation
+None planned.
 
-
-## Gallery
-
-![wheel](docs/gallery/wheel.png "Pottery Wheel Casting Pattern")
-![core_box](docs/gallery/core_box.png "Pottery Wheel Core Box")
-![cylinder_head](docs/gallery/head.png "Cylinder Head")
-![msquare](docs/gallery/msquare.png "M-Square Casting Pattern")
-![axoloti](docs/gallery/axoloti.png "Axoloti Mount Kit")
-![text](docs/gallery/text.png "TrueType font rendering")
-![gyroid](docs/gallery/gyroid.png "Gyroid Surface")
-![cc16a](docs/gallery/cc16a.png "Reddit CAD Challenge 16A")
-![cc16b](docs/gallery/cc16b_0.png "Reddit CAD Challenge 16B")
-![cc18b](docs/gallery/cc18b.png "Reddit CAD Challenge 18B")
-![cc18c](docs/gallery/cc18c.png "Reddit CAD Challenge 18C")
-![gear](docs/gallery/gear.png "Involute Gear")
-![camshaft](docs/gallery/camshaft.png "Wallaby Camshaft")
-![geneva](docs/gallery/geneva1.png "Geneva Mechanism")
-![nutsandbolts](docs/gallery/nutsandbolts.png "Nuts and Bolts")
-![extrude1](docs/gallery/extrude1.png "Twisted Extrusions")
-![extrude2](docs/gallery/extrude2.png "Scaled and Twisted Extrusions")
-![bezier1](docs/gallery/bezier_bowl.png "Bowl made with Bezier Curves")
-![bezier2](docs/gallery/bezier_shape.png "Extruded Bezier Curves")
-![voronoi](docs/gallery/voronoi.png "2D Points Distance Field")
--->
+My understanding is the `sdfx` author has a very different design goal to what I envision. See the bullet-list of issues at the start of [Questionable API design](#questionable-api-design).

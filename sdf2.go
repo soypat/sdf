@@ -177,8 +177,8 @@ func CenterAndScale2D(s SDF2, k float64) SDF2 {
 
 // ArraySDF2: Create an X by Y array of a given SDF2
 
-// ArraySDF2 defines an XY grid array of an existing SDF2.
-type ArraySDF2 struct {
+// array2 defines an XY grid array of an existing SDF2.
+type array2 struct {
 	sdf  SDF2
 	num  V2i    // grid size
 	step r2.Vec // grid step size
@@ -187,12 +187,12 @@ type ArraySDF2 struct {
 }
 
 // Array2D returns an XY grid array of an existing SDF2.
-func Array2D(sdf SDF2, num V2i, step r2.Vec) SDF2 {
+func Array2D(sdf SDF2, num V2i, step r2.Vec) *array2 {
 	// check the number of steps
 	if num[0] <= 0 || num[1] <= 0 {
-		return nil
+		panic("negative number of steps")
 	}
-	s := ArraySDF2{}
+	s := array2{}
 	s.sdf = sdf
 	s.num = num
 	s.step = step
@@ -206,12 +206,12 @@ func Array2D(sdf SDF2, num V2i, step r2.Vec) SDF2 {
 }
 
 // SetMin sets the minimum function to control blending.
-func (s *ArraySDF2) SetMin(min MinFunc) {
+func (s *array2) SetMin(min MinFunc) {
 	s.min = min
 }
 
 // Evaluate returns the minimum distance to a grid array of SDF2s.
-func (s *ArraySDF2) Evaluate(p r2.Vec) float64 {
+func (s *array2) Evaluate(p r2.Vec) float64 {
 	d := math.MaxFloat64
 	for j := 0; j < s.num[0]; j++ {
 		for k := 0; k < s.num[1]; k++ {
@@ -223,12 +223,12 @@ func (s *ArraySDF2) Evaluate(p r2.Vec) float64 {
 }
 
 // BoundingBox returns the bounding box of a grid array of SDF2s.
-func (s *ArraySDF2) BoundingBox() d2.Box {
+func (s *array2) BoundingBox() d2.Box {
 	return s.bb
 }
 
-// RotateUnionSDF2 defines a union of rotated SDF2s.
-type RotateUnionSDF2 struct {
+// rotateUnion2 defines a union of rotated SDF2s.
+type rotateUnion2 struct {
 	sdf  SDF2
 	num  int
 	step m33
@@ -240,9 +240,9 @@ type RotateUnionSDF2 struct {
 func RotateUnion2D(sdf SDF2, num int, step m33) SDF2 {
 	// check the number of steps
 	if num <= 0 {
-		return nil
+		panic("invalid number of steps")
 	}
-	s := RotateUnionSDF2{}
+	s := rotateUnion2{}
 	s.sdf = sdf
 	s.num = num
 	s.step = step.Inverse()
@@ -262,7 +262,7 @@ func RotateUnion2D(sdf SDF2, num int, step m33) SDF2 {
 }
 
 // Evaluate returns the minimum distance to a union of rotated SDF2s.
-func (s *RotateUnionSDF2) Evaluate(p r2.Vec) float64 {
+func (s *rotateUnion2) Evaluate(p r2.Vec) float64 {
 	d := math.MaxFloat64
 	rot := Identity2d()
 	for i := 0; i < s.num; i++ {
@@ -274,17 +274,17 @@ func (s *RotateUnionSDF2) Evaluate(p r2.Vec) float64 {
 }
 
 // SetMin sets the minimum function to control blending.
-func (s *RotateUnionSDF2) SetMin(min MinFunc) {
+func (s *rotateUnion2) SetMin(min MinFunc) {
 	s.min = min
 }
 
 // BoundingBox returns the bounding box of a union of rotated SDF2s.
-func (s *RotateUnionSDF2) BoundingBox() d2.Box {
+func (s *rotateUnion2) BoundingBox() d2.Box {
 	return s.bb
 }
 
-// RotateCopySDF2 copies an SDF2 n times in a full circle.
-type RotateCopySDF2 struct {
+// rotateCopy2 copies an SDF2 n times in a full circle.
+type rotateCopy2 struct {
 	sdf   SDF2
 	theta float64
 	bb    d2.Box
@@ -294,9 +294,9 @@ type RotateCopySDF2 struct {
 func RotateCopy2D(sdf SDF2, n int) SDF2 {
 	// check the number of steps
 	if n <= 0 {
-		return nil
+		panic("invalid number of steps")
 	}
-	s := RotateCopySDF2{}
+	s := rotateCopy2{}
 	s.sdf = sdf
 	s.theta = 2 * math.Pi / float64(n)
 	// work out the bounding box
@@ -314,19 +314,19 @@ func RotateCopy2D(sdf SDF2, n int) SDF2 {
 }
 
 // Evaluate returns the minimum distance to a rotate/copy SDF2.
-func (s *RotateCopySDF2) Evaluate(p r2.Vec) float64 {
+func (s *rotateCopy2) Evaluate(p r2.Vec) float64 {
 	// Map p to a point in the first copy sector.
 	pnew := d2.PolarToXY(r2.Norm(p), SawTooth(math.Atan2(p.Y, p.X), s.theta))
 	return s.sdf.Evaluate(pnew)
 }
 
 // BoundingBox returns the bounding box of a rotate/copy SDF2.
-func (s *RotateCopySDF2) BoundingBox() d2.Box {
+func (s *rotateCopy2) BoundingBox() d2.Box {
 	return s.bb
 }
 
-// SliceSDF2 creates an SDF2 from a planar slice through an SDF3.
-type SliceSDF2 struct {
+// slice2 creates an SDF2 from a planar slice through an SDF3.
+type slice2 struct {
 	sdf SDF3   // the sdf3 being sliced
 	a   r3.Vec // 3d point for 2d origin
 	u   r3.Vec // vector for the 2d x-axis
@@ -337,7 +337,7 @@ type SliceSDF2 struct {
 // Slice2D returns an SDF2 created from a planar slice through an SDF3.
 // a is point on slicing plane, n is normal to slicing plane
 func Slice2D(sdf SDF3, a, n r3.Vec) SDF2 {
-	s := SliceSDF2{}
+	s := slice2{}
 	s.sdf = sdf
 	s.a = a
 	// work out the x/y vectors on the plane.
@@ -372,43 +372,34 @@ func Slice2D(sdf SDF3, a, n r3.Vec) SDF2 {
 }
 
 // Evaluate returns the minimum distance to the sliced SDF2.
-func (s *SliceSDF2) Evaluate(p r2.Vec) float64 {
+func (s *slice2) Evaluate(p r2.Vec) float64 {
 	pnew := r3.Add(s.a, r3.Scale(p.X, s.u))
 	pnew = r3.Add(pnew, r3.Scale(p.Y, s.v))
 	return s.sdf.Evaluate(pnew)
 }
 
 // BoundingBox returns the bounding box of the sliced SDF2.
-func (s *SliceSDF2) BoundingBox() d2.Box {
+func (s *slice2) BoundingBox() d2.Box {
 	return s.bb
 }
 
-// UnionSDF2 is a union of multiple SDF2 objects.
-type UnionSDF2 struct {
+// union2 is a union of multiple SDF2 objects.
+type union2 struct {
 	sdf []SDF2
 	min MinFunc
 	bb  d2.Box
 }
 
 // Union2D returns the union of multiple SDF2 objects.
-func Union2D(sdf ...SDF2) SDF2 {
-	if len(sdf) == 0 {
-		return nil
+func Union2D(sdf ...SDF2) *union2 {
+	if len(sdf) <= 1 {
+		panic("union requires at least 2 sdfs")
 	}
-	s := UnionSDF2{}
-	// strip out any nils
-	s.sdf = make([]SDF2, 0, len(sdf))
-	for _, x := range sdf {
-		if x != nil {
-			s.sdf = append(s.sdf, x)
+	s := union2{sdf: sdf}
+	for _, x := range s.sdf {
+		if x == nil {
+			panic("nil argument found")
 		}
-	}
-	if len(s.sdf) == 0 {
-		return nil
-	}
-	if len(s.sdf) == 1 {
-		// only one sdf - not really a union
-		return s.sdf[0]
 	}
 	// work out the bounding box
 	bb := s.sdf[0].BoundingBox()
@@ -421,8 +412,7 @@ func Union2D(sdf ...SDF2) SDF2 {
 }
 
 // Evaluate returns the minimum distance to the SDF2 union.
-func (s *UnionSDF2) Evaluate(p r2.Vec) float64 {
-
+func (s *union2) Evaluate(p r2.Vec) float64 {
 	// work out the min/max distance for every bounding box
 	vs := make([]r2.Vec, len(s.sdf))
 	minDist2 := -1.0
@@ -455,7 +445,7 @@ func (s *UnionSDF2) Evaluate(p r2.Vec) float64 {
 }
 
 // EvaluateSlow returns the minimum distance to the SDF2 union.
-func (s *UnionSDF2) EvaluateSlow(p r2.Vec) float64 {
+func (s *union2) EvaluateSlow(p r2.Vec) float64 {
 	var d float64
 	for i := range s.sdf {
 		x := s.sdf[i].Evaluate(p)
@@ -469,17 +459,17 @@ func (s *UnionSDF2) EvaluateSlow(p r2.Vec) float64 {
 }
 
 // SetMin sets the minimum function to control SDF2 blending.
-func (s *UnionSDF2) SetMin(min MinFunc) {
+func (s *union2) SetMin(min MinFunc) {
 	s.min = min
 }
 
 // BoundingBox returns the bounding box of an SDF2 union.
-func (s *UnionSDF2) BoundingBox() d2.Box {
+func (s *union2) BoundingBox() d2.Box {
 	return s.bb
 }
 
-// DifferenceSDF2 is the difference of two SDF2s.
-type DifferenceSDF2 struct {
+// diff2 is the difference of two SDF2s.
+type diff2 struct {
 	s0  SDF2
 	s1  SDF2
 	max MaxFunc
@@ -488,13 +478,10 @@ type DifferenceSDF2 struct {
 
 // Difference2D returns the difference of two SDF2 objects, s0 - s1.
 func Difference2D(s0, s1 SDF2) SDF2 {
-	if s1 == nil {
-		return s0
+	if s0 == nil || s1 == nil {
+		panic("nil sdf argument")
 	}
-	if s0 == nil {
-		return nil
-	}
-	s := DifferenceSDF2{}
+	s := diff2{}
 	s.s0 = s0
 	s.s1 = s1
 	s.max = math.Max
@@ -503,22 +490,22 @@ func Difference2D(s0, s1 SDF2) SDF2 {
 }
 
 // Evaluate returns the minimum distance to the difference of two SDF2s.
-func (s *DifferenceSDF2) Evaluate(p r2.Vec) float64 {
+func (s *diff2) Evaluate(p r2.Vec) float64 {
 	return s.max(s.s0.Evaluate(p), -s.s1.Evaluate(p))
 }
 
 // SetMax sets the maximum function to control blending.
-func (s *DifferenceSDF2) SetMax(max MaxFunc) {
+func (s *diff2) SetMax(max MaxFunc) {
 	s.max = max
 }
 
 // BoundingBox returns the bounding box of the difference of two SDF2s.
-func (s *DifferenceSDF2) BoundingBox() d2.Box {
+func (s *diff2) BoundingBox() d2.Box {
 	return s.bb
 }
 
-// ElongateSDF2 is the elongation of an SDF2.
-type ElongateSDF2 struct {
+// elongate2 is the elongation of an SDF2.
+type elongate2 struct {
 	sdf    SDF2   // the sdf being elongated
 	hp, hn r2.Vec // positive/negative elongation vector
 	bb     d2.Box // bounding box
@@ -527,7 +514,7 @@ type ElongateSDF2 struct {
 // Elongate2D returns the elongation of an SDF2.
 func Elongate2D(sdf SDF2, h r2.Vec) SDF2 {
 	h = d2.AbsElem(h)
-	s := ElongateSDF2{
+	s := elongate2{
 		sdf: sdf,
 		hp:  r2.Scale(0.5, h),
 		hn:  r2.Scale(0.5, h),
@@ -541,13 +528,13 @@ func Elongate2D(sdf SDF2, h r2.Vec) SDF2 {
 }
 
 // Evaluate returns the minimum distance to an elongated SDF2.
-func (s *ElongateSDF2) Evaluate(p r2.Vec) float64 {
+func (s *elongate2) Evaluate(p r2.Vec) float64 {
 	q := p.Sub(d2.Clamp(p, s.hn, s.hp))
 	return s.sdf.Evaluate(q)
 }
 
 // BoundingBox returns the bounding box of an elongated SDF2.
-func (s *ElongateSDF2) BoundingBox() d2.Box {
+func (s *elongate2) BoundingBox() d2.Box {
 	return s.bb
 }
 
@@ -605,8 +592,8 @@ func Multi2D(s SDF2, positions d2.Set) SDF2 {
 	return Union2D(objects...)
 }
 
-// OffsetSDF2 offsets the distance function of an existing SDF2.
-type OffsetSDF2 struct {
+// offset2 offsets the distance function of an existing SDF2.
+type offset2 struct {
 	sdf    SDF2
 	offset float64
 	bb     d2.Box
@@ -614,7 +601,7 @@ type OffsetSDF2 struct {
 
 // Offset2D returns an SDF2 that offsets the distance function of another SDF2.
 func Offset2D(sdf SDF2, offset float64) SDF2 {
-	s := OffsetSDF2{}
+	s := offset2{}
 	s.sdf = sdf
 	s.offset = offset
 	// work out the bounding box
@@ -624,17 +611,17 @@ func Offset2D(sdf SDF2, offset float64) SDF2 {
 }
 
 // Evaluate returns the minimum distance to an offset SDF2.
-func (s *OffsetSDF2) Evaluate(p r2.Vec) float64 {
+func (s *offset2) Evaluate(p r2.Vec) float64 {
 	return s.sdf.Evaluate(p) - s.offset
 }
 
 // BoundingBox returns the bounding box of an offset SDF2.
-func (s *OffsetSDF2) BoundingBox() d2.Box {
+func (s *offset2) BoundingBox() d2.Box {
 	return s.bb
 }
 
-// IntersectionSDF2 is the intersection of two SDF2s.
-type IntersectionSDF2 struct {
+// intersection2 is the intersection of two SDF2s.
+type intersection2 struct {
 	s0  SDF2
 	s1  SDF2
 	max MaxFunc
@@ -642,11 +629,11 @@ type IntersectionSDF2 struct {
 }
 
 // Intersect2D returns the intersection of two SDF2s.
-func Intersect2D(s0, s1 SDF2) SDF2 {
+func Intersect2D(s0, s1 SDF2) *intersection2 {
 	if s0 == nil || s1 == nil {
 		return nil
 	}
-	s := IntersectionSDF2{}
+	s := intersection2{}
 	s.s0 = s0
 	s.s1 = s1
 	s.max = math.Max
@@ -656,16 +643,16 @@ func Intersect2D(s0, s1 SDF2) SDF2 {
 }
 
 // Evaluate returns the minimum distance to the SDF2 intersection.
-func (s *IntersectionSDF2) Evaluate(p r2.Vec) float64 {
+func (s *intersection2) Evaluate(p r2.Vec) float64 {
 	return s.max(s.s0.Evaluate(p), s.s1.Evaluate(p))
 }
 
 // SetMax sets the maximum function to control blending.
-func (s *IntersectionSDF2) SetMax(max MaxFunc) {
+func (s *intersection2) SetMax(max MaxFunc) {
 	s.max = max
 }
 
 // BoundingBox returns the bounding box of an SDF2 intersection.
-func (s *IntersectionSDF2) BoundingBox() d2.Box {
+func (s *intersection2) BoundingBox() d2.Box {
 	return s.bb
 }

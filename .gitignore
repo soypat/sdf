@@ -1,3 +1,5 @@
+# IDE
+.vscode
 # Exclude all STL files
 *.stl
 
