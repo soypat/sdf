@@ -442,10 +442,6 @@ func Union3D(sdf ...SDF3) *union3 {
 			panic("nil sdf argument found")
 		}
 	}
-	if len(s.sdf) == 1 {
-		// only one sdf - not really a union
-		return &s
-	}
 	// work out the bounding box
 	bb := s.sdf[0].BoundingBox()
 	for _, x := range s.sdf {
