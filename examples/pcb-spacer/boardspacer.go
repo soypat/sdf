@@ -87,6 +87,6 @@ func standoffs(holeWidth float64, positions []r3.Vec) sdf.SDF3 {
 
 	// from the board mechanicals
 
-	s := obj3.Standoff3D(k)
+	s := obj3.Standoff(k)
 	return sdf.Multi3D(s, positions)
 }
