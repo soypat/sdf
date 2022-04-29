@@ -10,8 +10,10 @@ A rewrite of the original CAD package [`sdfx`](https://github.com/deadsy/sdfx) f
  * Objects are defined with Go code.
  * Objects are rendered to an STL file to be viewed and/or 3d printed.
 
-## Test examples
-Se images of rendered shapes in [`render/testdata`](./render/testdata/).
+## Examples
+For real-world examples with images see [examples directory README](./examples/).
+
+See images of rendered shapes in [`render/testdata`](./render/testdata/).
 
 Here is a rendered bolt from one of the unit tests under [form3_test.go](./render/form3_test.go)
 ![renderedBolt](./render/testdata/defactoBolt.png)

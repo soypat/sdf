@@ -6,7 +6,7 @@ const (
 	sqrtHalf  = 0.7071067811865476
 	tolerance = 1e-9
 
-	InchesPerMillimetre = 20
+	InchesPerMillimetre = 1. / 25.4
 )
 
 // Sign do not use function

@@ -1,8 +1,6 @@
 package obj3
 
 import (
-	"fmt"
-
 	"github.com/soypat/sdf"
 	"github.com/soypat/sdf/form2"
 	"github.com/soypat/sdf/form3"
@@ -45,12 +43,9 @@ func Bolt(k BoltParms) sdf.SDF3 {
 	case "hex":
 		head = HexHead(hr, hh, "b")
 	case "knurl":
-		head, err = KnurledHead3D(hr, hh, hr*0.25)
+		head = KnurledHead3D(hr, hh, hr*0.25)
 	default:
-		err = fmt.Errorf("unknown style \"%s\"", k.Style)
-	}
-	if err != nil {
-		panic(err)
+		panic("unknown style " + k.Style)
 	}
 
 	// shank

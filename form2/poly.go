@@ -409,7 +409,7 @@ func (p *PolygonBuilder) Drop() {
 // Vertices returns the vertices of the polygon.
 func (p *PolygonBuilder) Vertices() []r2.Vec {
 	if p.vlist == nil {
-		return nil
+		panic("nil vertex list. was PolygonBuilder initialized?")
 	}
 	p.fixups()
 	n := len(p.vlist)

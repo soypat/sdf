@@ -13,8 +13,8 @@ import (
 // This code builds a knurl with the intersection of left and right hand
 // multistart screw "threads".
 
-// KnurlParms specifies the knurl parameters.
-type KnurlParms struct {
+// KnurlParams specifies the knurl parameters.
+type KnurlParams struct {
 	Length float64 // length of cylinder
 	Radius float64 // radius of cylinder
 	Pitch  float64 // knurl pitch
@@ -23,7 +23,7 @@ type KnurlParms struct {
 }
 
 // knurlProfile returns a 2D knurl profile.
-func knurlProfile(k *KnurlParms) sdf.SDF2 {
+func knurlProfile(k KnurlParams) sdf.SDF2 {
 	knurl := form2.NewPolygon()
 	knurl.Add(k.Pitch/2, 0)
 	knurl.Add(k.Pitch/2, k.Radius)
@@ -35,7 +35,7 @@ func knurlProfile(k *KnurlParms) sdf.SDF2 {
 }
 
 // Knurl3D returns a knurled cylinder.
-func Knurl3D(k *KnurlParms) sdf.SDF3 {
+func Knurl3D(k KnurlParams) sdf.SDF3 {
 	if k.Length <= 0 {
 		panic("Length <= 0")
 	}
@@ -65,21 +65,20 @@ func Knurl3D(k *KnurlParms) sdf.SDF3 {
 }
 
 // KnurledHead3D returns a generic cylindrical knurled head.
-func KnurledHead3D(
-	r float64, // radius
-	h float64, // height
-	pitch float64, // knurl pitch
-) (sdf.SDF3, error) {
-	cylinderRound := r * 0.05
-	knurlLength := pitch * math.Floor((h-cylinderRound)/pitch)
-	k := KnurlParms{
+func KnurledHead3D(radius float64, height float64, pitch float64) sdf.SDF3 {
+	cylinderRound := radius * 0.05
+	knurlLength := pitch * math.Floor((height-cylinderRound)/pitch)
+	k := KnurlParams{
 		Length: knurlLength,
-		Radius: r,
+		Radius: radius,
 		Pitch:  pitch,
 		Height: pitch * 0.3,
-		Theta:  sdf.DtoR(45),
+		Theta:  d2r(45),
 	}
-	knurl := Knurl3D(&k)
-	cylinder := form3.Cylinder(h, r, cylinderRound)
-	return sdf.Union3D(cylinder, knurl), nil
+	knurl := Knurl3D(k)
+	cylinder := form3.Cylinder(height, radius, cylinderRound)
+	return sdf.Union3D(cylinder, knurl)
 }
+
+func d2r(degrees float64) float64 { return degrees * math.Pi / 180. }
+func r2d(radians float64) float64 { return radians / math.Pi * 180. }

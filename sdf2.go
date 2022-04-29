@@ -577,13 +577,19 @@ func LineOf2D(s SDF2, p0, p1 r2.Vec, pattern string) SDF2 {
 			x = x.Add(dx)
 		}
 	}
+	if len(objects) == 1 {
+		return objects[0]
+	}
 	return Union2D(objects...)
 }
 
 // Multi2D creates a union of an SDF2 at a set of 2D positions.
 func Multi2D(s SDF2, positions d2.Set) SDF2 {
-	if (s == nil) || (len(positions) == 0) {
-		return nil
+	if s == nil {
+		panic("nil sdf argument")
+	}
+	if len(positions) == 0 {
+		panic("empty positions")
 	}
 	objects := make([]SDF2, len(positions))
 	for i, p := range positions {
@@ -631,7 +637,7 @@ type intersection2 struct {
 // Intersect2D returns the intersection of two SDF2s.
 func Intersect2D(s0, s1 SDF2) *intersection2 {
 	if s0 == nil || s1 == nil {
-		return nil
+		panic("nil sdf argument")
 	}
 	s := intersection2{}
 	s.s0 = s0

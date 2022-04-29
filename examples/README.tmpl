@@ -1,0 +1,14 @@
+<!-- This file is auto generated. DO NOT EDIT-->
+# Examples
+Click on image to go to code directory.
+
+{{ range $val := . }}
+## {{ $val.Name }}
+
+| Example | Execution Time | File size |
+|---|---|---|
+|{{ $val.Name }}|{{ $val.ExecutionTime }}|{{ $val.STLSize }}|
+
+[![{{ $val.Name }}]({{ $val.PNGResult }})]({{ $val.Dir }})
+
+{{end}}

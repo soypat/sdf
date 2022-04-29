@@ -3,6 +3,10 @@
 # Exclude all STL files
 *.stl
 
-# Exclude all png files except for test files
+
 *.png
+# Exclude all png files except for test files
 !render/testdata/defacto*.png
+
+# Don't exclude example images
+!examples/fig/*.png

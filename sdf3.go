@@ -887,8 +887,11 @@ func LineOf3D(s SDF3, p0, p1 r3.Vec, pattern string) SDF3 {
 
 // Multi3D creates a union of an SDF3 at translated positions.
 func Multi3D(s SDF3, positions d3.Set) SDF3 {
-	if (s == nil) || (len(positions) == 0) {
-		return nil
+	if s == nil {
+		panic("nil sdf argument")
+	}
+	if len(positions) == 0 {
+		panic("empty or nil positions")
 	}
 	objects := make([]SDF3, len(positions))
 	for i, p := range positions {
@@ -899,8 +902,11 @@ func Multi3D(s SDF3, positions d3.Set) SDF3 {
 
 // Orient3D creates a union of an SDF3 at oriented directions.
 func Orient3D(s SDF3, base r3.Vec, directions d3.Set) SDF3 {
-	if (s == nil) || (len(directions) == 0) {
-		return nil
+	if s == nil {
+		panic("nil sdf argument")
+	}
+	if len(directions) == 0 {
+		panic("empty or nil directions")
 	}
 	objects := make([]SDF3, len(directions))
 	for i, d := range directions {
