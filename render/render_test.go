@@ -15,6 +15,7 @@ func TestStressProfile(t *testing.T) {
 	const stlName = "stress.stl"
 	startProf(t, "stress.prof")
 	stlStressTest(t, stlName)
+	defer os.Remove(stlName)
 	pprof.StopCPUProfile()
 	stlToPNG(t, stlName, "stress.png", viewConfig{
 		up:     r3.Vec{Z: 1},
