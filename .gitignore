@@ -3,6 +3,8 @@
 # Exclude all STL files
 *.stl
 
+# Exclude CPU and memory profiles
+*.prof
 
 *.png
 # Exclude all png files except for test files

@@ -67,24 +67,32 @@ func (oc *octree) ReadTriangles(t []Triangle3) (n int, err error) {
 	}
 	var nt int
 	if oc.concurrent <= 1 {
-		nt, err = oc.readTriangles(t[n:])
+		nt = oc.readTriangles(t[n:])
 	} else {
+		// multi core processing
 		panic("no concurrency yet")
 	}
 	n += nt
 	return n, err
 }
 
-// readTriangles is single threaded implementation of
-func (oc *octree) readTriangles(t []Triangle3) (int, error) {
-	n := 0
+// readTriangles is single threaded implementation of ReadTriangles and only returns
+// number of triangles written.
+func (oc *octree) readTriangles(t []Triangle3) (n int) {
 	cubesProcessed := 0
 	var newCubes []cube
 	for _, cube := range oc.todo {
 		if n >= len(t) {
 			break
 		}
-		written, cubes := oc.processCube(cube, t[n:])
+		tri, cubes := oc.processCube(cube)
+
+		written := copy(t[n:], tri)
+		if written < len(tri) { // some triangles were not written.
+			oc.unwritten.Write(tri[written:])
+			break
+		}
+
 		newCubes = append(newCubes, cubes...)
 
 		cubesProcessed++
@@ -92,11 +100,11 @@ func (oc *octree) readTriangles(t []Triangle3) (int, error) {
 	}
 
 	oc.todo = append(newCubes, oc.todo[cubesProcessed:]...)
-	return n, nil
+	return n
 }
 
 // Process a cube. Generate triangles, or more cubes.
-func (oc *octree) processCube(c cube, t []Triangle3) (trianglesWritten int, newCubes []cube) {
+func (oc *octree) processCube(c cube) (newTriangles []Triangle3, newCubes []cube) {
 	if !oc.dc.IsEmpty(&c) {
 		if c.n == 1 {
 			// this cube is at the required resolution
@@ -111,11 +119,7 @@ func (oc *octree) processCube(c cube, t []Triangle3) (trianglesWritten int, newC
 			corners := [8]r3.Vec{c0, c1, c2, c3, c4, c5, c6, c7}
 			values := [8]float64{d0, d1, d2, d3, d4, d5, d6, d7}
 			// output the triangle(s) for this cube
-			got := mcToTriangles(corners, values, 0)
-			trianglesWritten = copy(t, got)
-			if trianglesWritten < len(got) { // some triangles were not written.
-				oc.unwritten.Write(got[trianglesWritten:])
-			}
+			newTriangles = mcToTriangles(corners, values, 0)
 		} else {
 			// process the sub cubes
 			n := c.n - 1
@@ -138,7 +142,7 @@ func (oc *octree) processCube(c cube, t []Triangle3) (trianglesWritten int, newC
 			}
 		}
 	}
-	return trianglesWritten, newCubes
+	return newTriangles, newCubes
 }
 
 // dc3 implements a 3 dimensional distance cache. evaluates the SDF3 via a distance cache to avoid repeated evaluations.
