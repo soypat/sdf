@@ -324,11 +324,11 @@ func Loft3D(sdf0, sdf1 SDF2, height, round float64) SDF3 {
 // Evaluate returns the minimum distance to a loft extrusion.
 func (s *loft3) Evaluate(p r3.Vec) float64 {
 	// work out the mix value as a function of height
-	k := Clamp((0.5*p.Z/s.height)+0.5, 0, 1)
+	k := clamp((0.5*p.Z/s.height)+0.5, 0, 1)
 	// mix the 2D SDFs
 	a0 := s.sdf0.Evaluate(r2.Vec{p.X, p.Y})
 	a1 := s.sdf1.Evaluate(r2.Vec{p.X, p.Y})
-	a := Mix(a0, a1, k)
+	a := mix(a0, a1, k)
 
 	b := math.Abs(p.Z) - s.height
 	var d float64
@@ -758,7 +758,7 @@ func RotateCopy3D(sdf SDF3, num int) SDF3 {
 func (s *rotateCopy3) Evaluate(p r3.Vec) float64 {
 	// Map p to a point in the first copy sector.
 	p2 := r2.Vec{p.X, p.Y}
-	p2 = d2.PolarToXY(r2.Norm(p2), SawTooth(math.Atan2(p2.Y, p2.X), s.theta))
+	p2 = d2.PolarToXY(r2.Norm(p2), sawTooth(math.Atan2(p2.Y, p2.X), s.theta))
 	return s.sdf.Evaluate(r3.Vec{p2.X, p2.Y, p.Z})
 }
 

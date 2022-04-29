@@ -51,7 +51,7 @@ func Knurl3D(k KnurlParams) sdf.SDF3 {
 	if k.Theta < 0 {
 		panic("Theta < 0")
 	}
-	if k.Theta >= sdf.DtoR(90) {
+	if k.Theta >= d2r(90) {
 		panic("Theta >= 90")
 	}
 	// Work out the number of starts using the desired helix angle.

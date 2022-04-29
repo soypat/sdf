@@ -46,6 +46,7 @@ func base() sdf.SDF3 {
 		HoleMargin:   [4]float64{4.5, 4.5, 4.5, 4.5},
 		HolePattern:  [4]string{"x", "x", "x", "x"},
 	}
+	// obj3.Panel()
 	s2 := sdf.Extrude3D(obj2.Panel(pp), baseThickness)
 	xOfs := 0.5 * baseLength
 	yOfs := 0.5 * baseWidth
@@ -72,7 +73,7 @@ func base() sdf.SDF3 {
 	}
 	m3Standoffs := standoffs(3, m3Positions)
 	s4 := sdf.Union3D(s2, m4Standoffs, m3Standoffs)
-	s4.SetMin(sdf.PolyMin(3.0))
+	s4.SetMin(sdf.MinPoly(3.0))
 	return s4
 }
 

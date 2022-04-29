@@ -70,7 +70,7 @@ func (s *ScrewSDF3) Evaluate(p r3.Vec) float64 {
 	// ie: the position along thread pitch
 	theta := math.Atan2(p.Y, p.X)
 	z := p.Z + s.lead*theta/(2*math.Pi)
-	p0.X = sdf.SawTooth(z, s.pitch)
+	p0.X = sawTooth(z, s.pitch)
 	// get the thread profile distance
 	d0 := s.thread.Evaluate(p0)
 	// create a region for the screw length

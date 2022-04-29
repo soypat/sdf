@@ -9,23 +9,23 @@ import (
 )
 
 // Panel3D returns a 3d panel with holes on the edges.
-func Panel(k obj2.PanelParams) (sdf.SDF3, error) {
+func Panel(k obj2.PanelParams) sdf.SDF3 {
 	if k.Thickness <= 0 {
 		panic("k.Thickness <= 0")
 	}
 	s := obj2.Panel(k)
-	return sdf.Extrude3D(s, k.Thickness), nil
+	return sdf.Extrude3D(s, k.Thickness)
 }
 
 // EuroRackPanel returns a 3d eurorack synthesizer module panel (in mm).
-func EuroRackPanel(k obj2.EuroRackParams) (sdf.SDF3, error) {
+func EuroRackPanel(k obj2.EuroRackParams) sdf.SDF3 {
 	if k.Thickness <= 0 {
 		panic("k.Thickness <= 0")
 	}
 	panel2d := obj2.EuroRackPanel(k)
 	s := sdf.Extrude3D(panel2d, k.Thickness)
 	if !k.Ridge {
-		return s, nil
+		return s
 	}
 	// create a reinforcing ridge
 	xSize := k.Thickness
@@ -39,7 +39,7 @@ func EuroRackPanel(k obj2.EuroRackParams) (sdf.SDF3, error) {
 	r0 := sdf.Transform3D(r, sdf.Translate3d(r3.Vec{xOfs, 0, 0}))
 	r1 := sdf.Transform3D(r, sdf.Translate3d(r3.Vec{-xOfs, 0, 0}))
 
-	return sdf.Union3D(s, r0, r1), nil
+	return sdf.Union3D(s, r0, r1)
 }
 
 // PanelHoleParms defines the parameters for a panel hole.
@@ -52,7 +52,7 @@ type PanelHoleParams struct {
 }
 
 // PanelHole returns a panel hole and an indent for a retention pin.
-func PanelHole(k *PanelHoleParams) (sdf.SDF3, error) {
+func PanelHole(k *PanelHoleParams) sdf.SDF3 {
 	if k.Diameter <= 0 {
 		panic("k.Diameter <= 0")
 	}
@@ -69,11 +69,10 @@ func PanelHole(k *PanelHoleParams) (sdf.SDF3, error) {
 	// build the hole
 	s = form3.Cylinder(k.Thickness, k.Diameter*0.5, 0)
 	if k.Offset == 0 || k.Indent.X == 0 || k.Indent.Y == 0 || k.Indent.Z == 0 {
-		return s, nil
+		return s
 	}
 
 	// build the indent
-
 	indent = form3.Box(k.Indent, 0)
 	zOfs := (k.Thickness - k.Indent.Z) * 0.5
 	indent = sdf.Transform3D(indent, sdf.Translate3d(r3.Vec{k.Offset, 0, zOfs}))
@@ -83,5 +82,5 @@ func PanelHole(k *PanelHoleParams) (sdf.SDF3, error) {
 		s = sdf.Transform3D(s, sdf.RotateZ(k.Orientation))
 	}
 
-	return s, nil
+	return s
 }

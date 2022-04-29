@@ -22,7 +22,7 @@ func HexHead(radius float64, height float64, round string) sdf.SDF3 {
 	// round out the top and/or bottom as required
 	if round != "" {
 		topRound := radius * 1.6
-		d := radius * math.Cos(sdf.DtoR(30))
+		d := radius * math.Cos(d2r(30))
 		sphere3d := form3.Sphere(topRound)
 		zOfs := math.Sqrt(topRound*topRound-d*d) - height/2
 		if round == "t" || round == "tb" {

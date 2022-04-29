@@ -21,6 +21,14 @@ Examples:
 etc.
 
 */
+const (
+	// MillimetresPerInch is millimetres per inch (25.4)
+	millimetresPerInch = 25.4
+	// InchesPerMillimetre is inches per millimetre
+	InchesPerMillimetre = 1.0 / millimetresPerInch
+	// mil is millimetres per 1/1000 of an inch
+	mil = millimetresPerInch / 1000.0
+)
 
 // PanelParams defines the parameters for a 2D panel.
 type PanelParams struct {
@@ -61,8 +69,8 @@ func Panel(k PanelParams) sdf.SDF2 {
 
 // EuroRack Module Panels: http://www.doepfer.de/a100_man/a100m_e.htm
 
-const erU = 1.75 * sdf.MillimetresPerInch
-const erHP = 0.2 * sdf.MillimetresPerInch
+const erU = 1.75 * millimetresPerInch
+const erHP = 0.2 * millimetresPerInch
 const erHoleDiameter = 3.2
 
 // gaps between adjacent panels (doepfer 3U module spec)

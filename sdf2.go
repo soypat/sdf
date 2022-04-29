@@ -316,7 +316,7 @@ func RotateCopy2D(sdf SDF2, n int) SDF2 {
 // Evaluate returns the minimum distance to a rotate/copy SDF2.
 func (s *rotateCopy2) Evaluate(p r2.Vec) float64 {
 	// Map p to a point in the first copy sector.
-	pnew := d2.PolarToXY(r2.Norm(p), SawTooth(math.Atan2(p.Y, p.X), s.theta))
+	pnew := d2.PolarToXY(r2.Norm(p), sawTooth(math.Atan2(p.Y, p.X), s.theta))
 	return s.sdf.Evaluate(pnew)
 }
 
@@ -542,7 +542,7 @@ func (s *elongate2) BoundingBox() d2.Box {
 func GenerateMesh2D(s SDF2, grid V2i) (d2.Set, error) {
 
 	// create the grid mapping for the bounding box
-	m, err := NewMap2(s.BoundingBox(), grid, false)
+	m, err := newMap2(s.BoundingBox(), grid, false)
 	if err != nil {
 		return nil, err
 	}

@@ -2,22 +2,12 @@ package sdf
 
 import (
 	"errors"
-	"fmt"
 	"math"
 
 	"github.com/soypat/sdf/internal/d2"
 	"github.com/soypat/sdf/internal/d3"
 	"gonum.org/v1/gonum/spatial/r2"
 	"gonum.org/v1/gonum/spatial/r3"
-)
-
-const (
-	// MillimetresPerInch is millimetres per inch (25.4)
-	MillimetresPerInch = 25.4
-	// InchesPerMillimetre is inches per millimetre
-	InchesPerMillimetre = 1.0 / MillimetresPerInch
-	// Mil is millimetres per 1/1000 of an inch
-	Mil = MillimetresPerInch / 1000.0
 )
 
 const (
@@ -42,35 +32,35 @@ const (
 )
 
 // R2ToI temporary home for this function.
-// Deprecated: do not use.
-func R2ToI(a r2.Vec) V2i {
+//
+// Deprecated: R2ToI is deprecated.
+func R2ToI(a r2.Vec) V2i { // Deprecated: R2ToI is deprecated.
 	return V2i{int(a.X), int(a.Y)}
 }
 
+// R3ToI temporary home for this function.
+//
+// Deprecated: R3ToI is deprecated.
+func R3ToI(a r3.Vec) V3i {
+	return V3i{int(a.X), int(a.Y), int(a.Z)}
+}
+
 // R3FromI temporary home for this function.
-// Deprecated: do not use.
+//
+//Deprecated: R3FromI is deprecated.
 func R3FromI(a V3i) r3.Vec {
 	return r3.Vec{float64(a[0]), float64(a[1]), float64(a[2])}
 }
 
 // R2FromI temporary home for this function.
-// Deprecated: do not use.
+//
+// Deprecated: R2FromI is deprecated.
 func R2FromI(a V2i) r2.Vec {
 	return r2.Vec{float64(a[0]), float64(a[1])}
 }
 
-// DtoR converts degrees to radians
-func DtoR(degrees float64) float64 {
-	return (pi / 180) * degrees
-}
-
-// RtoD converts radians to degrees
-func RtoD(radians float64) float64 {
-	return (180 / pi) * radians
-}
-
-// Clamp x between a and b, assume a <= b
-func Clamp(x, a, b float64) float64 {
+// clamp x between a and b, assume a <= b
+func clamp(x, a, b float64) float64 {
 	if x < a {
 		return a
 	}
@@ -80,13 +70,13 @@ func Clamp(x, a, b float64) float64 {
 	return x
 }
 
-// Mix does a linear interpolation from x to y, a = [0,1]
-func Mix(x, y, a float64) float64 {
+// mix does a linear interpolation from x to y, a = [0,1]
+func mix(x, y, a float64) float64 {
 	return x + (a * (y - x))
 }
 
-// Sign returns the sign of x
-func Sign(x float64) float64 {
+// sign returns the sign of x
+func sign(x float64) float64 {
 	if x < 0 {
 		return -1
 	}
@@ -96,39 +86,39 @@ func Sign(x float64) float64 {
 	return 0
 }
 
-// SawTooth generates a sawtooth function. Returns [-period/2, period/2)
-func SawTooth(x, period float64) float64 {
+// sawTooth generates a sawtooth function. Returns [-period/2, period/2)
+func sawTooth(x, period float64) float64 {
 	x += period / 2
 	t := x / period
 	return period*(t-math.Floor(t)) - period/2
 }
 
-// RoundMin returns a minimum function that uses a quarter-circle to join the two objects smoothly.
-func RoundMin(k float64) MinFunc {
+// MinRound returns a minimum function that uses a quarter-circle to join the two objects smoothly.
+func MinRound(k float64) MinFunc {
 	return func(a, b float64) float64 {
 		u := d2.MaxElem(r2.Vec{k - a, k - b}, r2.Vec{0, 0})
 		return math.Max(k, math.Min(a, b)) - r2.Norm(u)
 	}
 }
 
-// ChamferMin returns a minimum function that makes a 45-degree chamfered edge (the diagonal of a square of size <r>).
+// MinChamfer returns a minimum function that makes a 45-degree chamfered edge (the diagonal of a square of size <r>).
 // TODO: why the holes in the rendering?
-func ChamferMin(k float64) MinFunc {
+func MinChamfer(k float64) MinFunc {
 	return func(a, b float64) float64 {
 		return math.Min(math.Min(a, b), (a-k+b)*sqrtHalf)
 	}
 }
 
-// ExpMin returns a minimum function with exponential smoothing (k = 32).
-func ExpMin(k float64) MinFunc {
+// MinExp returns a minimum function with exponential smoothing (k = 32).
+func MinExp(k float64) MinFunc {
 	return func(a, b float64) float64 {
 		return -math.Log(math.Exp(-k*a)+math.Exp(-k*b)) / k
 	}
 }
 
-// PowMin returns  a minimum function (k = 8).
+// MinPow returns  a minimum function (k = 8).
 // TODO - weird results, is this correct?
-func PowMin(k float64) MinFunc {
+func MinPow(k float64) MinFunc {
 	return func(a, b float64) float64 {
 		a = math.Pow(a, k)
 		b = math.Pow(b, k)
@@ -137,12 +127,12 @@ func PowMin(k float64) MinFunc {
 }
 
 func poly(a, b, k float64) float64 {
-	h := Clamp(0.5+0.5*(b-a)/k, 0.0, 1.0)
-	return Mix(b, a, h) - k*h*(1.0-h)
+	h := clamp(0.5+0.5*(b-a)/k, 0.0, 1.0)
+	return mix(b, a, h) - k*h*(1.0-h)
 }
 
-// PolyMin returns a minimum function (Try k = 0.1, a bigger k gives a bigger fillet).
-func PolyMin(k float64) MinFunc {
+// MinPoly returns a minimum function (Try k = 0.1, a bigger k gives a bigger fillet).
+func MinPoly(k float64) MinFunc {
 	return func(a, b float64) float64 {
 		return poly(a, b, k)
 	}
@@ -151,8 +141,8 @@ func PolyMin(k float64) MinFunc {
 // MaxFunc is a maximum function for SDF blending.
 type MaxFunc func(a, b float64) float64
 
-// PolyMax returns a maximum function (Try k = 0.1, a bigger k gives a bigger fillet).
-func PolyMax(k float64) MaxFunc {
+// MaxPoly returns a maximum function (Try k = 0.1, a bigger k gives a bigger fillet).
+func MaxPoly(k float64) MaxFunc {
 	return func(a, b float64) float64 {
 		return -poly(-a, -b, k)
 	}
@@ -213,14 +203,14 @@ func sigmoidScaled(x float64) float64 {
 	return 2/(1+math.Exp(-x)) - 1
 }
 
-// Raycast3 collides a ray (with an origin point from and a direction dir) with an SDF3.
+// raycast3 collides a ray (with an origin point from and a direction dir) with an SDF3.
 // sigmoid is useful for fixing bad distance functions (those that do not accurately represent the distance to the
 // closest surface, but will probably imply more evaluations)
 // stepScale controls precision (less stepSize, more precision, but more SDF evaluations): use 1 if SDF indicates
 // distance to the closest surface.
 // It returns the collision point, how many normalized distances to reach it (t), and the number of steps performed
 // If no surface is found (in maxDist and maxSteps), t is < 0
-func Raycast3(s SDF3, from, dir r3.Vec, scaleAndSigmoid, stepScale, epsilon, maxDist float64, maxSteps int) (collision r3.Vec, t float64, steps int) {
+func raycast3(s SDF3, from, dir r3.Vec, scaleAndSigmoid, stepScale, epsilon, maxDist float64, maxSteps int) (collision r3.Vec, t float64, steps int) {
 	t = 0
 	dirN := r3.Unit(dir)
 	pos := from
@@ -251,17 +241,17 @@ func Raycast3(s SDF3, from, dir r3.Vec, scaleAndSigmoid, stepScale, epsilon, max
 	return
 }
 
-// Raycast2 see Raycast3. NOTE: implementation using Raycast3 (inefficient?)
-func Raycast2(s SDF2, from, dir r2.Vec, scaleAndSigmoid, stepScale, epsilon, maxDist float64, maxSteps int) (r2.Vec, float64, int) {
-	collision, t, steps := Raycast3(Extrude3D(s, 1), r3.Vec{from.X, from.Y, 0}, r3.Vec{dir.X, dir.Y, 0}, scaleAndSigmoid, stepScale, epsilon, maxDist, maxSteps)
+// raycast2 see Raycast3. NOTE: implementation using Raycast3 (inefficient?)
+func raycast2(s SDF2, from, dir r2.Vec, scaleAndSigmoid, stepScale, epsilon, maxDist float64, maxSteps int) (r2.Vec, float64, int) {
+	collision, t, steps := raycast3(Extrude3D(s, 1), r3.Vec{from.X, from.Y, 0}, r3.Vec{dir.X, dir.Y, 0}, scaleAndSigmoid, stepScale, epsilon, maxDist, maxSteps)
 	return r2.Vec{collision.X, collision.Y}, t, steps
 }
 
 // Normals
 
-// Normal3 returns the normal of an SDF3 at a point (doesn't need to be on the surface).
+// normal3 returns the normal of an SDF3 at a point (doesn't need to be on the surface).
 // Computed by sampling it several times inside a box of side 2*eps centered on p.
-func Normal3(s SDF3, p r3.Vec, eps float64) r3.Vec {
+func normal3(s SDF3, p r3.Vec, eps float64) r3.Vec {
 	return r3.Unit(r3.Vec{
 		X: s.Evaluate(p.Add(r3.Vec{X: eps})) - s.Evaluate(p.Add(r3.Vec{X: -eps})),
 		Y: s.Evaluate(p.Add(r3.Vec{Y: eps})) - s.Evaluate(p.Add(r3.Vec{Y: -eps})),
@@ -269,61 +259,19 @@ func Normal3(s SDF3, p r3.Vec, eps float64) r3.Vec {
 	})
 }
 
-// Normal2 returns the normal of an SDF3 at a point (doesn't need to be on the surface).
+// normal2 returns the normal of an SDF3 at a point (doesn't need to be on the surface).
 // Computed by sampling it several times inside a box of side 2*eps centered on p.
-func Normal2(s SDF2, p r2.Vec, eps float64) r2.Vec {
+func normal2(s SDF2, p r2.Vec, eps float64) r2.Vec {
 	return r2.Unit(r2.Vec{
 		X: s.Evaluate(p.Add(r2.Vec{X: eps})) - s.Evaluate(p.Add(r2.Vec{X: -eps})),
 		Y: s.Evaluate(p.Add(r2.Vec{Y: eps})) - s.Evaluate(p.Add(r2.Vec{Y: -eps})),
 	})
 }
 
-// FloatDecode returns a string that decodes the float64 bitfields.
-func FloatDecode(x float64) string {
-	i := math.Float64bits(x)
-	s := int((i >> 63) & 1)
-	f := i & ((1 << 52) - 1)
-	e := int((i>>52)&((1<<11)-1)) - 1023
-	return fmt.Sprintf("s %d f 0x%013x e %d", s, f, e)
-}
-
-// FloatEncode encodes a float64 from sign, fraction and exponent values.
-func FloatEncode(s int, f uint64, e int) float64 {
-	s &= 1
-	exp := uint64(e+1023) & ((1 << 11) - 1)
-	f &= (1 << 52) - 1
-	return math.Float64frombits(uint64(s)<<63 | exp<<52 | f)
-}
-
 // Floating Point Comparisons
 // See: http://floating-point-gui.de/errors/NearlyEqualsTest.java
 
 const minNormal = 2.2250738585072014e-308 // 2**-1022
-
-// EqualFloat64 compares two float64 values for equality.
-func EqualFloat64(a, b, epsilon float64) bool {
-	if a == b {
-		return true
-	}
-	absA := math.Abs(a)
-	absB := math.Abs(b)
-	diff := math.Abs(a - b)
-	if a == 0 || b == 0 || diff < minNormal {
-		// a or b is zero or both are extremely close to it
-		// relative error is less meaningful here
-		return diff < (epsilon * minNormal)
-	}
-	// use relative error
-	return diff/math.Min((absA+absB), math.MaxFloat64) < epsilon
-}
-
-// ZeroSmall zeroes out values that are small relative to a quantity.
-func ZeroSmall(x, y, epsilon float64) float64 {
-	if math.Abs(x)/y < epsilon {
-		return 0
-	}
-	return x
-}
 
 // MulVertices multiples a set of V2 vertices by a rotate/translate matrix.
 func mulVertices2(v d2.Set, a m33) {
@@ -339,16 +287,16 @@ func mulVertices3(v d3.Set, a m44) {
 	}
 }
 
-// Map2 maps a 2d region to integer grid coordinates.
-type Map2 struct {
+// map2 maps a 2d region to integer grid coordinates.
+type map2 struct {
 	bb    d2.Box // bounding box
 	grid  V2i    // integral dimension
 	delta r2.Vec
 	flipy bool // flip the y-axis
 }
 
-// NewMap2 returns a 2d region to grid coordinates map.
-func NewMap2(bb d2.Box, grid V2i, flipy bool) (*Map2, error) {
+// newMap2 returns a 2d region to grid coordinates map.
+func newMap2(bb d2.Box, grid V2i, flipy bool) (*map2, error) {
 	// sanity check the bounding box
 	bbSize := bb.Size()
 	if bbSize.X <= 0 || bbSize.Y <= 0 {
@@ -358,7 +306,7 @@ func NewMap2(bb d2.Box, grid V2i, flipy bool) (*Map2, error) {
 	if grid[0] <= 0 || grid[1] <= 0 {
 		return nil, errors.New("bad grid dimensions")
 	}
-	m := Map2{}
+	m := map2{}
 	m.bb = bb
 	m.grid = grid
 	m.flipy = flipy
@@ -367,7 +315,7 @@ func NewMap2(bb d2.Box, grid V2i, flipy bool) (*Map2, error) {
 }
 
 // ToVec converts grid integer coordinates to 2d region float coordinates.
-func (m *Map2) ToV2(p V2i) r2.Vec {
+func (m *map2) ToV2(p V2i) r2.Vec {
 	ofs := d2.MulElem(r2.Add(R2FromI(p), d2.Elem(0.5)), m.delta)
 	// ofs := p.ToV2().AddScalar(0.5).Mul(m.delta)
 	var origin r2.Vec
@@ -381,7 +329,7 @@ func (m *Map2) ToV2(p V2i) r2.Vec {
 }
 
 // ToV2i converts 2d region float coordinates to grid integer coordinates.
-func (m *Map2) ToV2i(p r2.Vec) V2i {
+func (m *map2) ToV2i(p r2.Vec) V2i {
 	var v r2.Vec
 	if m.flipy {
 		v = p.Sub(m.bb.TopLeft())

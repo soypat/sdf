@@ -48,8 +48,3 @@ func rotateToVec(a, b r3.Vec) m44 {
 		0, 0, 0, 1,
 	}
 }
-
-// ToV3i convert r3.Vec (float) to V3i (integer).
-func R3ToI(a r3.Vec) V3i {
-	return V3i{int(a.X), int(a.Y), int(a.Z)}
-}
