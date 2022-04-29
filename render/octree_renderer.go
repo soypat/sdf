@@ -18,6 +18,8 @@ type octree struct {
 	cells     sdf.V3i
 	todo      []cube
 	unwritten triangle3Buffer
+	// concurrent goroutine processing.
+	concurrent int
 }
 
 type cube struct {
@@ -49,19 +51,33 @@ func NewOctreeRenderer(s sdf.SDF3, meshCells int) *octree {
 
 // ReadTriangles writes triangles rendered from the model into the argument buffer.
 // returns number of triangles written and an error if present.
-func (oc *octree) ReadTriangles(t []Triangle3) (int, error) {
+func (oc *octree) ReadTriangles(t []Triangle3) (n int, err error) {
 	if len(t) == 0 {
 		panic("cannot write to empty triangle slice")
 	}
-	n := 0
 	if oc.unwritten.Len() > 0 {
 		n += oc.unwritten.Read(t[n:])
+		if n == len(t) {
+			return n, nil
+		}
 	}
 	if len(oc.todo) == 0 && oc.unwritten.Len() == 0 {
 		// Done rendering model.
 		return n, io.EOF
 	}
+	var nt int
+	if oc.concurrent <= 1 {
+		nt, err = oc.readTriangles(t[n:])
+	} else {
+		panic("no concurrency yet")
+	}
+	n += nt
+	return n, err
+}
 
+// readTriangles is single threaded implementation of
+func (oc *octree) readTriangles(t []Triangle3) (int, error) {
+	n := 0
 	cubesProcessed := 0
 	var newCubes []cube
 	for _, cube := range oc.todo {

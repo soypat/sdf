@@ -70,9 +70,14 @@ func (w *stlReader) Read(b []byte) (int, error) {
 	)
 
 	for it < ntMax && err == nil {
-		nt, err = w.r.ReadTriangles(w.buf[:ntMax])
-		if it+nt > ntMax {
-			panic("bug: bad WriteTriangles implementation or stlwriter")
+		// remaining space in byte buffer for triangles and prevent overflow.
+		remaining := len(b)/stlTriangleSize - it
+		nt, err = w.r.ReadTriangles(w.buf[:min(ntMax, remaining)])
+		if nt > ntMax {
+			panic("bug: ReadTriangles read more triangles than available in buffer")
+		}
+		if nt*stlTriangleSize > len(b[it*stlTriangleSize:]) {
+			panic("bug: buffer overflow")
 		}
 		for _, triangle := range w.buf[:nt] {
 			n := triangle.Normal()
