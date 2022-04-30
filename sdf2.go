@@ -7,7 +7,6 @@
 package sdf
 
 import (
-	"errors"
 	"math"
 
 	"github.com/soypat/sdf/internal/d2"
@@ -16,39 +15,24 @@ import (
 	"gonum.org/v1/gonum/spatial/r3"
 )
 
-// MinFunc is a minimum functions for SDF blending.
-type MinFunc func(a, b float64) float64
-
 // SDF2 is the interface to a 2d signed distance function object.
 type SDF2 interface {
 	Evaluate(p r2.Vec) float64
 	BoundingBox() d2.Box
 }
 
-// SDF2 Evaluation Caching (experimental)
-
-type sdf2Cache struct {
-	cache map[r2.Vec]float64
-	hits  uint
+type SDF2Union interface {
+	SDF2
+	SetMin(MinFunc)
 }
 
-func (c *sdf2Cache) lookup(p r2.Vec) (float64, error) {
-	if d, ok := c.cache[p]; ok {
-		c.hits++
-		return d, nil
-	}
-	return 0, errors.New("not found")
+type SDF2Diff interface {
+	SDF2
+	SetMax(MaxFunc)
 }
 
-func (c *sdf2Cache) store(p r2.Vec, d float64) {
-	c.cache[p] = d
-}
-
-func newSdf2Cache() *sdf2Cache {
-	c := sdf2Cache{}
-	c.cache = make(map[r2.Vec]float64)
-	return &c
-}
+// MinFunc is a minimum functions for SDF blending.
+type MinFunc func(a, b float64) float64
 
 // Basic SDF Functions
 
@@ -187,10 +171,10 @@ type array2 struct {
 }
 
 // Array2D returns an XY grid array of an existing SDF2.
-func Array2D(sdf SDF2, num V2i, step r2.Vec) *array2 {
+func Array2D(sdf SDF2, num V2i, step r2.Vec) SDF2Union {
 	// check the number of steps
 	if num[0] <= 0 || num[1] <= 0 {
-		panic("negative number of steps")
+		return empty2{}
 	}
 	s := array2{}
 	s.sdf = sdf
@@ -240,7 +224,7 @@ type rotateUnion2 struct {
 func RotateUnion2D(sdf SDF2, num int, step m33) SDF2 {
 	// check the number of steps
 	if num <= 0 {
-		panic("invalid number of steps")
+		return empty2{}
 	}
 	s := rotateUnion2{}
 	s.sdf = sdf
@@ -391,7 +375,7 @@ type union2 struct {
 }
 
 // Union2D returns the union of multiple SDF2 objects.
-func Union2D(sdf ...SDF2) *union2 {
+func Union2D(sdf ...SDF2) SDF2Union {
 	if len(sdf) <= 1 {
 		panic("union requires at least 2 sdfs")
 	}
@@ -477,7 +461,7 @@ type diff2 struct {
 }
 
 // Difference2D returns the difference of two SDF2 objects, s0 - s1.
-func Difference2D(s0, s1 SDF2) SDF2 {
+func Difference2D(s0, s1 SDF2) SDF2Diff {
 	if s0 == nil || s1 == nil {
 		panic("nil sdf argument")
 	}
@@ -635,7 +619,7 @@ type intersection2 struct {
 }
 
 // Intersect2D returns the intersection of two SDF2s.
-func Intersect2D(s0, s1 SDF2) *intersection2 {
+func Intersect2D(s0, s1 SDF2) SDF2Diff {
 	if s0 == nil || s1 == nil {
 		panic("nil sdf argument")
 	}
@@ -662,3 +646,21 @@ func (s *intersection2) SetMax(max MaxFunc) {
 func (s *intersection2) BoundingBox() d2.Box {
 	return s.bb
 }
+
+type empty2 struct{}
+
+var _ SDF2 = empty2{}
+
+func (e empty2) Evaluate(r2.Vec) float64 {
+	return math.MaxFloat64
+}
+
+func (e empty2) BoundingBox() d2.Box {
+	return d2.Box{
+		Min: r2.Vec{math.MaxFloat64, math.MaxFloat64},
+		Max: r2.Vec{math.MaxFloat64, math.MaxFloat64},
+	}
+}
+
+func (e empty2) SetMin(MinFunc) {}
+func (e empty2) SetMax(MaxFunc) {}

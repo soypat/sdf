@@ -242,6 +242,6 @@ func ChamferedCylinder(s sdf.SDF3, kb, kt float64) sdf.SDF3 {
 	p.Add(r, l).Chamfer(r * kt)
 	p.Add(0, l)
 	s0 := form2.Polygon(p.Vertices())
-	cc := sdf.Revolve3D(s0)
+	cc := sdf.Revolve3D(s0, 2*math.Pi)
 	return sdf.Intersect3D(s, cc)
 }

@@ -15,37 +15,14 @@ type SDF3 interface {
 	BoundingBox() d3.Box
 }
 
-/*
-func sdfBox3d(p, s r3.Vec) float64 {
-	d := p.Abs().Sub(s)
-	return d.Max(r3.Vec{0, 0, 0}).Length() + Min(d.MaxComponent(), 0)
+type SDF3Union interface {
+	SDF3
+	SetMin(MinFunc)
 }
-*/
 
-func sdfBox3d(p, s r3.Vec) float64 {
-	d := r3.Sub(d3.AbsElem(p), s)
-	if d.X > 0 && d.Y > 0 && d.Z > 0 {
-		return r3.Norm(d)
-	}
-	if d.X > 0 && d.Y > 0 {
-		return math.Hypot(d.X, d.Y) // V2{d.X, d.Y}.Length()
-	}
-	if d.X > 0 && d.Z > 0 {
-		return math.Hypot(d.X, d.Z) // V2{d.X, d.Z}.Length()
-	}
-	if d.Y > 0 && d.Z > 0 {
-		return math.Hypot(d.Y, d.Z) //V2{d.Y, d.Z}.Length()
-	}
-	if d.X > 0 {
-		return d.X
-	}
-	if d.Y > 0 {
-		return d.Y
-	}
-	if d.Z > 0 {
-		return d.Z
-	}
-	return d3.Max(d)
+type SDF3Diff interface {
+	SDF3
+	SetMax(MaxFunc)
 }
 
 // revolution3 solid of revolution, SDF2 to SDF3.
@@ -56,15 +33,15 @@ type revolution3 struct {
 	bb    d3.Box
 }
 
-// RevolveTheta3D returns an SDF3 for a solid of revolution.
+// Revolve3D returns an SDF3 for a solid of revolution.
 // theta is in radians. For a full revolution call
-//  RevolveTheta3D(s0, 2*math.Pi)
-func RevolveTheta3D(sdf SDF2, theta float64) SDF3 {
+//  Revolve3D(s0, 2*math.Pi)
+func Revolve3D(sdf SDF2, theta float64) SDF3 {
 	if sdf == nil {
 		panic("nil SDF2 argument")
 	}
 	if theta <= 0 {
-		panic("negative or zero angle of revolution")
+		return empty3{}
 	}
 	if math.Abs(theta-2*math.Pi) < tolerance {
 		theta = 0 // internally theta=0 is a full revolution.
@@ -99,11 +76,6 @@ func RevolveTheta3D(sdf SDF2, theta float64) SDF3 {
 	vmax := r2.Scale(l, vset.Max())
 	s.bb = d3.Box{r3.Vec{vmin.X, vmin.Y, bb.Min.Y}, r3.Vec{vmax.X, vmax.Y, bb.Max.Y}}
 	return &s
-}
-
-// Revolve3D returns an SDF3 for a solid of revolution.
-func Revolve3D(sdf SDF2) SDF3 {
-	return RevolveTheta3D(sdf, 2*math.Pi)
 }
 
 // Evaluate returns the minimum distance to a solid of revolution.
@@ -229,11 +201,11 @@ func ExtrudeRounded3D(sdf SDF2, height, round float64) SDF3 {
 	case sdf == nil:
 		panic("nil SDF2 argument")
 	case height <= 0:
-		panic("height <= 0")
+		return empty3{}
 	case round < 0:
-		panic("round < 0")
+		return empty3{}
 	case height < 2*round:
-		panic("height < 2 * round")
+		return empty3{}
 	}
 	s := extrudeRounded{
 		sdf:    sdf,
@@ -293,16 +265,17 @@ type loft3 struct {
 	bb         d3.Box
 }
 
-// Loft3D extrudes an SDF3 that transitions between two SDF2 shapes.
-func Loft3D(sdf0, sdf1 SDF2, height, round float64) SDF3 {
+// MustLoft3D extrudes an SDF3 that transitions between two SDF2 shapes.
+func MustLoft3D(sdf0, sdf1 SDF2, height, round float64) SDF3 {
 	switch {
 	case sdf0 == nil || sdf1 == nil:
 		panic("nil sdf argument")
 	case height <= 0:
-		panic("height <= 0")
+		return empty3{}
 	case round < 0:
-		panic("round < 0")
+		return empty3{}
 	case height < 2*round:
+		return empty3{} // should this panic?
 		panic("height < 2 * round")
 	}
 	s := loft3{
@@ -430,8 +403,10 @@ type union3 struct {
 }
 
 // Union3D returns the union of multiple SDF3 objects.
-func Union3D(sdf ...SDF3) *union3 {
-	if len(sdf) <= 1 {
+// Union3D will panic if arguments list is empty or if
+// an argument SDF3 is nil.
+func Union3D(sdf ...SDF3) SDF3Union {
+	if len(sdf) < 2 {
 		panic("union require at least 2 sdfs")
 	}
 	s := union3{
@@ -484,7 +459,8 @@ type diff3 struct {
 }
 
 // Difference3D returns the difference of two SDF3s, s0 - s1.
-func Difference3D(s0, s1 SDF3) *diff3 {
+// Difference3D will panic if one any of the arguments is nil.
+func Difference3D(s0, s1 SDF3) SDF3Diff {
 	if s1 == nil || s0 == nil {
 		panic("nil argument to Difference3D")
 	}
@@ -554,7 +530,8 @@ type intersection3 struct {
 }
 
 // Intersect3D returns the intersection of two SDF3s.
-func Intersect3D(s0, s1 SDF3) *intersection3 {
+// Intersect3D will panic if any of the arguments are nil.
+func Intersect3D(s0, s1 SDF3) SDF3Diff {
 	if s0 == nil || s1 == nil {
 		panic("nil argument to Intersect3D")
 	}
@@ -621,11 +598,11 @@ type array3 struct {
 	bb   d3.Box
 }
 
-// Array3D returns an XYZ array of a given SDF3
-func Array3D(sdf SDF3, num V3i, step r3.Vec) *array3 {
+// MustArray3D returns an XYZ array of a given SDF3
+func MustArray3D(sdf SDF3, num V3i, step r3.Vec) SDF3Union {
 	// check the number of steps
 	if num[0] <= 0 || num[1] <= 0 || num[2] <= 0 {
-		panic("negative replicate argument to Array3D")
+		return empty3{}
 	}
 	s := array3{}
 	s.sdf = sdf
@@ -674,10 +651,10 @@ type rotateUnion struct {
 
 // RotateUnion3D creates a union of SDF3s rotated about the z-axis.
 // num is the number of copies.
-func RotateUnion3D(sdf SDF3, num int, step m44) *rotateUnion {
+func RotateUnion3D(sdf SDF3, num int, step m44) SDF3Union {
 	// check the number of steps
 	if num <= 0 {
-		panic("negative number of steps")
+		return empty3{}
 	}
 	s := rotateUnion{}
 	s.sdf = sdf
@@ -732,7 +709,7 @@ type rotateCopy3 struct {
 func RotateCopy3D(sdf SDF3, num int) SDF3 {
 	// check the number of steps
 	if num <= 0 {
-		return nil
+		return empty3{}
 	}
 	s := rotateCopy3{}
 	s.sdf = sdf
@@ -849,7 +826,7 @@ type shell3 struct {
 // Shell3D returns an SDF3 that shells the surface of an existing SDF3.
 func Shell3D(sdf SDF3, thickness float64) SDF3 {
 	if thickness <= 0 {
-		panic("negative or zero thickness")
+		return empty3{}
 	}
 	return &shell3{
 		sdf:   sdf,
@@ -891,7 +868,7 @@ func Multi3D(s SDF3, positions d3.Set) SDF3 {
 		panic("nil sdf argument")
 	}
 	if len(positions) == 0 {
-		panic("empty or nil positions")
+		return empty3{}
 	}
 	objects := make([]SDF3, len(positions))
 	for i, p := range positions {
@@ -906,7 +883,7 @@ func Orient3D(s SDF3, base r3.Vec, directions d3.Set) SDF3 {
 		panic("nil sdf argument")
 	}
 	if len(directions) == 0 {
-		panic("empty or nil directions")
+		return empty3{}
 	}
 	objects := make([]SDF3, len(directions))
 	for i, d := range directions {
@@ -914,3 +891,21 @@ func Orient3D(s SDF3, base r3.Vec, directions d3.Set) SDF3 {
 	}
 	return Union3D(objects...)
 }
+
+type empty3 struct{}
+
+var _ SDF3 = empty3{}
+
+func (e empty3) Evaluate(r3.Vec) float64 {
+	return math.MaxFloat64
+}
+
+func (e empty3) BoundingBox() d3.Box {
+	return d3.Box{
+		Min: r3.Vec{math.MaxFloat64, math.MaxFloat64, math.MaxFloat64},
+		Max: r3.Vec{math.MaxFloat64, math.MaxFloat64, math.MaxFloat64},
+	}
+}
+
+func (e empty3) SetMin(MinFunc) {}
+func (e empty3) SetMax(MaxFunc) {}

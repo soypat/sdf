@@ -339,3 +339,29 @@ func (m *map2) ToV2i(p r2.Vec) V2i {
 	}
 	return R2ToI(d2.DivElem(v, m.delta)) // v.Div(m.delta).ToV2i()
 }
+
+func sdfBox3d(p, s r3.Vec) float64 {
+	d := r3.Sub(d3.AbsElem(p), s)
+	if d.X > 0 && d.Y > 0 && d.Z > 0 {
+		return r3.Norm(d)
+	}
+	if d.X > 0 && d.Y > 0 {
+		return math.Hypot(d.X, d.Y) // V2{d.X, d.Y}.Length()
+	}
+	if d.X > 0 && d.Z > 0 {
+		return math.Hypot(d.X, d.Z) // V2{d.X, d.Z}.Length()
+	}
+	if d.Y > 0 && d.Z > 0 {
+		return math.Hypot(d.Y, d.Z) //V2{d.Y, d.Z}.Length()
+	}
+	if d.X > 0 {
+		return d.X
+	}
+	if d.Y > 0 {
+		return d.Y
+	}
+	if d.Z > 0 {
+		return d.Z
+	}
+	return d3.Max(d)
+}
