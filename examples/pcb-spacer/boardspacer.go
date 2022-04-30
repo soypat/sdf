@@ -46,8 +46,11 @@ func base() sdf.SDF3 {
 		HoleMargin:   [4]float64{4.5, 4.5, 4.5, 4.5},
 		HolePattern:  [4]string{"x", "x", "x", "x"},
 	}
-	// obj3.Panel()
-	s2 := sdf.Extrude3D(obj2.Panel(pp), baseThickness)
+	pan, err := obj2.Panel(pp)
+	if err != nil {
+		panic(err)
+	}
+	s2 := sdf.Extrude3D(pan, baseThickness)
 	xOfs := 0.5 * baseLength
 	yOfs := 0.5 * baseWidth
 	s2 = sdf.Transform3D(s2, sdf.Translate3d(r3.Vec{xOfs, yOfs, 0}))

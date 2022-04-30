@@ -38,14 +38,17 @@ var (
 )
 
 func main() {
-
-	panel := obj2.Panel(obj2.PanelParams{
+	panel, err := obj2.Panel(obj2.PanelParams{
 		Size:         r2.Vec{atxW, atxH},
 		CornerRadius: 4,
 		HoleDiameter: threadHole.apply(4),
 		HoleMargin:   [4]float64{4, 4, 4, 4},
 		HolePattern:  [4]string{"xxx", "xxx", "xxx", "xxx"},
 	})
+	if err != nil {
+		panic(err)
+	}
+
 	var outputs, regOut, regBlock sdf.SDF2
 	// Outputs banana plugs
 	outputs = sdf.Array2D(bananaPlugBig, sdf.V2i{4, 2}, r2.Vec{-bananaSpacing, bananaSpacing})
@@ -76,7 +79,7 @@ func main() {
 	// Generate model
 	model := sdf.Extrude3D(panel, panelThickness)
 	model = sdf.Union3D(model, regBlock3)
-	err := render.CreateSTL("atx_bench.stl", render.NewOctreeRenderer(model, 200))
+	err = render.CreateSTL("atx_bench.stl", render.NewOctreeRenderer(model, 200))
 	if err != nil {
 		log.Fatal(err)
 	}

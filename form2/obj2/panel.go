@@ -41,12 +41,12 @@ type PanelParams struct {
 }
 
 // Panel returns a 2d panel with holes on the edges.
-func Panel(k PanelParams) sdf.SDF2 {
+func Panel(k PanelParams) (s sdf.SDF2, err error) {
 	// panel
 	s0 := form2.Box(k.Size, k.CornerRadius)
 	if k.HoleDiameter <= 0.0 {
 		// no holes
-		return s0
+		return s0, nil
 	}
 
 	// corners
@@ -64,7 +64,7 @@ func Panel(k PanelParams) sdf.SDF2 {
 	holes = append(holes, sdf.LineOf2D(hole, br, bl, k.HolePattern[2]))
 	holes = append(holes, sdf.LineOf2D(hole, bl, tl, k.HolePattern[3]))
 
-	return sdf.Difference2D(s0, sdf.Union2D(holes...))
+	return sdf.Difference2D(s0, sdf.Union2D(holes...)), nil
 }
 
 // EuroRack Module Panels: http://www.doepfer.de/a100_man/a100m_e.htm
@@ -96,7 +96,8 @@ func (k EuroRackParams) USize() float64 {
 }
 
 // EuroRackPanel returns a 2d eurorack synthesizer module panel (in mm).
-func EuroRackPanel(k EuroRackParams) sdf.SDF2 {
+func EuroRackPanel(k EuroRackParams) (s sdf.SDF2, err error) {
+	// TODO use error handling.
 	if k.U < 1 {
 		panic("k.U < 1")
 	}
