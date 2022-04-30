@@ -13,9 +13,6 @@ import (
 // MarchingCubesOctree renders using marching cubes with octree space sampling.
 type octree struct {
 	dc        dc3
-	meshCells int
-	model     sdf.SDF3
-	cells     sdf.V3i
 	todo      []cube
 	unwritten triangle3Buffer
 	// concurrent goroutine processing.
@@ -43,13 +40,9 @@ func NewOctreeRenderer(s sdf.SDF3, meshCells int) *octree {
 	resolution := 0.5 * d3.Max(bb.Size()) / float64(meshCells)
 	// how many cube levels for the octree?
 	levels := uint(math.Ceil(math.Log2(longAxis/resolution))) + 1
-
 	return &octree{
 		dc:        *newDc3(s, bb.Min, resolution, levels),
-		meshCells: meshCells,
 		unwritten: triangle3Buffer{buf: make([]Triangle3, 0, 1024)},
-		model:     s,
-		cells:     sdf.R3ToI(r3.Scale(resolution, bb.Size())),
 		todo:      []cube{{sdf.V3i{0, 0, 0}, levels - 1}}, // process the octree, start at the top level
 	}
 }
@@ -160,11 +153,11 @@ func (oc *octree) processCube(dst []Triangle3, c cube) (writtenTriangles int, ne
 // is about 2x a non-cached evaluation.
 type dc3 struct {
 	lock       sync.RWMutex        // lock the the cache during reads/writes
+	cache      map[sdf.V3i]float64 // cache of distances
 	origin     r3.Vec              // origin of the overall bounding cube
 	resolution float64             // size of smallest octree cube
 	hdiag      []float64           // lookup table of cube half diagonals
 	s          sdf.SDF3            // the SDF3 to be rendered
-	cache      map[sdf.V3i]float64 // cache of distances
 }
 
 func (dc *dc3) Evaluate(vi sdf.V3i) (r3.Vec, float64) {
