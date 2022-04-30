@@ -9,5 +9,7 @@ func TestMarchingCubes(t *testing.T) {
 			max = len(tri)
 		}
 	}
-	t.Fatal(max)
+	if max != marchingCubesMaxTriangles {
+		t.Error("mismatch marching cubes max triangles")
+	}
 }
