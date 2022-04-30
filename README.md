@@ -102,7 +102,7 @@ An error on a function like `Cylinder3D` can only be handled one way really: cor
 The `sdfx` author [claims](https://github.com/deadsy/sdfx/issues/50#issuecomment-1110341868):
 > I don't want to write a fragile library that crashes with invalid user input, I want it to return an error with some data telling them exactly what their problem is. The user then gets to work out how they want to treat that error, rather than the library causing a panic.
 
-This is contrasted by the fact the many of the SDF manipulation functions of `sdfx` will return a nil `SDF3` or `SDF2` interface when receiving invalid inputs. This avoids a panic on the `sdfx` library side and instead passes a ticking timebomb to the user who's program will panic the instant the returned value is used anywhere. I do not need to explain why this particular design decision is [objectively bad](https://hackernoon.com/null-the-billion-dollar-mistake-8t5z32d6).
+This is contrasted by the fact the many of the SDF manipulation functions of `sdfx` will return a nil `SDF3` or `SDF2` interface and **no error** when receiving invalid inputs. This avoids a panic on the `sdfx` library side and instead passes a ticking timebomb to the user who's program will panic the instant the returned value is used anywhere. I do not need to explain why this particular design decision is [objectively bad](https://hackernoon.com/null-the-billion-dollar-mistake-8t5z32d6).
 
 ### `sdf` and `sdfx` consolidation
 None planned.
