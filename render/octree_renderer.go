@@ -30,6 +30,9 @@ type cube struct {
 // This is because it is much faster this way and simpler. Ideally the todo slice
 // should be a queue or circular buffer.
 func NewOctreeRenderer(s sdf.SDF3, meshCells int) *octree {
+	if meshCells < 2 {
+		panic("meshCells must bw 2 or larger")
+	}
 	// Scale the bounding box about the center to make sure the boundaries
 	// aren't on the object surface.
 	bb := s.BoundingBox()
@@ -38,12 +41,21 @@ func NewOctreeRenderer(s sdf.SDF3, meshCells int) *octree {
 	// We want to test the smallest cube (side == resolution) for emptiness
 	// so the level = 0 cube is at half resolution.
 	resolution := 0.5 * d3.Max(bb.Size()) / float64(meshCells)
+
 	// how many cube levels for the octree?
 	levels := uint(math.Ceil(math.Log2(longAxis/resolution))) + 1
+
+	// Calculate theoretical max amount of cubes
+	divisions := r3.Scale(1/resolution, bb.Size())
+	maxCubes := int(divisions.X) * int(divisions.Y) * int(divisions.Z)
+
+	// Allocate a reasonable size for cube slice
+	cubes := make([]cube, 1, max(1, maxCubes/64))
+	cubes[0] = cube{sdf.V3i{0, 0, 0}, levels - 1} // process the octree, start at the top level
 	return &octree{
 		dc:        *newDc3(s, bb.Min, resolution, levels),
 		unwritten: triangle3Buffer{buf: make([]Triangle3, 0, 1024)},
-		todo:      []cube{{sdf.V3i{0, 0, 0}, levels - 1}}, // process the octree, start at the top level
+		todo:      cubes, //[]cube{{sdf.V3i{0, 0, 0}, levels - 1}}, // process the octree, start at the top level
 	}
 }
 
@@ -220,4 +232,11 @@ func (dc *dc3) write(vi sdf.V3i, dist float64) {
 	dc.lock.Lock()
 	dc.cache[vi] = dist
 	dc.lock.Unlock()
+}
+
+func max(a, b int) int {
+	if a >= b {
+		return a
+	}
+	return b
 }
