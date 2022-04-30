@@ -38,12 +38,12 @@ goos: linux
 goarch: amd64
 pkg: github.com/soypat/sdf/render
 cpu: AMD Ryzen 5 3400G with Radeon Vega Graphics    
-BenchmarkSDFXBolt-8   	       6	 198042013 ns/op	14709761 B/op	   98302 allocs/op
-BenchmarkBolt-8       	      12	  93268217 ns/op	18131378 B/op	   20749 allocs/op
+BenchmarkSDFXBolt-8   	       6	 196941244 ns/op	14700786 B/op	   98261 allocs/op
+BenchmarkBolt-8       	      13	  87547265 ns/op	18136785 B/op	   20754 allocs/op
 PASS
-ok  	github.com/soypat/sdf/render	4.299s
+ok  	github.com/soypat/sdf/render	4.390s
 ```
-`BenchmarkBolt-8` is this implementation of Octree.
+`BenchmarkBolt-8` is this implementation of Octree. `BenchmarkSDFXBolt-8` is the `sdfx` implementation of said algorithm.
 
 ### Questionable API design
 * https://github.com/deadsy/sdfx/issues/48 Vector API redesign
