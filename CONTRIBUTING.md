@@ -14,5 +14,9 @@ You can add examples.
 You can add or improve tests.
 You suggest and/or implement new features you think belong in sdf.
 
+### Style
+
+We use [Go style](https://github.com/golang/go/wiki/CodeReviewComments).
+
 Relevant source:
 [[1]](https://github.com/gonum/gonum/blob/master/CONTRIBUTING.md) Gonum's CONTRIBUTING.md.
