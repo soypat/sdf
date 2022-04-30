@@ -11,11 +11,11 @@ import (
 
 // BoltParms defines the parameters for a bolt.
 type BoltParms struct {
-	Thread      string  // name of thread
-	Style       string  // head style "hex" or "knurl"
-	Tolerance   float64 // subtract from external thread radius
-	TotalLength float64 // threaded length + shank length
-	ShankLength float64 // non threaded length
+	Thread      string        // name of thread
+	Style       CylinderStyle // head style "hex" or "knurl"
+	Tolerance   float64       // subtract from external thread radius
+	TotalLength float64       // threaded length + shank length
+	ShankLength float64       // non threaded length
 }
 
 // Bolt returns a simple bolt suitable for 3d printing.
@@ -40,12 +40,12 @@ func Bolt(k BoltParms) sdf.SDF3 {
 	hr := t.HexRadius()
 	hh := t.HexHeight()
 	switch k.Style {
-	case "hex":
+	case CylinderHex:
 		head = HexHead(hr, hh, "b")
-	case "knurl":
+	case CylinderKnurl:
 		head = KnurledHead3D(hr, hh, hr*0.25)
 	default:
-		panic("unknown style " + k.Style)
+		panic("unknown style for bolt " + k.Style.String())
 	}
 
 	// shank

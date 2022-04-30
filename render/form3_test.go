@@ -128,7 +128,7 @@ func hexToSTL(t testing.TB, filename string) {
 func boltToSTL(t testing.TB, filename string) {
 	object := obj3.Bolt(obj3.BoltParms{
 		Thread:      "M16x2",
-		Style:       "hex",
+		Style:       obj3.CylinderHex,
 		Tolerance:   0.1,
 		TotalLength: 60.0,
 		ShankLength: 10.0,

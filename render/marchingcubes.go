@@ -7,10 +7,14 @@ import (
 )
 
 const (
-	marchingCubesEpsilon = 1e-12
+	marchingCubesEpsilon      = 1e-12
+	marchingCubesMaxTriangles = 5
 )
 
-func mcToTriangles(p [8]r3.Vec, v [8]float64, x float64) []Triangle3 {
+func mcToTriangles(dst []Triangle3, p [8]r3.Vec, v [8]float64, x float64) (n int) {
+	if len(dst) < marchingCubesMaxTriangles {
+		panic("destination triangle buffer must be greater than 5")
+	}
 	// which of the 0..255 patterns do we have?
 	index := 0
 	for i := 0; i < 8; i++ {
@@ -20,7 +24,7 @@ func mcToTriangles(p [8]r3.Vec, v [8]float64, x float64) []Triangle3 {
 	}
 	// do we have any triangles to create?
 	if mcEdgeTable[index] == 0 {
-		return nil
+		return 0
 	}
 	// work out the interpolated points on the edges
 	var points [12]r3.Vec
@@ -34,18 +38,21 @@ func mcToTriangles(p [8]r3.Vec, v [8]float64, x float64) []Triangle3 {
 	}
 	// create the triangles
 	table := mcTriangleTable[index]
-	count := len(table) / 3
-	result := make([]Triangle3, 0, count)
+	count := len(table) / 3 // max count is 5, a.k.a marchingCubesMaxTriangles
 	for i := 0; i < count; i++ {
-		t := Triangle3{}
-		t.V[2] = points[table[i*3+0]]
-		t.V[1] = points[table[i*3+1]]
-		t.V[0] = points[table[i*3+2]]
+		t := Triangle3{
+			V: [3]r3.Vec{
+				points[table[i*3+2]],
+				points[table[i*3+1]],
+				points[table[i*3+0]],
+			},
+		}
 		if !t.Degenerate(0) {
-			result = append(result, t)
+			dst[n] = t
+			n++
 		}
 	}
-	return result
+	return n
 }
 
 // mcInterpolate
@@ -132,6 +139,7 @@ var mcEdgeTable = [256]int{
 }
 
 // specify the edges used to create the triangle(s)
+// Max amount of edges is 15.
 var mcTriangleTable = [256][]int{
 	{},
 	{0, 8, 3},

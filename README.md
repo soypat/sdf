@@ -33,13 +33,17 @@ The original `sdfx` package is amazing. I thank deadsy for putting all that grea
 sdfx is needlessly slow. Here is a benchmark rendering a threaded bolt:
 
 ```
+$ go test -benchmem -run=^$ -bench ^(BenchmarkSDFXBolt|BenchmarkBolt)$ ./render
+goos: linux
+goarch: amd64
+pkg: github.com/soypat/sdf/render
 cpu: AMD Ryzen 5 3400G with Radeon Vega Graphics    
-BenchmarkLegacy-8              2         831917874 ns/op        62468752 B/op     466469 allocs/op
-BenchmarkRenderer-8            2         530473109 ns/op        320487584 B/op    146134 allocs/op
+BenchmarkSDFXBolt-8   	       6	 198042013 ns/op	14709761 B/op	   98302 allocs/op
+BenchmarkBolt-8       	      12	  93268217 ns/op	18131378 B/op	   20749 allocs/op
 PASS
-ok      github.com/soypat/sdf/render   4.702s
+ok  	github.com/soypat/sdf/render	4.299s
 ```
-`Legacy` is the original `sdfx` implementation.
+`BenchmarkBolt-8` is this implementation of Octree.
 
 ### Questionable API design
 * https://github.com/deadsy/sdfx/issues/48 Vector API redesign

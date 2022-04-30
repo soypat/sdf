@@ -27,6 +27,11 @@ type cube struct {
 	n       uint // level of cube, size = 1 << n
 }
 
+// NewOctreeRenderer returns a Marching Cubes implementation using octree
+// cube sampling. As of May 2022 this implementation leaks the todo cube slice
+// which may impact performance for complex shapes rendered at high resolutions.
+// This is because it is much faster this way and simpler. Ideally the todo slice
+// should be a queue or circular buffer.
 func NewOctreeRenderer(s sdf.SDF3, meshCells int) *octree {
 	// Scale the bounding box about the center to make sure the boundaries
 	// aren't on the object surface.
@@ -51,13 +56,13 @@ func NewOctreeRenderer(s sdf.SDF3, meshCells int) *octree {
 
 // ReadTriangles writes triangles rendered from the model into the argument buffer.
 // returns number of triangles written and an error if present.
-func (oc *octree) ReadTriangles(t []Triangle3) (n int, err error) {
-	if len(t) == 0 {
+func (oc *octree) ReadTriangles(dst []Triangle3) (n int, err error) {
+	if len(dst) == 0 {
 		panic("cannot write to empty triangle slice")
 	}
 	if oc.unwritten.Len() > 0 {
-		n += oc.unwritten.Read(t[n:])
-		if n == len(t) {
+		n += oc.unwritten.Read(dst[n:])
+		if n == len(dst) {
 			return n, nil
 		}
 	}
@@ -67,7 +72,7 @@ func (oc *octree) ReadTriangles(t []Triangle3) (n int, err error) {
 	}
 	var nt int
 	if oc.concurrent <= 1 {
-		nt = oc.readTriangles(t[n:])
+		nt = oc.readTriangles(dst[n:])
 	} else {
 		// multi core processing
 		panic("no concurrency yet")
@@ -78,33 +83,38 @@ func (oc *octree) ReadTriangles(t []Triangle3) (n int, err error) {
 
 // readTriangles is single threaded implementation of ReadTriangles and only returns
 // number of triangles written.
-func (oc *octree) readTriangles(t []Triangle3) (n int) {
+func (oc *octree) readTriangles(dst []Triangle3) (n int) {
 	cubesProcessed := 0
 	var newCubes []cube
 	for _, cube := range oc.todo {
-		if n >= len(t) {
+		if n == len(dst) {
+			// Finished writing all the buffer
 			break
 		}
-		tri, cubes := oc.processCube(cube)
-
-		written := copy(t[n:], tri)
-		if written < len(tri) { // some triangles were not written.
-			oc.unwritten.Write(tri[written:])
+		if n+marchingCubesMaxTriangles > len(dst) {
+			// Not enough room in buffer to write all triangles that could be found by marching cubes.
+			tmp := make([]Triangle3, 5)
+			tri, cubes := oc.processCube(tmp, cube)
+			oc.unwritten.Write(tmp[:tri])
+			newCubes = append(newCubes, cubes...)
+			cubesProcessed++
 			break
 		}
+		tri, cubes := oc.processCube(dst[n:], cube)
 
 		newCubes = append(newCubes, cubes...)
 
 		cubesProcessed++
-		n += written
+		n += tri
 	}
-
-	oc.todo = append(newCubes, oc.todo[cubesProcessed:]...)
+	oc.todo = append(oc.todo, newCubes...)
+	oc.todo = oc.todo[cubesProcessed:] // this leaks, luckily this is a short lived function?
+	// oc.todo = append(newCubes, oc.todo[cubesProcessed:]...) // Non leaking slow implementation
 	return n
 }
 
 // Process a cube. Generate triangles, or more cubes.
-func (oc *octree) processCube(c cube) (newTriangles []Triangle3, newCubes []cube) {
+func (oc *octree) processCube(dst []Triangle3, c cube) (writtenTriangles int, newCubes []cube) {
 	if !oc.dc.IsEmpty(&c) {
 		if c.n == 1 {
 			// this cube is at the required resolution
@@ -119,7 +129,7 @@ func (oc *octree) processCube(c cube) (newTriangles []Triangle3, newCubes []cube
 			corners := [8]r3.Vec{c0, c1, c2, c3, c4, c5, c6, c7}
 			values := [8]float64{d0, d1, d2, d3, d4, d5, d6, d7}
 			// output the triangle(s) for this cube
-			newTriangles = mcToTriangles(corners, values, 0)
+			writtenTriangles = mcToTriangles(dst, corners, values, 0)
 		} else {
 			// process the sub cubes
 			n := c.n - 1
@@ -142,7 +152,7 @@ func (oc *octree) processCube(c cube) (newTriangles []Triangle3, newCubes []cube
 			}
 		}
 	}
-	return newTriangles, newCubes
+	return writtenTriangles, newCubes
 }
 
 // dc3 implements a 3 dimensional distance cache. evaluates the SDF3 via a distance cache to avoid repeated evaluations.

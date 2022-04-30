@@ -7,7 +7,7 @@ Click on image to go to code directory.
 
 | Example | Execution Time | File size |
 |---|---|---|
-|ADZ Nagano sensor cover|1.5s|10MB|
+|ADZ Nagano sensor cover|1s|10MB|
 
 [![ADZ Nagano sensor cover](fig/adz-sensor-cover.png)](adz-sensor-cover)
 
@@ -16,7 +16,7 @@ Click on image to go to code directory.
 
 | Example | Execution Time | File size |
 |---|---|---|
-|NPT Flange|1.5s|11MB|
+|NPT Flange|1s|11MB|
 
 [![NPT Flange](fig/npt-flange.png)](npt-flange)
 
