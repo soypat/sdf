@@ -20,12 +20,14 @@ Here is a rendered bolt from one of the unit tests under [form3_test.go](./rende
 
 ## Roadmap
 0. ~~Remove superfluous outward facing API in `sdf` and `render` which clutters namespace, like `Capsule3D` and triangle rendering functions.~~
-1. Fix examples using `go fix`.
+1. ~~Add examples.~~
 2. ~~Remove returned errors from basic `sdf` functions like `Cylinder3D`, `Box3D`, `Sphere3D` and similar (see [Questionable API design](#questionable-api-design).~~ Keep adding shapes!
 3. ~~Perform a rewrite of 2D rendering functions and data structures like `sdf.V2`-> `r2.Vec` among others.~~
 4. Add a 2D renderer and it's respective `Renderer2` interface.
-5. Make 3D renderer multicore.
+7. Make 3D renderer multicore.
 
+## Contributing
+See [CONTRIBUTING](./CONTRIBUTING.md).
 # Why was sdfx rewritten?
 The original `sdfx` package is amazing. I thank deadsy for putting all that great work into making an amazing tool I use daily. That said, there are some things that were not compatible with my needs:
 
