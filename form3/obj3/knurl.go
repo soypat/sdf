@@ -4,8 +4,8 @@ import (
 	"math"
 
 	"github.com/soypat/sdf"
-	"github.com/soypat/sdf/form2"
-	"github.com/soypat/sdf/form3"
+	form2 "github.com/soypat/sdf/form2/must2"
+	form3 "github.com/soypat/sdf/form3/must3"
 )
 
 // Knurled Cylinders
@@ -34,8 +34,8 @@ func knurlProfile(k KnurlParams) sdf.SDF2 {
 	return form2.Polygon(knurl.Vertices())
 }
 
-// Knurl3D returns a knurled cylinder.
-func Knurl3D(k KnurlParams) sdf.SDF3 {
+// Knurl returns a knurled cylinder.
+func Knurl(k KnurlParams) (s sdf.SDF3, err error) {
 	if k.Length <= 0 {
 		panic("Length <= 0")
 	}
@@ -59,13 +59,13 @@ func Knurl3D(k KnurlParams) sdf.SDF3 {
 	// build the knurl profile.
 	knurl2d := knurlProfile(k)
 	// create the left/right hand spirals
-	knurl0_3d := form3.Screw3D(knurl2d, k.Length, 0, k.Pitch, n)
-	knurl1_3d := form3.Screw3D(knurl2d, k.Length, 0, k.Pitch, -n)
-	return sdf.Intersect3D(knurl0_3d, knurl1_3d)
+	knurl0_3d := form3.Screw(knurl2d, k.Length, 0, k.Pitch, n)
+	knurl1_3d := form3.Screw(knurl2d, k.Length, 0, k.Pitch, -n)
+	return sdf.Intersect3D(knurl0_3d, knurl1_3d), err // TODO error handling
 }
 
-// KnurledHead3D returns a generic cylindrical knurled head.
-func KnurledHead3D(radius float64, height float64, pitch float64) sdf.SDF3 {
+// KnurledHead returns a generic cylindrical knurled head.
+func KnurledHead(radius float64, height float64, pitch float64) (s sdf.SDF3, err error) {
 	cylinderRound := radius * 0.05
 	knurlLength := pitch * math.Floor((height-cylinderRound)/pitch)
 	k := KnurlParams{
@@ -75,9 +75,12 @@ func KnurledHead3D(radius float64, height float64, pitch float64) sdf.SDF3 {
 		Height: pitch * 0.3,
 		Theta:  d2r(45),
 	}
-	knurl := Knurl3D(k)
+	knurl, err := Knurl(k)
+	if err != nil {
+		return s, err
+	}
 	cylinder := form3.Cylinder(height, radius, cylinderRound)
-	return sdf.Union3D(cylinder, knurl)
+	return sdf.Union3D(cylinder, knurl), err
 }
 
 func d2r(degrees float64) float64 { return degrees * math.Pi / 180. }

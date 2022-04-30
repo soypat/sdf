@@ -38,7 +38,7 @@ func BenchmarkSDFXBolt(b *testing.B) {
 
 func BenchmarkBolt(b *testing.B) {
 	const output = "our_bolt.stl"
-	object := obj3.Bolt(obj3.BoltParms{
+	object, _ := obj3.Bolt(obj3.BoltParms{
 		Thread:      "npt_1/2",
 		Style:       obj3.CylinderHex,
 		Tolerance:   0.1,
@@ -66,7 +66,7 @@ func TestStressProfile(t *testing.T) {
 }
 
 func stlStressTest(t testing.TB, filename string) {
-	object := obj3.Bolt(obj3.BoltParms{
+	object, _ := obj3.Bolt(obj3.BoltParms{
 		Thread:      "M16x2",
 		Style:       obj3.CylinderHex,
 		Tolerance:   0.1,

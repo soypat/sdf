@@ -8,8 +8,8 @@ import (
 	"github.com/fogleman/fauxgl"
 	"github.com/nfnt/resize"
 	"github.com/soypat/sdf"
-	"github.com/soypat/sdf/form2"
-	"github.com/soypat/sdf/form3"
+	form2 "github.com/soypat/sdf/form2/must2"
+	form3 "github.com/soypat/sdf/form3/must3"
 	"github.com/soypat/sdf/form3/obj3"
 	"github.com/soypat/sdf/internal/d3"
 	"github.com/soypat/sdf/render"
@@ -126,7 +126,7 @@ func hexToSTL(t testing.TB, filename string) {
 }
 
 func boltToSTL(t testing.TB, filename string) {
-	object := obj3.Bolt(obj3.BoltParms{
+	object, _ := obj3.Bolt(obj3.BoltParms{
 		Thread:      "M16x2",
 		Style:       obj3.CylinderHex,
 		Tolerance:   0.1,

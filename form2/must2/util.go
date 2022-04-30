@@ -1,4 +1,4 @@
-package form2
+package must2
 
 import "math"
 

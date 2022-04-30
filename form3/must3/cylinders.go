@@ -1,10 +1,10 @@
-package form3
+package must3
 
 import (
 	"math"
 
 	"github.com/soypat/sdf"
-	"github.com/soypat/sdf/form2"
+	form2 "github.com/soypat/sdf/form2/must2"
 	"github.com/soypat/sdf/internal/d3"
 	"gonum.org/v1/gonum/spatial/r2"
 	"gonum.org/v1/gonum/spatial/r3"

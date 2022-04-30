@@ -2,8 +2,8 @@ package obj3
 
 import (
 	"github.com/soypat/sdf"
-	"github.com/soypat/sdf/form2"
-	"github.com/soypat/sdf/form3"
+	form2 "github.com/soypat/sdf/form2/must2"
+	form3 "github.com/soypat/sdf/form3/must3"
 	"gonum.org/v1/gonum/spatial/r3"
 )
 
@@ -19,7 +19,7 @@ type BoltParms struct {
 }
 
 // Bolt returns a simple bolt suitable for 3d printing.
-func Bolt(k BoltParms) sdf.SDF3 {
+func Bolt(k BoltParms) (s sdf.SDF3, err error) {
 	// validate parameters
 	t, err := form2.ThreadLookup(k.Thread)
 	if err != nil {
@@ -41,9 +41,9 @@ func Bolt(k BoltParms) sdf.SDF3 {
 	hh := t.HexHeight()
 	switch k.Style {
 	case CylinderHex:
-		head = HexHead(hr, hh, "b")
+		head, _ = HexHead(hr, hh, "b")
 	case CylinderKnurl:
-		head = KnurledHead3D(hr, hh, hr*0.25)
+		head, _ = KnurledHead(hr, hh, hr*0.25)
 	default:
 		panic("unknown style for bolt " + k.Style.String())
 	}
@@ -64,12 +64,12 @@ func Bolt(k BoltParms) sdf.SDF3 {
 		r := t.Radius - k.Tolerance
 		threadOffset := threadLength/2 + shankLength
 		isoThread := form2.ISOThread(r, t.Pitch, true)
-		thread = form3.Screw3D(isoThread, threadLength, t.Taper, t.Pitch, 1)
+		thread = form3.Screw(isoThread, threadLength, t.Taper, t.Pitch, 1)
 		// chamfer the thread
 		thread = form3.ChamferedCylinder(thread, 0, 0.5)
 
 		thread = sdf.Transform3D(thread, sdf.Translate3d(r3.Vec{0, 0, threadOffset}))
 	}
 
-	return sdf.Union3D(head, shank, thread)
+	return sdf.Union3D(head, shank, thread), nil // TODO error handling
 }

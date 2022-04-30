@@ -3,18 +3,18 @@ package obj3
 import (
 	"github.com/soypat/sdf"
 	"github.com/soypat/sdf/form2/obj2"
-	"github.com/soypat/sdf/form3"
+	form3 "github.com/soypat/sdf/form3/must3"
 	"github.com/soypat/sdf/internal/d3"
 	"gonum.org/v1/gonum/spatial/r3"
 )
 
 // Panel3D returns a 3d panel with holes on the edges.
-func Panel(k obj2.PanelParams) sdf.SDF3 {
+func Panel(k obj2.PanelParams) (s3 sdf.SDF3, err error) {
 	if k.Thickness <= 0 {
 		panic("k.Thickness <= 0")
 	}
 	s := obj2.Panel(k)
-	return sdf.Extrude3D(s, k.Thickness)
+	return sdf.Extrude3D(s, k.Thickness), err
 }
 
 // EuroRackPanel returns a 3d eurorack synthesizer module panel (in mm).

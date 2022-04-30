@@ -2,7 +2,7 @@ package obj2
 
 import (
 	"github.com/soypat/sdf"
-	"github.com/soypat/sdf/form2"
+	form2 "github.com/soypat/sdf/form2/must2"
 	"gonum.org/v1/gonum/spatial/r2"
 )
 

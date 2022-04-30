@@ -4,7 +4,7 @@ import (
 	"log"
 
 	"github.com/soypat/sdf"
-	"github.com/soypat/sdf/form2"
+	form2 "github.com/soypat/sdf/form2/must2"
 	"github.com/soypat/sdf/form2/obj2"
 	"github.com/soypat/sdf/render"
 	"gonum.org/v1/gonum/spatial/r2"

@@ -75,7 +75,7 @@ func main() {
 		}
 
 		stlName := filepath.Join(cmd.Dir, example.resultSTL)
-		examples[i].ExecutionTime = time.Since(tstart).Round(time.Second / 2).String()
+		examples[i].ExecutionTime = fmt.Sprintf("%gs", time.Since(tstart).Round(time.Second/2).Seconds())
 		examples[i].STLSize = getHumanSize(stlName)
 		pngName := example.Dir + ".png"
 		examplePNG := filepath.Join(dir, figFolder, pngName)

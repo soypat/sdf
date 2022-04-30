@@ -4,8 +4,8 @@ import (
 	"math"
 
 	"github.com/soypat/sdf"
-	"github.com/soypat/sdf/form2"
-	"github.com/soypat/sdf/form3"
+	form2 "github.com/soypat/sdf/form2/must2"
+	form3 "github.com/soypat/sdf/form3/must3"
 	"gonum.org/v1/gonum/spatial/r3"
 )
 
@@ -24,8 +24,7 @@ type StandoffParams struct {
 }
 
 // Standoff returns a single board standoff.
-func Standoff(k StandoffParams) sdf.SDF3 {
-	var s sdf.SDF3
+func Standoff(k StandoffParams) (s sdf.SDF3, err error) {
 	s = pillar(k)
 	if k.NumberWebs > 0 {
 		webs := sdf.RotateCopy3D(pillarWeb(k), k.NumberWebs)
@@ -42,7 +41,7 @@ func Standoff(k StandoffParams) sdf.SDF3 {
 		// support stub
 		s = sdf.Union3D(s, hole)
 	}
-	return s
+	return s, err
 }
 
 // pillarWeb returns a single pillar web

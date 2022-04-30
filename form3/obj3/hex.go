@@ -4,8 +4,8 @@ import (
 	"math"
 
 	"github.com/soypat/sdf"
-	"github.com/soypat/sdf/form2"
-	"github.com/soypat/sdf/form3"
+	form2 "github.com/soypat/sdf/form2/must2"
+	form3 "github.com/soypat/sdf/form3/must3"
 	"gonum.org/v1/gonum/spatial/r3"
 )
 
@@ -13,7 +13,7 @@ import (
 
 // HexHead3D returns the rounded hex head for a nut or bolt.
 // - round rounding control (t)top, (b)bottom, (tb)top/bottom
-func HexHead(radius float64, height float64, round string) sdf.SDF3 {
+func HexHead(radius float64, height float64, round string) (s sdf.SDF3, err error) {
 	// basic hex body
 	cornerRound := radius * 0.08
 	hex2d := form2.Polygon(form2.Nagon(6, radius-cornerRound))
@@ -32,5 +32,5 @@ func HexHead(radius float64, height float64, round string) sdf.SDF3 {
 			hex3d = sdf.Intersect3D(hex3d, sdf.Transform3D(sphere3d, sdf.Translate3d(r3.Vec{0, 0, zOfs})))
 		}
 	}
-	return hex3d
+	return hex3d, nil // TODO error handling.
 }

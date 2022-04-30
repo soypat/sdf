@@ -1,4 +1,4 @@
-package form3
+package must3
 
 import "math"
 
