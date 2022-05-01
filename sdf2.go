@@ -174,7 +174,7 @@ type array2 struct {
 func Array2D(sdf SDF2, num V2i, step r2.Vec) SDF2Union {
 	// check the number of steps
 	if num[0] <= 0 || num[1] <= 0 {
-		return empty2{}
+		return empty2From(sdf)
 	}
 	s := array2{}
 	s.sdf = sdf
@@ -224,7 +224,7 @@ type rotateUnion2 struct {
 func RotateUnion2D(sdf SDF2, num int, step m33) SDF2 {
 	// check the number of steps
 	if num <= 0 {
-		return empty2{}
+		return empty2From(sdf)
 	}
 	s := rotateUnion2{}
 	s.sdf = sdf
@@ -646,8 +646,15 @@ func (s *intersection2) SetMax(max MaxFunc) {
 func (s *intersection2) BoundingBox() d2.Box {
 	return s.bb
 }
+func empty2From(s SDF2) empty2 {
+	return empty2{
+		center: s.BoundingBox().Center(),
+	}
+}
 
-type empty2 struct{}
+type empty2 struct {
+	center r2.Vec
+}
 
 var _ SDF2 = empty2{}
 
@@ -657,8 +664,8 @@ func (e empty2) Evaluate(r2.Vec) float64 {
 
 func (e empty2) BoundingBox() d2.Box {
 	return d2.Box{
-		Min: r2.Vec{math.MaxFloat64, math.MaxFloat64},
-		Max: r2.Vec{math.MaxFloat64, math.MaxFloat64},
+		Min: e.center,
+		Max: e.center,
 	}
 }
 

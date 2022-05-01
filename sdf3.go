@@ -602,7 +602,7 @@ type array3 struct {
 func MustArray3D(sdf SDF3, num V3i, step r3.Vec) SDF3Union {
 	// check the number of steps
 	if num[0] <= 0 || num[1] <= 0 || num[2] <= 0 {
-		return empty3{}
+		return empty3From(sdf)
 	}
 	s := array3{}
 	s.sdf = sdf
@@ -654,7 +654,7 @@ type rotateUnion struct {
 func RotateUnion3D(sdf SDF3, num int, step m44) SDF3Union {
 	// check the number of steps
 	if num <= 0 {
-		return empty3{}
+		return empty3From(sdf)
 	}
 	s := rotateUnion{}
 	s.sdf = sdf
@@ -709,7 +709,7 @@ type rotateCopy3 struct {
 func RotateCopy3D(sdf SDF3, num int) SDF3 {
 	// check the number of steps
 	if num <= 0 {
-		return empty3{}
+		return empty3From(sdf)
 	}
 	s := rotateCopy3{}
 	s.sdf = sdf
@@ -826,7 +826,7 @@ type shell3 struct {
 // Shell3D returns an SDF3 that shells the surface of an existing SDF3.
 func Shell3D(sdf SDF3, thickness float64) SDF3 {
 	if thickness <= 0 {
-		return empty3{}
+		return empty3From(sdf)
 	}
 	return &shell3{
 		sdf:   sdf,
@@ -868,7 +868,7 @@ func Multi3D(s SDF3, positions d3.Set) SDF3 {
 		panic("nil sdf argument")
 	}
 	if len(positions) == 0 {
-		return empty3{}
+		return empty3From(s)
 	}
 	objects := make([]SDF3, len(positions))
 	for i, p := range positions {
@@ -883,7 +883,7 @@ func Orient3D(s SDF3, base r3.Vec, directions d3.Set) SDF3 {
 		panic("nil sdf argument")
 	}
 	if len(directions) == 0 {
-		return empty3{}
+		return empty3From(s)
 	}
 	objects := make([]SDF3, len(directions))
 	for i, d := range directions {
@@ -892,7 +892,15 @@ func Orient3D(s SDF3, base r3.Vec, directions d3.Set) SDF3 {
 	return Union3D(objects...)
 }
 
-type empty3 struct{}
+func empty3From(s SDF3) empty3 {
+	return empty3{
+		center: s.BoundingBox().Center(),
+	}
+}
+
+type empty3 struct {
+	center r3.Vec
+}
 
 var _ SDF3 = empty3{}
 
@@ -902,8 +910,8 @@ func (e empty3) Evaluate(r3.Vec) float64 {
 
 func (e empty3) BoundingBox() d3.Box {
 	return d3.Box{
-		Min: r3.Vec{math.MaxFloat64, math.MaxFloat64, math.MaxFloat64},
-		Max: r3.Vec{math.MaxFloat64, math.MaxFloat64, math.MaxFloat64},
+		Min: e.center,
+		Max: e.center,
 	}
 }
 
