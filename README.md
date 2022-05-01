@@ -4,11 +4,19 @@
 
 # sdf (originally sdfx)
 
-A rewrite of the original CAD package [`sdfx`](https://github.com/deadsy/sdfx) for generating 2D and 3D geometry using [Go](https://go.dev/). See [Why was this package rewritten?](#why-was-sdfx-rewritten)
+A rewrite of the original CAD package [`sdfx`](https://github.com/deadsy/sdfx) for generating 2D and 3D geometry using [Go](https://go.dev/).
 
  * Objects are modelled with 2d and 3d signed distance functions (SDFs).
  * Objects are defined with Go code.
  * Objects are rendered to an STL file to be viewed and/or 3d printed.
+
+## Highlights
+* 3d and 2d objects modelled with signed distance functions (SDFs)
+* Minimal and idiomatic API
+* End-to-end testing using image comparison
+* `must` and `form` packages provide panicking and normal error handling basic shape generation APIs for different scenarios
+* Dead-simple, single method `Renderer` interface
+
 
 ## Examples
 For real-world examples with images see [examples directory README](./examples/).
@@ -19,12 +27,40 @@ Here is a rendered bolt from one of the unit tests under [form3_test.go](./rende
 ![renderedBolt](./render/testdata/defactoBolt.png)
 
 ## Roadmap
-0. ~~Remove superfluous outward facing API in `sdf` and `render` which clutters namespace, like `Capsule3D` and triangle rendering functions.~~
-1. ~~Add examples.~~
-2. ~~Remove returned errors from basic `sdf` functions like `Cylinder3D`, `Box3D`, `Sphere3D` and similar (see [Questionable API design](#questionable-api-design).~~ Keep adding shapes!
-3. ~~Perform a rewrite of 2D rendering functions and data structures like `sdf.V2`-> `r2.Vec` among others.~~
-4. Add a 2D renderer and it's respective `Renderer2` interface.
-7. Make 3D renderer multicore.
+- [ ] Add a 2D renderer and it's respective `Renderer2` interface.
+- [ ] Make 3D renderer multicore
+
+## Comparison
+
+### deadsy/sdfx
+
+Advantages of [deadsy/sdfx](https://github.com/deadsy/sdfx):
+
+- Widely used
+- More helper functions
+- Working 2D renderer
+
+Advantages of soypat/sdf:
+
+- Very fast rendering
+  - `deadsy/sdfx` is over 2 times slower and has ~5 times more allocations.
+- Minimal and idiomatic API
+- `Renderer` interface is dead-simple, [idiomatic Go](https://pkg.go.dev/io#Reader) and not limited to SDFs
+  - deadsy/sdfx `Renderer3` interface has filled `render` package with technical debt. See [Questionable API design](#questionable-api-design).
+- Has `SDFUnion` and `SDFDiff` interfaces for blending shapes easily
+- No `nil` valued SDFs
+  - deadsy/sdfx internally makes use of `nil` SDFs as "empty" objects. This can later cause panics during rendering well after the point of failure causing hard to debug issues.
+- Well defined package organization.
+  - deadsy/sdfx dumps helper and utility functions in [`sdf`](https://github.com/deadsy/sdfx/tree/master/sdf)
+- End-to-end tested.
+  - Ensures functioning renderer and SDF functions using image comparison preventing accidental changes.
+- Error-free API under `must3` and `must2` packages for makers.
+  - For simple projects these packages allow for streamlined error handling process using `panic` instead of returned errors.
+  - deadsy/sdfx only allows for Go-style error handling like the `form3` and `form2` packages.
+- Sound use of `math` package for best precision and overflow prevention.
+  - `math.Hypot` used for all length calculations. `deadsy/sdfx` does not use `math.Hypot`.
+- Uses gonum's `spatial` package
+  - `sdfx` has own vector types with methods which [hurt code legibility](https://github.com/deadsy/sdfx/issues/48)
 
 ## Contributing
 See [CONTRIBUTING](./CONTRIBUTING.md).
@@ -78,31 +114,6 @@ This presented a few problems:
 
 5. Who's to say we have to limit ourselves to signed distance functions? [With the new proposed `Renderer` interface this is no longer the case](./render/render.go).
 
-That said there are some minor changes I'd also like to make. Error handling in Go is already one of the major pain points, and there is no reason to bring it to `sdfx` in full force for simple shape generation. See the following code from `sdfx`:
-
-```go
-// Cylinder3D return an SDF3 for a cylinder (rounded edges with round > 0).
-func Cylinder3D(height, radius, round float64) (SDF3, error) {
-	if radius <= 0 {
-		return nil, ErrMsg("radius <= 0")
-	}
-	if round < 0 {
-		return nil, ErrMsg("round < 0")
-	}
-	if round > radius {
-		return nil, ErrMsg("round > radius")
-	}
-	if height < 2.0*round {
-		return nil, ErrMsg("height < 2 * round")
-	}
-    //...
-```
-An error on a function like `Cylinder3D` can only be handled one way really: correcting the argument to it in the source code as one generates the shape! This is even implied with the implementation of the `ErrMsg` function: it includes the line number of the function that yielded the error. **`panic`** already does that and saves us having to formally handle the error message.
-
-The `sdfx` author [claims](https://github.com/deadsy/sdfx/issues/50#issuecomment-1110341868):
-> I don't want to write a fragile library that crashes with invalid user input, I want it to return an error with some data telling them exactly what their problem is. The user then gets to work out how they want to treat that error, rather than the library causing a panic.
-
-This is contrasted by the fact the many of the SDF manipulation functions of `sdfx` will return a nil `SDF3` or `SDF2` interface and **no error** when receiving invalid inputs. This avoids a panic on the `sdfx` library side and instead passes a ticking timebomb to the user who's program will panic the instant the returned value is used anywhere. I do not need to explain why this particular design decision is [objectively bad](https://hackernoon.com/null-the-billion-dollar-mistake-8t5z32d6).
 
 ### `sdf` and `sdfx` consolidation
 None planned.
