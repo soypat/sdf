@@ -1,8 +1,6 @@
 package render
 
 import (
-	"math"
-
 	"github.com/soypat/sdf/internal/d3"
 	"gonum.org/v1/gonum/spatial/r2"
 	"gonum.org/v1/gonum/spatial/r3"
@@ -43,30 +41,5 @@ func (t *Triangle3) Degenerate(tolerance float64) bool {
 	// TODO more tests needed.
 	return d3.EqualWithin(t.V[0], t.V[1], tolerance) ||
 		d3.EqualWithin(t.V[1], t.V[2], tolerance) ||
-		v3EqualWithin(t.V[2], t.V[0], tolerance)
+		d3.EqualWithin(t.V[2], t.V[0], tolerance)
 }
-
-func v3EqualWithin(a, b r3.Vec, tol float64) bool {
-	return math.Abs(a.X-b.X) <= tol &&
-		math.Abs(a.Y-b.Y) <= tol &&
-		math.Abs(a.Z-b.Z) <= tol
-}
-
-type triangle3Buffer struct {
-	buf []Triangle3
-}
-
-// Read reads from this buffer.
-func (b *triangle3Buffer) Read(t []Triangle3) int {
-	n := copy(t, b.buf)
-	b.buf = b.buf[n:]
-	return n
-}
-
-// Write appends triangles to this buffer.
-func (b *triangle3Buffer) Write(t []Triangle3) int {
-	b.buf = append(b.buf, t...)
-	return len(t)
-}
-
-func (b *triangle3Buffer) Len() int { return len(b.buf) }
