@@ -33,9 +33,13 @@ func main() {
 	// PLA scaling to thread
 	pipe = sdf.Transform3D(pipe, sdf.Scale3d(r3.Vec{plaScale, plaScale, 1}))
 	flange = form3.Cylinder(flangeH, flangeD/2, flangeH/8)
-	hole := form3.Cylinder(flangeH, internalDiameter/2, 0)
-	flange = sdf.Difference3D(flange, hole)
 	flange = sdf.Transform3D(flange, sdf.Translate3d(r3.Vec{0, 0, -tlen / 2}))
-	pipe = sdf.Union3D(pipe, flange)
+	union := sdf.Union3D(pipe, flange)
+	// set flange fillet
+	union.SetMin(sdf.MinPoly(0.2))
+	// Make through-hole in flange bottom
+	hole := form3.Cylinder(4*flangeH, internalDiameter/2, 0)
+	pipe = sdf.Difference3D(union, hole)
+	pipe = sdf.ScaleUniform3D(pipe, 25.4) //convert to millimeters
 	render.CreateSTL("npt_flange.stl", render.NewOctreeRenderer(pipe, 200))
 }

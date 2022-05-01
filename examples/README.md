@@ -16,7 +16,7 @@ Click on image to go to code directory.
 
 | Example | Execution Time | File size |
 |---|---|---|
-|NPT Flange|1s|11MB|
+|NPT Flange|1s|10MB|
 
 [![NPT Flange](fig/npt-flange.png)](npt-flange)
 
