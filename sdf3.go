@@ -234,7 +234,7 @@ func (s *extrudeRounded) Evaluate(p r3.Vec) float64 {
 			d = b
 		} else {
 			// outside the boundary
-			d = math.Sqrt((a * a) + (b * b))
+			d = math.Hypot(a, b)
 		}
 	} else {
 		// within the object Z extent
@@ -265,8 +265,8 @@ type loft3 struct {
 	bb         d3.Box
 }
 
-// MustLoft3D extrudes an SDF3 that transitions between two SDF2 shapes.
-func MustLoft3D(sdf0, sdf1 SDF2, height, round float64) SDF3 {
+// Loft3D extrudes an SDF3 that transitions between two SDF2 shapes.
+func Loft3D(sdf0, sdf1 SDF2, height, round float64) SDF3 {
 	switch {
 	case sdf0 == nil || sdf1 == nil:
 		panic("nil sdf argument")
@@ -598,8 +598,8 @@ type array3 struct {
 	bb   d3.Box
 }
 
-// MustArray3D returns an XYZ array of a given SDF3
-func MustArray3D(sdf SDF3, num V3i, step r3.Vec) SDF3Union {
+// Array3D returns an XYZ array of a given SDF3
+func Array3D(sdf SDF3, num V3i, step r3.Vec) SDF3Union {
 	// check the number of steps
 	if num[0] <= 0 || num[1] <= 0 || num[2] <= 0 {
 		return empty3From(sdf)
@@ -854,7 +854,7 @@ func LineOf3D(s SDF3, p0, p1 r3.Vec, pattern string) SDF3 {
 		// dx := p1.Sub(p0).DivScalar(float64(len(pattern))) //TODO VERIFY
 		for _, c := range pattern {
 			if c == 'x' {
-				objects = append(objects, Transform3D(s, Translate3d(x)))
+				objects = append(objects, Transform3D(s, Translate3D(x)))
 			}
 			x = x.Add(dx)
 		}
@@ -872,7 +872,7 @@ func Multi3D(s SDF3, positions d3.Set) SDF3 {
 	}
 	objects := make([]SDF3, len(positions))
 	for i, p := range positions {
-		objects[i] = Transform3D(s, Translate3d(p))
+		objects[i] = Transform3D(s, Translate3D(p))
 	}
 	return Union3D(objects...)
 }

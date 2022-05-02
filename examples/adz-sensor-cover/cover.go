@@ -32,7 +32,7 @@ func main() {
 	cover = form3.Box(r3.Vec{X: dim, Y: dim, Z: connectorSensSpacing/2 + coverProtude}, round)
 	dim = material.InternalDimScale(connectorDim)
 	empty = form3.Box(r3.Vec{X: dim, Y: dim, Z: coverProtude}, 0)
-	empty = sdf.Transform3D(empty, sdf.Translate3d(r3.Vec{Z: connectorSensSpacing / 4}))
+	empty = sdf.Transform3D(empty, sdf.Translate3D(r3.Vec{Z: connectorSensSpacing / 4}))
 	cover = sdf.Difference3D(cover, empty)
 
 	// We now create sensor-facing part
@@ -40,15 +40,15 @@ func main() {
 	dim = material.InternalDimScale(adzDiam / 2)
 	empty = form3.Cylinder(coverProtude, dim, round*2)
 
-	empty = sdf.Transform3D(empty, sdf.Translate3d(r3.Vec{Z: -connectorSensSpacing / 4}))
+	empty = sdf.Transform3D(empty, sdf.Translate3D(r3.Vec{Z: -connectorSensSpacing / 4}))
 	sensorCover = sdf.Difference3D(sensorCover, empty)
-	sensorCover = sdf.Transform3D(sensorCover, sdf.Translate3d(r3.Vec{Z: -(coverProtude + connectorSensSpacing/2)}))
+	sensorCover = sdf.Transform3D(sensorCover, sdf.Translate3D(r3.Vec{Z: -(coverProtude + connectorSensSpacing/2)}))
 	cover = sdf.Union3D(cover, sensorCover)
 
 	// Make hole for connector pins.
 	dim = 10
 	hole = form3.Box(r3.Vec{X: dim, Y: dim, Z: 4 * coverThick}, 0)
-	hole = sdf.Transform3D(hole, sdf.Translate3d(r3.Vec{Z: -2 * coverThick}))
+	hole = sdf.Transform3D(hole, sdf.Translate3D(r3.Vec{Z: -2 * coverThick}))
 	cover = sdf.Difference3D(cover, hole)
 	cover = material.Scale(cover)
 	err := render.CreateSTL("cover.stl", render.NewOctreeRenderer(cover, 180))

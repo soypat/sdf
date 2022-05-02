@@ -26,10 +26,10 @@ func HexHead(radius float64, height float64, round string) (s sdf.SDF3, err erro
 		sphere3d := form3.Sphere(topRound)
 		zOfs := math.Sqrt(topRound*topRound-d*d) - height/2
 		if round == "t" || round == "tb" {
-			hex3d = sdf.Intersect3D(hex3d, sdf.Transform3D(sphere3d, sdf.Translate3d(r3.Vec{0, 0, -zOfs})))
+			hex3d = sdf.Intersect3D(hex3d, sdf.Transform3D(sphere3d, sdf.Translate3D(r3.Vec{0, 0, -zOfs})))
 		}
 		if round == "b" || round == "tb" {
-			hex3d = sdf.Intersect3D(hex3d, sdf.Transform3D(sphere3d, sdf.Translate3d(r3.Vec{0, 0, zOfs})))
+			hex3d = sdf.Intersect3D(hex3d, sdf.Transform3D(sphere3d, sdf.Translate3D(r3.Vec{0, 0, zOfs})))
 		}
 	}
 	return hex3d, nil // TODO error handling.

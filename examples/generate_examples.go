@@ -55,9 +55,15 @@ var examples = []struct {
 		view:      defaultView,
 	},
 	{
-		Name:      "PCB circuit spacer",
+		Name:      "PCB spacer",
 		Dir:       "pcb-spacer",
 		resultSTL: "pcb_base.stl",
+		view:      defaultView,
+	},
+	{
+		Name:      "PCB support",
+		Dir:       "pcb-support",
+		resultSTL: "support.stl",
 		view:      defaultView,
 	},
 }

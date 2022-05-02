@@ -69,7 +69,7 @@ func main() {
 	regBlock = sdf.Transform2D(regBlock, sdf.Translate2d(regOut.BoundingBox().Center()))
 	regBlock = sdf.Difference2D(regBlock, regOut)
 	regBlock3 := sdf.Extrude3D(regBlock, panelThickness+regBlockDepth) // extrude does it both ways.
-	regBlock3 = sdf.Transform3D(regBlock3, sdf.Translate3d(r3.Vec{0, 0, regBlockDepth / 2}))
+	regBlock3 = sdf.Transform3D(regBlock3, sdf.Translate3D(r3.Vec{0, 0, regBlockDepth / 2}))
 	panel = sdf.Difference2D(panel, regOut)
 
 	// Speaker clamps

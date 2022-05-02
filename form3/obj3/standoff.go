@@ -52,7 +52,7 @@ func pillarWeb(k StandoffParams) sdf.SDF3 {
 	w.Add(0, k.WebHeight)
 	p := form2.Polygon(w.Vertices())
 	s := sdf.Extrude3D(p, k.WebWidth)
-	m := sdf.Translate3d(r3.Vec{0, 0, -0.5 * k.PillarHeight}).Mul(sdf.RotateX(d2r(90.0)))
+	m := sdf.Translate3D(r3.Vec{0, 0, -0.5 * k.PillarHeight}).Mul(sdf.RotateX(d2r(90.0)))
 	return sdf.Transform3D(s, m)
 }
 
@@ -69,5 +69,5 @@ func pillarHole(k StandoffParams) sdf.SDF3 {
 	}
 	s := form3.Cylinder(math.Abs(k.HoleDepth), 0.5*k.HoleDiameter, 0)
 	zOfs := 0.5 * (k.PillarHeight - k.HoleDepth)
-	return sdf.Transform3D(s, sdf.Translate3d(r3.Vec{0, 0, zOfs}))
+	return sdf.Transform3D(s, sdf.Translate3D(r3.Vec{0, 0, zOfs}))
 }

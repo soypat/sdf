@@ -41,9 +41,9 @@ func EuroRackPanel(k obj2.EuroRackParams) (sdf.SDF3, error) {
 	// add the ridges to the sides
 	zOfs := 0.5 * (k.Thickness + zSize)
 	xOfs := 0.5 * (k.HPSize() - xSize)
-	r = sdf.Transform3D(r, sdf.Translate3d(r3.Vec{0, 0, zOfs}))
-	r0 := sdf.Transform3D(r, sdf.Translate3d(r3.Vec{xOfs, 0, 0}))
-	r1 := sdf.Transform3D(r, sdf.Translate3d(r3.Vec{-xOfs, 0, 0}))
+	r = sdf.Transform3D(r, sdf.Translate3D(r3.Vec{0, 0, zOfs}))
+	r0 := sdf.Transform3D(r, sdf.Translate3D(r3.Vec{xOfs, 0, 0}))
+	r1 := sdf.Transform3D(r, sdf.Translate3D(r3.Vec{-xOfs, 0, 0}))
 
 	return sdf.Union3D(s, r0, r1), nil
 }
@@ -82,7 +82,7 @@ func PanelHole(k *PanelHoleParams) (sdf.SDF3, error) {
 	// build the indent
 	indent = form3.Box(k.Indent, 0)
 	zOfs := (k.Thickness - k.Indent.Z) * 0.5
-	indent = sdf.Transform3D(indent, sdf.Translate3d(r3.Vec{k.Offset, 0, zOfs}))
+	indent = sdf.Transform3D(indent, sdf.Translate3D(r3.Vec{k.Offset, 0, zOfs}))
 
 	s = sdf.Union3D(s, indent)
 	if k.Orientation != 0 {

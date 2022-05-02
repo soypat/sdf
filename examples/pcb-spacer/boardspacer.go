@@ -53,7 +53,7 @@ func base() sdf.SDF3 {
 	s2 := sdf.Extrude3D(pan, baseThickness)
 	xOfs := 0.5 * baseLength
 	yOfs := 0.5 * baseWidth
-	s2 = sdf.Transform3D(s2, sdf.Translate3d(r3.Vec{xOfs, yOfs, 0}))
+	s2 = sdf.Transform3D(s2, sdf.Translate3D(r3.Vec{xOfs, yOfs, 0}))
 
 	// standoffs
 	zOfs := 0.5 * (pillarHeight + baseThickness)
