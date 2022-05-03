@@ -24,6 +24,9 @@ var (
 	}
 )
 
+// Create3MF saves Renderer stream to a 3MF file type.
+// This function is in experimental stage and may not work
+// properly for large models.
 func Create3MF(filename string, r Renderer) error {
 	t, err := RenderAll(r)
 	if err != nil {

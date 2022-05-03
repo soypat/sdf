@@ -11,11 +11,12 @@ A rewrite of the original CAD package [`sdfx`](https://github.com/deadsy/sdfx) f
  * Objects are rendered to an STL file to be viewed and/or 3d printed.
 
 ## Highlights
-* 3d and 2d objects modelled with signed distance functions (SDFs)
-* Minimal and idiomatic API
-* End-to-end testing using image comparison
-* `must` and `form` packages provide panicking and normal error handling basic shape generation APIs for different scenarios
-* Dead-simple, single method `Renderer` interface
+* 3d and 2d objects modelled with signed distance functions (SDFs).
+* Minimal and idiomatic API.
+* Render objects as triangles or save to STL, 3MF(experimental) file format.
+* End-to-end testing using image comparison.
+* `must` and `form` packages provide panicking and normal error handling basic shape generation APIs for different scenarios.
+* Dead-simple, single method `Renderer` interface.
 
 
 ## Examples
