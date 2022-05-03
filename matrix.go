@@ -105,8 +105,8 @@ func Identity() m22 {
 		0, 1}
 }
 
-// Translate3d returns a 4x4 translation matrix.
-func Translate3d(v r3.Vec) m44 {
+// Translate3D returns a 4x4 translation matrix.
+func Translate3D(v r3.Vec) m44 {
 	return m44{
 		1, 0, 0, v.X,
 		0, 1, 0, v.Y,

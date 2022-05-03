@@ -52,7 +52,7 @@ func Bolt(k BoltParms) (s sdf.SDF3, err error) {
 	shankLength := k.ShankLength + hh/2
 	shankOffset := shankLength / 2
 	var shank sdf.SDF3 = form3.Cylinder(shankLength, t.Radius, hh*0.08)
-	shank = sdf.Transform3D(shank, sdf.Translate3d(r3.Vec{0, 0, shankOffset}))
+	shank = sdf.Transform3D(shank, sdf.Translate3D(r3.Vec{0, 0, shankOffset}))
 
 	// external thread
 	threadLength := k.TotalLength - k.ShankLength
@@ -68,7 +68,7 @@ func Bolt(k BoltParms) (s sdf.SDF3, err error) {
 		// chamfer the thread
 		thread = form3.ChamferedCylinder(thread, 0, 0.5)
 
-		thread = sdf.Transform3D(thread, sdf.Translate3d(r3.Vec{0, 0, threadOffset}))
+		thread = sdf.Transform3D(thread, sdf.Translate3D(r3.Vec{0, 0, threadOffset}))
 	}
 
 	return sdf.Union3D(head, shank, thread), nil // TODO error handling

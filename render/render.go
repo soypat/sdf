@@ -18,15 +18,6 @@ type Triangle3 struct {
 	V [3]r3.Vec
 }
 
-// NewTriangle3 returns a new 3D triangle.
-func NewTriangle3(a, b, c r3.Vec) *Triangle3 {
-	t := Triangle3{}
-	t.V[0] = a
-	t.V[1] = b
-	t.V[2] = c
-	return &t
-}
-
 // Normal returns the normal vector to the plane defined by the 3D triangle.
 func (t *Triangle3) Normal() r3.Vec {
 	e1 := t.V[1].Sub(t.V[0])
