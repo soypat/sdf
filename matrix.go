@@ -59,8 +59,8 @@ func randomRange(a, b float64) float64 {
 // 	return m
 // }
 
-// RandomM44 returns a 4x4 matrix with random elements.
-func RandomM44(a, b float64) m44 {
+// randomM44 returns a 4x4 matrix with random elements.
+func randomM44(a, b float64) m44 {
 	m := m44{
 		randomRange(a, b),
 		randomRange(a, b),
@@ -144,8 +144,7 @@ func Scale2d(v r2.Vec) m33 {
 // Rotate3d returns an orthographic 4x4 rotation matrix (right hand rule).
 func Rotate3d(v r3.Vec, a float64) m44 {
 	v = r3.Unit(v)
-	s := math.Sin(a)
-	c := math.Cos(a)
+	s, c := math.Sincos(a)
 	m := 1 - c
 	return m44{
 		m*v.X*v.X + c, m*v.X*v.Y - v.Z*s, m*v.Z*v.X + v.Y*s, 0,
@@ -242,8 +241,8 @@ func Rotate(a float64) m22 {
 	}
 }
 
-// Equals tests the equality of 4x4 matrices.
-func (a m44) Equals(b m44, tolerance float64) bool {
+// equals tests the equality of 4x4 matrices.
+func (a m44) equals(b m44, tolerance float64) bool {
 	return (math.Abs(a.x00-b.x00) < tolerance &&
 		math.Abs(a.x01-b.x01) < tolerance &&
 		math.Abs(a.x02-b.x02) < tolerance &&
@@ -262,8 +261,8 @@ func (a m44) Equals(b m44, tolerance float64) bool {
 		math.Abs(a.x33-b.x33) < tolerance)
 }
 
-// Equals tests the equality of 3x3 matrices.
-func (a m33) Equals(b m33, tolerance float64) bool {
+// equals tests the equality of 3x3 matrices.
+func (a m33) equals(b m33, tolerance float64) bool {
 	return (math.Abs(a.x00-b.x00) < tolerance &&
 		math.Abs(a.x01-b.x01) < tolerance &&
 		math.Abs(a.x02-b.x02) < tolerance &&
@@ -275,8 +274,8 @@ func (a m33) Equals(b m33, tolerance float64) bool {
 		math.Abs(a.x22-b.x22) < tolerance)
 }
 
-// Equals tests the equality of 2x2 matrices.
-func (a m22) Equals(b m22, tolerance float64) bool {
+// equals tests the equality of 2x2 matrices.
+func (a m22) equals(b m22, tolerance float64) bool {
 	return (math.Abs(a.x00-b.x00) < tolerance &&
 		math.Abs(a.x01-b.x01) < tolerance &&
 		math.Abs(a.x10-b.x10) < tolerance &&

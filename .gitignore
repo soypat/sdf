@@ -2,6 +2,7 @@
 .vscode
 # Exclude all STL files
 *.stl
+*.3mf
 
 # Exclude CPU and memory profiles
 *.prof

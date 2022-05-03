@@ -15,8 +15,10 @@ require (
 	github.com/dhconnelly/rtreego v1.1.0 // indirect
 	github.com/fogleman/simplify v0.0.0-20170216171241-d32f302d5046 // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
+	github.com/hpinc/go3mf v0.24.1 // indirect
 	github.com/hschendel/stl v1.0.4 // indirect
 	github.com/llgcode/draw2d v0.0.0-20200930101115-bfaf5d914d1e // indirect
+	github.com/qmuntal/opc v0.7.10 // indirect
 	github.com/yofu/dxf v0.0.0-20190710012328-5a6d1e83f16c // indirect
 	golang.org/x/image v0.0.0-20220302094943-723b81ca9867 // indirect
 	rsc.io/pdf v0.1.1 // indirect
