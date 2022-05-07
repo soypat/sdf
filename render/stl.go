@@ -1,6 +1,7 @@
 package render
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"io"
@@ -11,6 +12,40 @@ import (
 // CreateSTL renders an SDF3 as an STL file using a Renderer.
 func CreateSTL(path string, r Renderer) error {
 	return createSTL(path, r)
+}
+
+// WriteSTL writes model triangles to a writer in STL file format.
+func WriteSTL(w io.Writer, model []Triangle3) error {
+	nt := len(model)
+	header := stlHeader{
+		Count: uint32(nt), // size of stl triangles is 50
+	}
+	if err := binary.Write(w, binary.LittleEndian, &header); err != nil {
+		return err
+	}
+	var d stlTriangle
+	for _, triangle := range model {
+		var b [50]byte
+		n := triangle.Normal()
+		d.Normal[0] = float32(n.X)
+		d.Normal[1] = float32(n.Y)
+		d.Normal[2] = float32(n.Z)
+		d.Vertex1[0] = float32(triangle.V[0].X)
+		d.Vertex1[1] = float32(triangle.V[0].Y)
+		d.Vertex1[2] = float32(triangle.V[0].Z)
+		d.Vertex2[0] = float32(triangle.V[1].X)
+		d.Vertex2[1] = float32(triangle.V[1].Y)
+		d.Vertex2[2] = float32(triangle.V[1].Z)
+		d.Vertex3[0] = float32(triangle.V[2].X)
+		d.Vertex3[1] = float32(triangle.V[2].Y)
+		d.Vertex3[2] = float32(triangle.V[2].Z)
+		d.put(b[:])
+		_, err := io.Copy(w, bytes.NewReader(b[:]))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // stlHeader defines the STL file header.

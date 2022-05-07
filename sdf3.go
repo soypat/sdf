@@ -276,7 +276,6 @@ func Loft3D(sdf0, sdf1 SDF2, height, round float64) SDF3 {
 		return empty3{}
 	case height < 2*round:
 		return empty3{} // should this panic?
-		panic("height < 2 * round")
 	}
 	s := loft3{
 		sdf0:   sdf0,
