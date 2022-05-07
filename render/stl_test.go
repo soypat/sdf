@@ -11,7 +11,7 @@ import (
 	"gonum.org/v1/gonum/spatial/r3"
 )
 
-func TestSTLCreateWrite(t *testing.T) {
+func TestSTLCreateWriteRead(t *testing.T) {
 	const quality = 20
 	box, _ := form3.Box(r3.Vec{X: 3, Y: 2, Z: 1}, 0.5)
 	render.CreateSTL("box.stl", render.NewOctreeRenderer(box, quality))
@@ -35,7 +35,8 @@ func TestSTLCreateWrite(t *testing.T) {
 	if b.Len() != len(bfile) {
 		t.Fatal("WriteSTL and CreateSTL output length mismatch")
 	}
-	if b.String() != string(bfile) {
-		t.Error("WriteSTL and CreateSTL output mismatch")
+	bs := b.String()
+	if bs != string(bfile) {
+		t.Fatal("WriteSTL and CreateSTL output mismatch")
 	}
 }
