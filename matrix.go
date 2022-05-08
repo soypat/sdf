@@ -282,14 +282,6 @@ func (a m22) equals(b m22, tolerance float64) bool {
 		math.Abs(a.x11-b.x11) < tolerance)
 }
 
-// MulPosition multiplies a r3.Vec position with a rotate/translate matrix.
-func (a m44) MulPosition(b r3.Vec) r3.Vec {
-	return r3.Vec{
-		X: a.x00*b.X + a.x01*b.Y + a.x02*b.Z + a.x03,
-		Y: a.x10*b.X + a.x11*b.Y + a.x12*b.Z + a.x13,
-		Z: a.x20*b.X + a.x21*b.Y + a.x22*b.Z + a.x23}
-}
-
 // MulPosition multiplies a V2 position with a rotate/translate matrix.
 func (a m33) MulPosition(b r2.Vec) r2.Vec {
 	return r2.Vec{a.x00*b.X + a.x01*b.Y + a.x02,
@@ -395,6 +387,14 @@ func (a m33) MulScalar(k float64) m33 {
 
 // Transform bounding boxes - keep them axis aligned
 // http://dev.theomader.com/transform-bounding-boxes/
+
+// MulPosition multiplies a r3.Vec position with a rotate/translate matrix.
+func (a m44) MulPosition(b r3.Vec) r3.Vec {
+	return r3.Vec{
+		X: a.x00*b.X + a.x01*b.Y + a.x02*b.Z + a.x03,
+		Y: a.x10*b.X + a.x11*b.Y + a.x12*b.Z + a.x13,
+		Z: a.x20*b.X + a.x21*b.Y + a.x22*b.Z + a.x23}
+}
 
 // MulBox rotates/translates a 3d bounding box and resizes for axis-alignment.
 func (a m44) MulBox(box d3.Box) d3.Box {

@@ -24,12 +24,21 @@ func WriteSTL(w io.Writer, model []Triangle3) error {
 		return errors.New("empty triangle slice")
 	}
 	nt := len(model)
-	header := stlHeader{
-		Count: uint32(nt), // size of stl triangles is 50
+	if nt > math.MaxUint32 {
+		return errors.New("amount of triangles in model exceeds STL design limits")
 	}
-	if err := binary.Write(w, binary.LittleEndian, &header); err != nil {
+	header := stlHeader{
+		Count: uint32(nt),
+	}
+	fmt.Printf("header to write: %+v\n", header)
+	var headerBuf [84]byte
+	header.put(headerBuf[:])
+	if _, err := io.Copy(w, bytes.NewReader(headerBuf[:])); err != nil {
 		return err
 	}
+	// if err := binary.Write(w, binary.LittleEndian, header); err != nil {
+	// 	return err
+	// }
 	var d stlTriangle
 	for _, triangle := range model {
 		var b [50]byte
@@ -59,6 +68,11 @@ func WriteSTL(w io.Writer, model []Triangle3) error {
 type stlHeader struct {
 	_     [80]uint8 // Header
 	Count uint32    // Number of triangles
+}
+
+func (h stlHeader) put(b []byte) {
+	_ = b[83] //early bounds check
+	binary.LittleEndian.PutUint32(b[80:], h.Count)
 }
 
 const trianglesInBuffer = 1 << 10
@@ -154,6 +168,9 @@ func min(a, b int) int {
 	return b
 }
 
+func DONOTUSE(r io.Reader) (output []Triangle3, readErr error) {
+	return readBinarySTL(r)
+}
 func readBinarySTL(r io.Reader) (output []Triangle3, readErr error) {
 	var header stlHeader
 	if err := binary.Read(r, binary.LittleEndian, &header); err != nil {
