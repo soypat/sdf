@@ -77,7 +77,7 @@ func main() {
 		tstart := time.Now()
 		output, err := cmd.CombinedOutput()
 		if err != nil {
-			log.Fatalf("%s\nexample %s failed", string(output), example.Name)
+			log.Fatalf("%s\nexample %s failed:%s", string(output), example.Name, err)
 		}
 
 		stlName := filepath.Join(cmd.Dir, example.resultSTL)

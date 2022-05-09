@@ -76,7 +76,7 @@ func base() sdf.SDF3 {
 	}
 	m3Standoffs := standoffs(3, m3Positions)
 	s4 := sdf.Union3D(s2, m4Standoffs, m3Standoffs)
-	s4.SetMin(sdf.MinPoly(3.0))
+	s4.SetMin(sdf.MinPoly(2, 3.0))
 	return s4
 }
 

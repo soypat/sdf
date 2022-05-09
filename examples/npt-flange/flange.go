@@ -36,7 +36,7 @@ func main() {
 	flange = sdf.Transform3D(flange, sdf.Translate3D(r3.Vec{0, 0, -tlen / 2}))
 	union := sdf.Union3D(pipe, flange)
 	// set flange fillet
-	union.SetMin(sdf.MinPoly(0.2))
+	union.SetMin(sdf.MinPoly(2, 0.2))
 	// Make through-hole in flange bottom
 	hole := form3.Cylinder(4*flangeH, internalDiameter/2, 0)
 	pipe = sdf.Difference3D(union, hole)

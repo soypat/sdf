@@ -7,7 +7,7 @@ Click on image to go to code directory.
 
 | Example | Execution Time | File size |
 |---|---|---|
-|[ADZ Nagano sensor cover](adz-sensor-cover)|0.5s|10MB|
+|[ADZ Nagano sensor cover](adz-sensor-cover)|1s|10MB|
 
 [![ADZ Nagano sensor cover](fig/adz-sensor-cover.png)](adz-sensor-cover)
 

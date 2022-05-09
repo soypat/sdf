@@ -81,7 +81,7 @@ func main() {
 		s = sdf.Difference3D(s, must3.Cylinder(backsidePillarHeight, backsidePillarHollowDiam/2, 0))
 		s = sdf.Transform3D(s, sdf.Translate3D(r3.Vec{X: pillar.X, Y: pillar.Y, Z: (backsidePillarHeight + supportThickness) / 2}))
 		union := sdf.Union3D(support, s)
-		union.SetMin(sdf.MinPoly(3))
+		union.SetMin(sdf.MinPoly(2, 3))
 		support = union
 	}
 	render.CreateSTL("support.stl", render.NewOctreeRenderer(support, 190))
