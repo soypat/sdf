@@ -49,6 +49,7 @@ Advantages of soypat/sdf:
 - `Renderer` interface is dead-simple, [idiomatic Go](https://pkg.go.dev/io#Reader) and not limited to SDFs
   - deadsy/sdfx `Renderer3` interface has filled `render` package with technical debt. See [Questionable API design](#questionable-api-design).
 - Has `SDFUnion` and `SDFDiff` interfaces for blending shapes easily
+  - `MinPoly` redesign to allow for _n_-degree polynomials. Also returns a sensible "undefined output" `MinFunc` before dividing by zero.
 - No `nil` valued SDFs
   - deadsy/sdfx internally makes use of `nil` SDFs as "empty" objects. This can later cause panics during rendering well after the point of failure causing hard to debug issues.
 - Well defined package organization.
@@ -62,6 +63,8 @@ Advantages of soypat/sdf:
   - `math.Hypot` used for all length calculations. `deadsy/sdfx` does not use `math.Hypot`.
 - Uses gonum's `spatial` package
   - `sdfx` has own vector types with methods which [hurt code legibility](https://github.com/deadsy/sdfx/issues/48)
+  - `spatial` types from gonum library with correct Triangle degeneracy calculation. `deadsy/sdfx`'s Degenerate calculation is incorrect.
+
 
 ## Contributing
 See [CONTRIBUTING](./CONTRIBUTING.md).

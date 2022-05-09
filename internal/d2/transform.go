@@ -1,6 +1,8 @@
 package d2
 
-import "gonum.org/v1/gonum/spatial/r2"
+import (
+	"gonum.org/v1/gonum/spatial/r2"
+)
 
 var identityT Transform
 

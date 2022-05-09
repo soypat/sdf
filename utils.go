@@ -101,14 +101,6 @@ func MinRound(k float64) MinFunc {
 	}
 }
 
-// MinChamfer returns a minimum function that makes a 45-degree chamfered edge (the diagonal of a square of size <r>).
-// TODO: why the holes in the rendering?
-func MinChamfer(k float64) MinFunc {
-	return func(a, b float64) float64 {
-		return math.Min(math.Min(a, b), (a-k+b)*sqrtHalf)
-	}
-}
-
 // MinExp returns a minimum function with exponential smoothing (k = 32).
 func MinExp(k float64) MinFunc {
 	return func(a, b float64) float64 {
@@ -126,25 +118,85 @@ func MinPow(k float64) MinFunc {
 	}
 }
 
-func poly(a, b, k float64) float64 {
-	h := clamp(0.5+0.5*(b-a)/k, 0.0, 1.0)
-	return mix(b, a, h) - k*h*(1.0-h)
+func minQuad(a, b, k float64) float64 {
+	// https://iquilezles.org/articles/smin/
+	h := math.Max(k-math.Abs(a-b), 0) / k
+	return math.Min(a, b) - h*h*k*0.25
 }
 
-// MinPoly returns a minimum function (Try k = 0.1, a bigger k gives a bigger fillet).
-func MinPoly(k float64) MinFunc {
+func minCubic(a, b, k float64) float64 {
+	// https://iquilezles.org/articles/smin/
+	h := math.Max(k-math.Abs(a-b), 0) / k
+	return math.Min(a, b) - h*h*h*k*(1.0/6.0)
+}
+
+// minPoly is the general, non-performant implementation of a polyomial smoother.
+func minPoly(n int, k float64) MinFunc {
+	nf := float64(n)
+	div := 0.5 / nf
 	return func(a, b float64) float64 {
-		return poly(a, b, k)
+		h := math.Max(k-math.Abs(a-b), 0) / k
+		return math.Min(a, b) - math.Pow(h, nf)*k*div
 	}
+}
+
+// MinPoly creates a n-degree polynomial MinFunc with
+// parameter k that controls radius of the smoothing function.
+//  - n<0 or k<=0 undefined output
+//  - n=0 returns a chamfer-like MinFunc
+//  - n=1 returns math.Min
+func MinPoly(n int, k float64) MinFunc {
+	if n < 0 || k <= 0 {
+		// Let users go crazy?
+		return func(a, b float64) float64 {
+			return math.Min(a, b) - math.Max(k-math.Abs(a-b), 0)
+		}
+	}
+	// Return performant MinFunc for common use cases.
+	switch n {
+	// return math.Min(a, b) - math.Max(k-math.Abs(a-b), 0)
+	case 0:
+		return func(a, b float64) float64 {
+			// which implementation is better?
+			return math.Min(math.Min(a, b), (a-k+b)*sqrtHalf)
+		}
+	case 1:
+		return math.Min
+	case 2:
+		return func(a, b float64) float64 {
+			return minQuad(a, b, k)
+		}
+	case 3:
+		return func(a, b float64) float64 {
+			return minCubic(a, b, k)
+		}
+	}
+	return minPoly(n, k)
 }
 
 // MaxFunc is a maximum function for SDF blending.
 type MaxFunc func(a, b float64) float64
 
-// MaxPoly returns a maximum function (Try k = 0.1, a bigger k gives a bigger fillet).
-func MaxPoly(k float64) MaxFunc {
+// MaxPoly creates a n-degree polynomial MaxFunc with
+// parameter k that controls radius of the smoothing function.
+// Implementation untested.
+func MaxPoly(n int, k float64) MaxFunc {
+	if n < 0 || k <= 0 {
+		// Let users go crazy?
+		return func(a, b float64) float64 {
+			return -(-math.Min(a, b) - math.Max(k-math.Abs(b-a), 0))
+		}
+	}
+	return maxPoly(n, k)
+}
+
+// maxPoly is the general, non-performant implementation of MaxPoly.
+func maxPoly(n int, k float64) MaxFunc {
+	nf := float64(n)
+	div := 0.5 / nf
 	return func(a, b float64) float64 {
-		return -poly(-a, -b, k)
+		h := math.Max(k-math.Abs(b-a), 0) / k
+		return -(math.Min(-a, -b) - math.Pow(h, nf)*k*div)
 	}
 }
 
