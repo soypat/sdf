@@ -30,7 +30,7 @@ func WriteSTL(w io.Writer, model []Triangle3) error {
 	header := stlHeader{
 		Count: uint32(nt),
 	}
-	fmt.Printf("header to write: %+v\n", header)
+
 	var headerBuf [84]byte
 	header.put(headerBuf[:])
 	if _, err := io.Copy(w, bytes.NewReader(headerBuf[:])); err != nil {

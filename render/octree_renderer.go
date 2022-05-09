@@ -120,40 +120,38 @@ func (oc *octree) readTriangles(dst []Triangle3) (n int) {
 
 // Process a cube. Generate triangles, or more cubes.
 func (oc *octree) processCube(dst []Triangle3, c cube) (writtenTriangles int, newCubes []cube) {
-	if !oc.dc.IsEmpty(&c) {
-		if c.n == 1 {
-			// this cube is at the required resolution
-			c0, d0 := oc.dc.Evaluate(c.Add(sdf.V3i{0, 0, 0}))
-			c1, d1 := oc.dc.Evaluate(c.Add(sdf.V3i{2, 0, 0}))
-			c2, d2 := oc.dc.Evaluate(c.Add(sdf.V3i{2, 2, 0}))
-			c3, d3 := oc.dc.Evaluate(c.Add(sdf.V3i{0, 2, 0}))
-			c4, d4 := oc.dc.Evaluate(c.Add(sdf.V3i{0, 0, 2}))
-			c5, d5 := oc.dc.Evaluate(c.Add(sdf.V3i{2, 0, 2}))
-			c6, d6 := oc.dc.Evaluate(c.Add(sdf.V3i{2, 2, 2}))
-			c7, d7 := oc.dc.Evaluate(c.Add(sdf.V3i{0, 2, 2}))
-			corners := [8]r3.Vec{c0, c1, c2, c3, c4, c5, c6, c7}
-			values := [8]float64{d0, d1, d2, d3, d4, d5, d6, d7}
-			// output the triangle(s) for this cube
-			writtenTriangles = mcToTriangles(dst, corners, values, 0)
-		} else {
-			// process the sub cubes
-			n := c.n - 1
-			s := 1 << n
-			subCubes := [8]cube{
-				{c.Add(sdf.V3i{0, 0, 0}), n},
-				{c.Add(sdf.V3i{s, 0, 0}), n},
-				{c.Add(sdf.V3i{s, s, 0}), n},
-				{c.Add(sdf.V3i{0, s, 0}), n},
-				{c.Add(sdf.V3i{0, 0, s}), n},
-				{c.Add(sdf.V3i{s, 0, s}), n},
-				{c.Add(sdf.V3i{s, s, s}), n},
-				{c.Add(sdf.V3i{0, s, s}), n},
-			}
-			// Eliminate empty cubes.
-			for _, candidate := range subCubes {
-				if !oc.dc.IsEmpty(&candidate) {
-					newCubes = append(newCubes, candidate)
-				}
+	if c.n == 1 {
+		// this cube is at the required resolution
+		c0, d0 := oc.dc.Evaluate(c.Add(sdf.V3i{0, 0, 0}))
+		c1, d1 := oc.dc.Evaluate(c.Add(sdf.V3i{2, 0, 0}))
+		c2, d2 := oc.dc.Evaluate(c.Add(sdf.V3i{2, 2, 0}))
+		c3, d3 := oc.dc.Evaluate(c.Add(sdf.V3i{0, 2, 0}))
+		c4, d4 := oc.dc.Evaluate(c.Add(sdf.V3i{0, 0, 2}))
+		c5, d5 := oc.dc.Evaluate(c.Add(sdf.V3i{2, 0, 2}))
+		c6, d6 := oc.dc.Evaluate(c.Add(sdf.V3i{2, 2, 2}))
+		c7, d7 := oc.dc.Evaluate(c.Add(sdf.V3i{0, 2, 2}))
+		corners := [8]r3.Vec{c0, c1, c2, c3, c4, c5, c6, c7}
+		values := [8]float64{d0, d1, d2, d3, d4, d5, d6, d7}
+		// output the triangle(s) for this cube
+		writtenTriangles = mcToTriangles(dst, corners, values, 0)
+	} else {
+		// process the sub cubes
+		n := c.n - 1
+		s := 1 << n
+		subCubes := [8]cube{
+			{c.Add(sdf.V3i{0, 0, 0}), n},
+			{c.Add(sdf.V3i{s, 0, 0}), n},
+			{c.Add(sdf.V3i{s, s, 0}), n},
+			{c.Add(sdf.V3i{0, s, 0}), n},
+			{c.Add(sdf.V3i{0, 0, s}), n},
+			{c.Add(sdf.V3i{s, 0, s}), n},
+			{c.Add(sdf.V3i{s, s, s}), n},
+			{c.Add(sdf.V3i{0, s, s}), n},
+		}
+		// Eliminate empty cubes.
+		for _, candidate := range subCubes {
+			if !oc.dc.IsEmpty(&candidate) {
+				newCubes = append(newCubes, candidate)
 			}
 		}
 	}
@@ -164,7 +162,7 @@ func (oc *octree) processCube(dst []Triangle3, c cube) (writtenTriangles int, ne
 // Experimentally about 2/3 of lookups get a hit, and the overall speedup
 // is about 2x a non-cached evaluation.
 type dc3 struct {
-	lock       sync.RWMutex        // lock the the cache during reads/writes
+	mu         sync.Mutex          // lock the the cache during reads/writes
 	cache      map[sdf.V3i]float64 // cache of distances
 	origin     r3.Vec              // origin of the overall bounding cube
 	resolution float64             // size of smallest octree cube
@@ -172,8 +170,8 @@ type dc3 struct {
 	s          sdf.SDF3            // the SDF3 to be rendered
 }
 
+// Evaluate evaluates if
 func (dc *dc3) Evaluate(vi sdf.V3i) (r3.Vec, float64) {
-	// v := dc.origin.Add(vi.ToV3().MulScalar(dc.resolution))
 	v := r3.Add(dc.origin, r3.Scale(dc.resolution, vi.ToV3()))
 
 	// do we have it in the cache?
@@ -221,17 +219,17 @@ func newDc3(s sdf.SDF3, origin r3.Vec, resolution float64, n uint) *dc3 {
 
 // read from the cache
 func (dc *dc3) read(vi sdf.V3i) (float64, bool) {
-	dc.lock.RLock()
+	dc.mu.Lock()
 	dist, found := dc.cache[vi]
-	dc.lock.RUnlock()
+	dc.mu.Unlock()
 	return dist, found
 }
 
 // write to the cache
 func (dc *dc3) write(vi sdf.V3i, dist float64) {
-	dc.lock.Lock()
+	dc.mu.Lock()
 	dc.cache[vi] = dist
-	dc.lock.Unlock()
+	dc.mu.Unlock()
 }
 
 func max(a, b int) int {
