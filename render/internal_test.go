@@ -60,10 +60,10 @@ func TestSTLWriteReadback(t *testing.T) {
 		if got.Degenerate(1e-12) {
 			t.Fatalf("triangle degenerate: %+v", got)
 		}
-		for i := range expect.V {
-			if !d3.EqualWithin(got.V[i], expect.V[i], rtol) {
+		for i := range expect {
+			if !d3.EqualWithin(got[i], expect[i], rtol) {
 				mismatches++
-				t.Errorf("%dth triangle equality out of tolerance. got vertex %0.5g, want %0.5g", iface, got.V[i], expect.V[i])
+				t.Errorf("%dth triangle equality out of tolerance. got vertex %0.5g, want %0.5g", iface, got[i], expect[i])
 			}
 		}
 		if mismatches > 10 {

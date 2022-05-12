@@ -41,11 +41,9 @@ func mcToTriangles(dst []Triangle3, p [8]r3.Vec, v [8]float64, x float64) (n int
 	count := len(table) / 3 // max count is 5, a.k.a marchingCubesMaxTriangles
 	for i := 0; i < count; i++ {
 		t := Triangle3{
-			V: [3]r3.Vec{
-				points[table[i*3+2]],
-				points[table[i*3+1]],
-				points[table[i*3+0]],
-			},
+			points[table[i*3+2]],
+			points[table[i*3+1]],
+			points[table[i*3+0]],
 		}
 		if !t.Degenerate(1e-12) {
 			dst[n] = t

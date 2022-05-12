@@ -46,15 +46,15 @@ func WriteSTL(w io.Writer, model []Triangle3) error {
 		d.Normal[0] = float32(n.X)
 		d.Normal[1] = float32(n.Y)
 		d.Normal[2] = float32(n.Z)
-		d.Vertex1[0] = float32(triangle.V[0].X)
-		d.Vertex1[1] = float32(triangle.V[0].Y)
-		d.Vertex1[2] = float32(triangle.V[0].Z)
-		d.Vertex2[0] = float32(triangle.V[1].X)
-		d.Vertex2[1] = float32(triangle.V[1].Y)
-		d.Vertex2[2] = float32(triangle.V[1].Z)
-		d.Vertex3[0] = float32(triangle.V[2].X)
-		d.Vertex3[1] = float32(triangle.V[2].Y)
-		d.Vertex3[2] = float32(triangle.V[2].Z)
+		d.Vertex1[0] = float32(triangle[0].X)
+		d.Vertex1[1] = float32(triangle[0].Y)
+		d.Vertex1[2] = float32(triangle[0].Z)
+		d.Vertex2[0] = float32(triangle[1].X)
+		d.Vertex2[1] = float32(triangle[1].Y)
+		d.Vertex2[2] = float32(triangle[1].Z)
+		d.Vertex3[0] = float32(triangle[2].X)
+		d.Vertex3[1] = float32(triangle[2].Y)
+		d.Vertex3[2] = float32(triangle[2].Z)
 		d.put(b[:])
 		_, err := io.Copy(w, bytes.NewReader(b[:]))
 		if err != nil {
@@ -112,15 +112,15 @@ func (w *stlReader) Read(b []byte) (int, error) {
 			d.Normal[0] = float32(n.X)
 			d.Normal[1] = float32(n.Y)
 			d.Normal[2] = float32(n.Z)
-			d.Vertex1[0] = float32(triangle.V[0].X)
-			d.Vertex1[1] = float32(triangle.V[0].Y)
-			d.Vertex1[2] = float32(triangle.V[0].Z)
-			d.Vertex2[0] = float32(triangle.V[1].X)
-			d.Vertex2[1] = float32(triangle.V[1].Y)
-			d.Vertex2[2] = float32(triangle.V[1].Z)
-			d.Vertex3[0] = float32(triangle.V[2].X)
-			d.Vertex3[1] = float32(triangle.V[2].Y)
-			d.Vertex3[2] = float32(triangle.V[2].Z)
+			d.Vertex1[0] = float32(triangle[0].X)
+			d.Vertex1[1] = float32(triangle[0].Y)
+			d.Vertex1[2] = float32(triangle[0].Z)
+			d.Vertex2[0] = float32(triangle[1].X)
+			d.Vertex2[1] = float32(triangle[1].Y)
+			d.Vertex2[2] = float32(triangle[1].Z)
+			d.Vertex3[0] = float32(triangle[2].X)
+			d.Vertex3[1] = float32(triangle[2].Y)
+			d.Vertex3[2] = float32(triangle[2].Z)
 			d.put(b[it*stlTriangleSize:])
 			it++
 		}
@@ -327,9 +327,9 @@ func equalWithin3F32(a, b [3]float32, tol float32) bool {
 }
 
 func (d stlTriangle) toTriangle3() Triangle3 {
-	return Triangle3{V: [3]r3.Vec{
+	return Triangle3{
 		r3From3F32(d.Vertex1),
 		r3From3F32(d.Vertex2),
 		r3From3F32(d.Vertex3),
-	}}
+	}
 }

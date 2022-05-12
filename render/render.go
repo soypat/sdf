@@ -14,14 +14,12 @@ type Renderer interface {
 type Triangle2 [3]r2.Vec
 
 // Triangle3 is a 3D triangle
-type Triangle3 struct {
-	V [3]r3.Vec
-}
+type Triangle3 [3]r3.Vec
 
 // Normal returns the normal vector to the plane defined by the 3D triangle.
 func (t *Triangle3) Normal() r3.Vec {
-	e1 := t.V[1].Sub(t.V[0])
-	e2 := t.V[2].Sub(t.V[0])
+	e1 := t[1].Sub(t[0])
+	e2 := t[2].Sub(t[0])
 
 	return r3.Unit(r3.Cross(e1, e2))
 }
@@ -30,7 +28,7 @@ func (t *Triangle3) Normal() r3.Vec {
 func (t *Triangle3) Degenerate(tolerance float64) bool {
 	// check for identical vertices.
 	// TODO more tests needed.
-	return d3.EqualWithin(t.V[0], t.V[1], tolerance) ||
-		d3.EqualWithin(t.V[1], t.V[2], tolerance) ||
-		d3.EqualWithin(t.V[2], t.V[0], tolerance)
+	return d3.EqualWithin(t[0], t[1], tolerance) ||
+		d3.EqualWithin(t[1], t[2], tolerance) ||
+		d3.EqualWithin(t[2], t[0], tolerance)
 }
