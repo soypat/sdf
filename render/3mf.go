@@ -120,7 +120,7 @@ func (m *model) AddObject(name string, src []Triangle3) error {
 	vertices := make([]mf3Vertex, 0, len(src)*3)
 	for it, t := range src {
 		for i := 0; i < 3; i++ {
-			vertex := t.V[i]
+			vertex := t[i]
 			entry, ok := vertexMap[vertex]
 			if !ok {
 				entry = vertexEntry{

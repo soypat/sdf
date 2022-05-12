@@ -23,3 +23,4 @@ require (
 	golang.org/x/image v0.0.0-20220302094943-723b81ca9867 // indirect
 	rsc.io/pdf v0.1.1 // indirect
 )
+

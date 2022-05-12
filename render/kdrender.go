@@ -48,9 +48,9 @@ func (s kdSDF) Evaluate(v r3.Vec) float64 {
 	// Find closest vertex
 	closest := r3.Vec{}
 	for i := 0; i < 3; i++ {
-		vDist := r3.Norm(r3.Sub(v, triangle.V[i]))
+		vDist := r3.Norm(r3.Sub(v, triangle[i]))
 		if vDist < minDist {
-			closest = triangle.V[i]
+			closest = triangle[i]
 			minDist = vDist
 		}
 	}
@@ -65,9 +65,7 @@ func (s kdSDF) Evaluate(v r3.Vec) float64 {
 
 // Get nearest triangle to point.
 func (s kdSDF) Nearest(v r3.Vec) kdTriangle {
-	got, _ := s.tree.Nearest(kdTriangle{
-		V: [3]r3.Vec{v, v, v},
-	})
+	got, _ := s.tree.Nearest(kdTriangle{v, v, v})
 	// do some ad-hoc math with the triangle normal ????
 	return got.(kdTriangle)
 }
@@ -80,8 +78,8 @@ func (s kdSDF) Bounds() r3.Box {
 	tMin := bb.Min.(kdTriangle)
 	tMax := bb.Max.(kdTriangle)
 	return r3.Box{
-		Min: d3.MinElem(tMin.V[2], d3.MinElem(tMin.V[0], tMin.V[1])),
-		Max: d3.MaxElem(tMax.V[2], d3.MaxElem(tMax.V[0], tMax.V[1])),
+		Min: d3.MinElem(tMin[2], d3.MinElem(tMin[0], tMin[1])),
+		Max: d3.MaxElem(tMax[2], d3.MaxElem(tMax[0], tMax[1])),
 	}
 }
 
@@ -116,12 +114,12 @@ func (k kdTriangles) Bounds() *kdtree.Bounding {
 		tbounds := tri.Bounds()
 		tmin := tbounds.Min.(kdTriangle)
 		tmax := tbounds.Max.(kdTriangle)
-		min = d3.MinElem(min, tmin.V[0])
-		max = d3.MaxElem(max, tmax.V[0])
+		min = d3.MinElem(min, tmin[0])
+		max = d3.MaxElem(max, tmax[0])
 	}
 	return &kdtree.Bounding{
-		Min: kdTriangle{V: [3]r3.Vec{min, min, min}},
-		Max: kdTriangle{V: [3]r3.Vec{max, max, max}},
+		Min: kdTriangle{min, min, min},
+		Max: kdTriangle{max, max, max},
 	}
 }
 
@@ -146,11 +144,11 @@ func (a kdTriangle) Distance(b kdtree.Comparable) float64 {
 }
 
 func (a kdTriangle) Bounds() *kdtree.Bounding {
-	min := d3.MinElem(a.V[2], d3.MinElem(a.V[0], a.V[1]))
-	max := d3.MaxElem(a.V[2], d3.MaxElem(a.V[0], a.V[1]))
+	min := d3.MinElem(a[2], d3.MinElem(a[0], a[1]))
+	max := d3.MaxElem(a[2], d3.MaxElem(a[0], a[1]))
 	return &kdtree.Bounding{
-		Min: kdTriangle{V: [3]r3.Vec{min, min, min}},
-		Max: kdTriangle{V: [3]r3.Vec{max, max, max}},
+		Min: kdTriangle{min, min, min},
+		Max: kdTriangle{max, max, max},
 	}
 }
 
@@ -163,11 +161,11 @@ func (a kdTriangle) Normal() r3.Vec {
 func kdComp(a, b kdTriangle, dim int) (c float64) {
 	switch dim {
 	case 0:
-		c = (a.V[0].X + a.V[1].X + a.V[2].X) - (b.V[0].X + b.V[1].X + b.V[2].X)
+		c = (a[0].X + a[1].X + a[2].X) - (b[0].X + b[1].X + b[2].X)
 	case 1:
-		c = (a.V[0].Y + a.V[1].Y + a.V[2].Y) - (b.V[0].Y + b.V[1].Y + b.V[2].Y)
+		c = (a[0].Y + a[1].Y + a[2].Y) - (b[0].Y + b[1].Y + b[2].Y)
 	case 2:
-		c = (a.V[0].Z + a.V[1].Z + a.V[2].Z) - (b.V[0].Z + b.V[1].Z + b.V[2].Z)
+		c = (a[0].Z + a[1].Z + a[2].Z) - (b[0].Z + b[1].Z + b[2].Z)
 	}
 	return c / 3
 }
@@ -181,9 +179,9 @@ func kdDist(a, b kdTriangle) (c float64) {
 
 func kdCentroid(a kdTriangle) r3.Vec {
 	v := r3.Vec{
-		X: a.V[0].X + a.V[1].X + a.V[2].X,
-		Y: a.V[0].Y + a.V[1].Y + a.V[2].Y,
-		Z: a.V[0].Z + a.V[1].Z + a.V[2].Z,
+		X: a[0].X + a[1].X + a[2].X,
+		Y: a[0].Y + a[1].Y + a[2].Y,
+		Z: a[0].Z + a[1].Z + a[2].Z,
 	}
 	return r3.Scale(1./3., v)
 }
