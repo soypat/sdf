@@ -79,6 +79,6 @@ func (s *screw) Evaluate(p r3.Vec) float64 {
 }
 
 // BoundingBox returns the bounding box for a 3d screw form.
-func (s *screw) BoundingBox() r3.Box {
+func (s *screw) Bounds() r3.Box {
 	return s.bb
 }

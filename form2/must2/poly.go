@@ -107,7 +107,7 @@ func (s *polygon) Evaluate(p r2.Vec) float64 {
 }
 
 // BoundingBox returns the bounding box of a 2d polygon.
-func (s *polygon) BoundingBox() r2.Box {
+func (s *polygon) Bounds() r2.Box {
 	return s.bb
 }
 

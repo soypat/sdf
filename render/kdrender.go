@@ -72,7 +72,7 @@ func (s kdSDF) Nearest(v r3.Vec) kdTriangle {
 	return got.(kdTriangle)
 }
 
-func (s kdSDF) BoundingBox() r3.Box {
+func (s kdSDF) Bounds() r3.Box {
 	bb := s.tree.Root.Bounding
 	if bb == nil {
 		panic("got nil bounding box?")

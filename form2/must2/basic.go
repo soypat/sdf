@@ -31,7 +31,7 @@ func (s *circle) Evaluate(p r2.Vec) float64 {
 }
 
 // BoundingBox returns the bounding box of a 2d circle.
-func (s *circle) BoundingBox() r2.Box {
+func (s *circle) Bounds() r2.Box {
 	return s.bb
 }
 
@@ -60,7 +60,7 @@ func (s *box) Evaluate(p r2.Vec) float64 {
 }
 
 // BoundingBox returns the bounding box for a 2d box.
-func (s *box) BoundingBox() r2.Box {
+func (s *box) Bounds() r2.Box {
 	return s.bb
 }
 
@@ -92,6 +92,6 @@ func (s *line) Evaluate(p r2.Vec) float64 {
 }
 
 // BoundingBox returns the bounding box for a 2d line.
-func (s *line) BoundingBox() r2.Box {
+func (s *line) Bounds() r2.Box {
 	return s.bb
 }

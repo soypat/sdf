@@ -35,7 +35,7 @@ func NewOctreeRenderer(s sdf.SDF3, meshCells int) *octree {
 	}
 	// Scale the bounding box about the center to make sure the boundaries
 	// aren't on the object surface.
-	bb := d3.Box(s.BoundingBox())
+	bb := d3.Box(s.Bounds())
 	bb = bb.ScaleAboutCenter(1.01)
 	longAxis := d3.Max(bb.Size())
 	// We want to test the smallest cube (side == resolution) for emptiness

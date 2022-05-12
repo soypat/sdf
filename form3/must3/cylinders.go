@@ -41,7 +41,7 @@ func (s *box) Evaluate(p r3.Vec) float64 {
 }
 
 // BoundingBox returns the bounding box for a 3d box.
-func (s *box) BoundingBox() r3.Box {
+func (s *box) Bounds() r3.Box {
 	return s.bb
 }
 
@@ -72,7 +72,7 @@ func (s *sphere) Evaluate(p r3.Vec) float64 {
 }
 
 // BoundingBox returns the bounding box for a sphere.
-func (s *sphere) BoundingBox() r3.Box {
+func (s *sphere) Bounds() r3.Box {
 	return s.bb
 }
 
@@ -121,7 +121,7 @@ func (s *cylinder) Evaluate(p r3.Vec) float64 {
 }
 
 // BoundingBox returns the bounding box for a cylinder.
-func (s *cylinder) BoundingBox() r3.Box {
+func (s *cylinder) Bounds() r3.Box {
 	return s.bb
 }
 
@@ -201,7 +201,7 @@ func (s *cone) Evaluate(p r3.Vec) float64 {
 }
 
 // BoundingBox return the bounding box for the trucated cone..
-func (s *cone) BoundingBox() r3.Box {
+func (s *cone) Bounds() r3.Box {
 	return s.bb
 }
 
@@ -234,8 +234,8 @@ func sdfBox3d(p, s r3.Vec) float64 {
 // ChamferedCylinder intersects a chamfered cylinder with an SDF3.
 func ChamferedCylinder(s sdf.SDF3, kb, kt float64) sdf.SDF3 {
 	// get the length and radius from the bounding box
-	l := s.BoundingBox().Max.Z
-	r := s.BoundingBox().Max.X
+	l := s.Bounds().Max.Z
+	r := s.Bounds().Max.X
 	p := form2.NewPolygon()
 	p.Add(0, -l)
 	p.Add(r, -l).Chamfer(r * kb)

@@ -80,8 +80,8 @@ func Cone(height, r0, r1, round float64) (s sdf.SDF3, err error) {
 // ChamferedCylinder intersects a chamfered cylinder with an SDF3.
 func ChamferedCylinder(s sdf.SDF3, kb, kt float64) (sdf.SDF3, error) {
 	// get the length and radius from the bounding box
-	l := s.BoundingBox().Max.Z
-	r := s.BoundingBox().Max.X
+	l := s.Bounds().Max.Z
+	r := s.Bounds().Max.X
 	p := form2.NewPolygon()
 	p.Add(0, -l)
 	p.Add(r, -l).Chamfer(r * kb)
