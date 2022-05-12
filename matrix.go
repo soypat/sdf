@@ -397,7 +397,7 @@ func (a m44) MulPosition(b r3.Vec) r3.Vec {
 }
 
 // MulBox rotates/translates a 3d bounding box and resizes for axis-alignment.
-func (a m44) MulBox(box d3.Box) d3.Box {
+func (a m44) MulBox(box r3.Box) r3.Box {
 	r := r3.Vec{X: a.x00, Y: a.x10, Z: a.x20}
 	u := r3.Vec{X: a.x01, Y: a.x11, Z: a.x21}
 	b := r3.Vec{X: a.x02, Y: a.x12, Z: a.x22}
@@ -414,11 +414,11 @@ func (a m44) MulBox(box d3.Box) d3.Box {
 	za, zb = d3.MinElem(za, zb), d3.MaxElem(za, zb)
 	min := xa.Add(ya).Add(za).Add(t)
 	max := xb.Add(yb).Add(zb).Add(t)
-	return d3.Box{min, max}
+	return r3.Box{min, max}
 }
 
 // MulBox rotates/translates a 2d bounding box and resizes for axis-alignment.
-func (a m33) MulBox(box d2.Box) d2.Box {
+func (a m33) MulBox(box r2.Box) r2.Box {
 	r := r2.Vec{a.x00, a.x10}
 	u := r2.Vec{a.x01, a.x11}
 	t := r2.Vec{a.x02, a.x12}
@@ -430,7 +430,7 @@ func (a m33) MulBox(box d2.Box) d2.Box {
 	ya, yb = d2.MinElem(ya, yb), d2.MaxElem(ya, yb)
 	min := xa.Add(ya).Add(t)
 	max := xb.Add(yb).Add(t)
-	return d2.Box{min, max}
+	return r2.Box{min, max}
 }
 
 // Determinant returns the determinant of a 4x4 matrix.

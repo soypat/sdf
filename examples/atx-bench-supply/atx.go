@@ -59,14 +59,14 @@ func main() {
 
 	// Begin working on regulated step-down block
 	regOut = sdf.Array2D(bananaPlugSmall, sdf.V2i{2, 1}, r2.Vec{bananaSpacing, bananaSpacing})
-	bplugX := regOut.BoundingBox().Size().X
+	bplugX := bbSize(regBlock.Bounds()).X
 	vDisp := sdf.Transform2D(voltageDisplay, sdf.Translate2d(r2.Vec{bplugX / 2, vDispH/2 + bananaSpacing/2}))
 	regOut = sdf.Union2D(regOut, vDisp)
 	regOut = sdf.Transform2D(regOut, sdf.Translate2d(r2.Vec{-atxW/2 - bplugX/2 + vDispW/2 + 12, atxH/2 - 12 - vDispH/2 - bananaSpacing}))
 	// Create mound for step up outputs.
-	regSz := regOut.BoundingBox().Size()
+	regSz := bbSize(regBlock.Bounds())
 	regBlock = form2.Box(r2.Vec{regSz.X + regBlockMargin, regSz.Y + regBlockMargin}, regBlockMargin/2)
-	regBlock = sdf.Transform2D(regBlock, sdf.Translate2d(regOut.BoundingBox().Center()))
+	regBlock = sdf.Transform2D(regBlock, sdf.Translate2d(bbCenter(regOut.Bounds())))
 	regBlock = sdf.Difference2D(regBlock, regOut)
 	regBlock3 := sdf.Extrude3D(regBlock, panelThickness+regBlockDepth) // extrude does it both ways.
 	regBlock3 = sdf.Transform3D(regBlock3, sdf.Translate3D(r3.Vec{0, 0, regBlockDepth / 2}))
@@ -95,4 +95,12 @@ func must(err error) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func bbSize(bb r2.Box) r2.Vec {
+	return r2.Sub(bb.Max, bb.Min)
+}
+
+func bbCenter(bb r2.Box) r2.Vec {
+	return r2.Add(bb.Min, r2.Scale(0.5, bbSize(bb)))
 }

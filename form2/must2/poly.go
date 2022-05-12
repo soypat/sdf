@@ -14,7 +14,7 @@ type polygon struct {
 	vertex []r2.Vec  // vertices
 	vector []r2.Vec  // unit line vectors
 	length []float64 // line lengths
-	bb     d2.Box    // bounding box
+	bb     r2.Box    // bounding box
 }
 
 // Polygon returns an SDF2 made from a closed set of line segments.
@@ -48,7 +48,7 @@ func Polygon(vertex []r2.Vec) sdf.SDF2 {
 		vmax = d2.MaxElem(vmax, s.vertex[i])
 	}
 
-	s.bb = d2.Box{r2.Vec{vmin.X, vmin.Y}, r2.Vec{vmax.X, vmax.Y}}
+	s.bb = r2.Box{r2.Vec{vmin.X, vmin.Y}, r2.Vec{vmax.X, vmax.Y}}
 	return &s
 }
 
@@ -107,7 +107,7 @@ func (s *polygon) Evaluate(p r2.Vec) float64 {
 }
 
 // BoundingBox returns the bounding box of a 2d polygon.
-func (s *polygon) BoundingBox() d2.Box {
+func (s *polygon) BoundingBox() r2.Box {
 	return s.bb
 }
 

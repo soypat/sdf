@@ -12,7 +12,7 @@ import (
 // SDF3 is the interface to a 3d signed distance function object.
 type SDF3 interface {
 	Evaluate(p r3.Vec) float64
-	BoundingBox() d3.Box
+	BoundingBox() r3.Box
 }
 
 type SDF3Union interface {
@@ -30,7 +30,7 @@ type revolution3 struct {
 	sdf   SDF2
 	theta float64 // angle for partial revolutions
 	norm  r2.Vec  // pre-calculated normal to theta line
-	bb    d3.Box
+	bb    r3.Box
 }
 
 // Revolve3D returns an SDF3 for a solid of revolution.
@@ -70,11 +70,11 @@ func Revolve3D(sdf SDF2, theta float64) SDF3 {
 			vset = append(vset, r2.Vec{0, -1})
 		}
 	}
-	bb := s.sdf.BoundingBox()
+	bb := s.sdf.Bounds()
 	l := math.Max(math.Abs(bb.Min.X), math.Abs(bb.Max.X))
 	vmin := r2.Scale(l, vset.Min())
 	vmax := r2.Scale(l, vset.Max())
-	s.bb = d3.Box{r3.Vec{vmin.X, vmin.Y, bb.Min.Y}, r3.Vec{vmax.X, vmax.Y, bb.Max.Y}}
+	s.bb = r3.Box{r3.Vec{vmin.X, vmin.Y, bb.Min.Y}, r3.Vec{vmax.X, vmax.Y, bb.Max.Y}}
 	return &s
 }
 
@@ -97,7 +97,7 @@ func (s *revolution3) Evaluate(p r3.Vec) float64 {
 }
 
 // BoundingBox returns the bounding box for a solid of revolution.
-func (s *revolution3) BoundingBox() d3.Box {
+func (s *revolution3) BoundingBox() r3.Box {
 	return s.bb
 }
 
@@ -106,7 +106,7 @@ type extrude3 struct {
 	sdf     SDF2
 	height  float64
 	extrude ExtrudeFunc
-	bb      d3.Box
+	bb      r3.Box
 }
 
 // Extrude3D does a linear extrude on an SDF3.
@@ -116,8 +116,8 @@ func Extrude3D(sdf SDF2, height float64) SDF3 {
 	s.height = height / 2
 	s.extrude = NormalExtrude
 	// work out the bounding box
-	bb := sdf.BoundingBox()
-	s.bb = d3.Box{r3.Vec{bb.Min.X, bb.Min.Y, -s.height}, r3.Vec{bb.Max.X, bb.Max.Y, s.height}}
+	bb := sdf.Bounds()
+	s.bb = r3.Box{r3.Vec{bb.Min.X, bb.Min.Y, -s.height}, r3.Vec{bb.Max.X, bb.Max.Y, s.height}}
 	return &s
 }
 
@@ -128,9 +128,9 @@ func TwistExtrude3D(sdf SDF2, height, twist float64) SDF3 {
 	s.height = height / 2
 	s.extrude = TwistExtrude(height, twist)
 	// work out the bounding box
-	bb := sdf.BoundingBox()
+	bb := sdf.Bounds()
 	l := r2.Norm(bb.Max)
-	s.bb = d3.Box{r3.Vec{-l, -l, -s.height}, r3.Vec{l, l, s.height}}
+	s.bb = r3.Box{r3.Vec{-l, -l, -s.height}, r3.Vec{l, l, s.height}}
 	return &s
 }
 
@@ -141,9 +141,9 @@ func ScaleExtrude3D(sdf SDF2, height float64, scale r2.Vec) SDF3 {
 	s.height = height / 2
 	s.extrude = ScaleExtrude(height, scale)
 	// work out the bounding box
-	bb := sdf.BoundingBox()
+	bb := d2.Box(sdf.Bounds())
 	bb = bb.Extend(d2.Box{d2.MulElem(bb.Min, scale), d2.MulElem(bb.Max, scale)})
-	s.bb = d3.Box{r3.Vec{bb.Min.X, bb.Min.Y, -s.height}, r3.Vec{bb.Max.X, bb.Max.Y, s.height}}
+	s.bb = r3.Box{r3.Vec{bb.Min.X, bb.Min.Y, -s.height}, r3.Vec{bb.Max.X, bb.Max.Y, s.height}}
 	return &s
 }
 
@@ -154,10 +154,10 @@ func ScaleTwistExtrude3D(sdf SDF2, height, twist float64, scale r2.Vec) SDF3 {
 	s.height = height / 2
 	s.extrude = ScaleTwistExtrude(height, twist, scale)
 	// work out the bounding box
-	bb := sdf.BoundingBox()
+	bb := d2.Box(sdf.Bounds())
 	bb = bb.Extend(d2.Box{d2.MulElem(bb.Min, scale), d2.MulElem(bb.Max, scale)})
 	l := r2.Norm(bb.Max)
-	s.bb = d3.Box{r3.Vec{-l, -l, -s.height}, r3.Vec{l, l, s.height}}
+	s.bb = r3.Box{r3.Vec{-l, -l, -s.height}, r3.Vec{l, l, s.height}}
 	return &s
 }
 
@@ -177,7 +177,7 @@ func (s *extrude3) SetExtrude(extrude ExtrudeFunc) {
 }
 
 // BoundingBox returns the bounding box for an extrusion.
-func (s *extrude3) BoundingBox() d3.Box {
+func (s *extrude3) BoundingBox() r3.Box {
 	return s.bb
 }
 
@@ -190,7 +190,7 @@ type extrudeRounded struct {
 	sdf    SDF2
 	height float64
 	round  float64
-	bb     d3.Box
+	bb     r3.Box
 }
 
 // ExtrudeRounded3D extrudes an SDF2 to an SDF3 with rounded edges.
@@ -213,8 +213,8 @@ func ExtrudeRounded3D(sdf SDF2, height, round float64) SDF3 {
 		round:  round,
 	}
 	// work out the bounding box
-	bb := sdf.BoundingBox()
-	s.bb = d3.Box{
+	bb := sdf.Bounds()
+	s.bb = r3.Box{
 		Min: r3.Sub(r3.Vec{bb.Min.X, bb.Min.Y, -s.height}, d3.Elem(round)),
 		Max: r3.Add(r3.Vec{bb.Max.X, bb.Max.Y, s.height}, d3.Elem(round)),
 	}
@@ -250,7 +250,7 @@ func (s *extrudeRounded) Evaluate(p r3.Vec) float64 {
 }
 
 // BoundingBox returns the bounding box for a rounded extrusion.
-func (s *extrudeRounded) BoundingBox() d3.Box {
+func (s *extrudeRounded) BoundingBox() r3.Box {
 	return s.bb
 }
 
@@ -262,7 +262,7 @@ type loft3 struct {
 	sdf0, sdf1 SDF2
 	height     float64
 	round      float64
-	bb         d3.Box
+	bb         r3.Box
 }
 
 // Loft3D extrudes an SDF3 that transitions between two SDF2 shapes.
@@ -284,10 +284,10 @@ func Loft3D(sdf0, sdf1 SDF2, height, round float64) SDF3 {
 		round:  round,
 	}
 	// work out the bounding box
-	bb0 := sdf0.BoundingBox()
-	bb1 := sdf1.BoundingBox()
+	bb0 := d2.Box(sdf0.Bounds())
+	bb1 := d2.Box(sdf1.Bounds())
 	bb := bb0.Extend(bb1)
-	s.bb = d3.Box{
+	s.bb = r3.Box{
 		Min: r3.Sub(r3.Vec{bb.Min.X, bb.Min.Y, -s.height}, d3.Elem(round)),
 		Max: r3.Add(r3.Vec{bb.Max.X, bb.Max.Y, s.height}, d3.Elem(round))}
 	return &s
@@ -327,7 +327,7 @@ func (s *loft3) Evaluate(p r3.Vec) float64 {
 }
 
 // BoundingBox returns the bounding box for a loft extrusion.
-func (s *loft3) BoundingBox() d3.Box {
+func (s *loft3) BoundingBox() r3.Box {
 	return s.bb
 }
 
@@ -338,7 +338,7 @@ type transform3 struct {
 	sdf     SDF3
 	matrix  m44
 	inverse m44
-	bb      d3.Box
+	bb      r3.Box
 }
 
 // Transform3D applies a transformation matrix to an SDF3.
@@ -358,7 +358,7 @@ func (s *transform3) Evaluate(p r3.Vec) float64 {
 }
 
 // BoundingBox returns the bounding box of a transformed SDF3.
-func (s *transform3) BoundingBox() d3.Box {
+func (s *transform3) BoundingBox() r3.Box {
 	return s.bb
 }
 
@@ -368,7 +368,7 @@ func (s *transform3) BoundingBox() d3.Box {
 type scaleUniform3 struct {
 	sdf     SDF3
 	k, invK float64
-	bb      d3.Box
+	bb      r3.Box
 }
 
 // ScaleUniform3D uniformly scales an SDF3 on all axes.
@@ -390,7 +390,7 @@ func (s *scaleUniform3) Evaluate(p r3.Vec) float64 {
 }
 
 // BoundingBox returns the bounding box of a uniformly scaled SDF3.
-func (s *scaleUniform3) BoundingBox() d3.Box {
+func (s *scaleUniform3) BoundingBox() r3.Box {
 	return s.bb
 }
 
@@ -398,7 +398,7 @@ func (s *scaleUniform3) BoundingBox() d3.Box {
 type union3 struct {
 	sdf []SDF3
 	min MinFunc
-	bb  d3.Box
+	bb  r3.Box
 }
 
 // Union3D returns the union of multiple SDF3 objects.
@@ -417,11 +417,11 @@ func Union3D(sdf ...SDF3) SDF3Union {
 		}
 	}
 	// work out the bounding box
-	bb := s.sdf[0].BoundingBox()
+	bb := d3.Box(s.sdf[0].BoundingBox())
 	for _, x := range s.sdf {
-		bb = bb.Extend(x.BoundingBox())
+		bb = bb.Extend(d3.Box(x.BoundingBox()))
 	}
-	s.bb = bb
+	s.bb = r3.Box(bb)
 	s.min = math.Min
 	return &s
 }
@@ -445,7 +445,7 @@ func (s *union3) SetMin(min MinFunc) {
 }
 
 // BoundingBox returns the bounding box of an SDF3 union.
-func (s *union3) BoundingBox() d3.Box {
+func (s *union3) BoundingBox() r3.Box {
 	return s.bb
 }
 
@@ -454,7 +454,7 @@ type diff3 struct {
 	s0  SDF3
 	s1  SDF3
 	max MaxFunc
-	bb  d3.Box
+	bb  r3.Box
 }
 
 // Difference3D returns the difference of two SDF3s, s0 - s1.
@@ -482,7 +482,7 @@ func (s *diff3) SetMax(max MaxFunc) {
 }
 
 // BoundingBox returns the bounding box of the SDF3 difference.
-func (s *diff3) BoundingBox() d3.Box {
+func (s *diff3) BoundingBox() r3.Box {
 	return s.bb
 }
 
@@ -490,7 +490,7 @@ func (s *diff3) BoundingBox() d3.Box {
 type elongate3 struct {
 	sdf    SDF3   // the sdf being elongated
 	hp, hn r3.Vec // positive/negative elongation vector
-	bb     d3.Box // bounding box
+	bb     r3.Box // bounding box
 }
 
 // Elongate3D returns the elongation of an SDF3.
@@ -502,10 +502,10 @@ func Elongate3D(sdf SDF3, h r3.Vec) SDF3 {
 		hn:  r3.Scale(-0.5, h),
 	}
 	// bounding box
-	bb := sdf.BoundingBox()
+	bb := d3.Box(sdf.BoundingBox())
 	bb0 := bb.Translate(s.hp)
 	bb1 := bb.Translate(s.hn)
-	s.bb = bb0.Extend(bb1)
+	s.bb = r3.Box(bb0.Extend(bb1))
 	return &s
 }
 
@@ -516,7 +516,7 @@ func (s *elongate3) Evaluate(p r3.Vec) float64 {
 }
 
 // BoundingBox returns the bounding box of an elongated SDF3.
-func (s *elongate3) BoundingBox() d3.Box {
+func (s *elongate3) BoundingBox() r3.Box {
 	return s.bb
 }
 
@@ -525,7 +525,7 @@ type intersection3 struct {
 	s0  SDF3
 	s1  SDF3
 	max MaxFunc
-	bb  d3.Box
+	bb  r3.Box
 }
 
 // Intersect3D returns the intersection of two SDF3s.
@@ -554,7 +554,7 @@ func (s *intersection3) SetMax(max MaxFunc) {
 }
 
 // BoundingBox returns the bounding box of an SDF3 intersection.
-func (s *intersection3) BoundingBox() d3.Box {
+func (s *intersection3) BoundingBox() r3.Box {
 	return s.bb
 }
 
@@ -563,7 +563,7 @@ type cut3 struct {
 	sdf SDF3
 	a   r3.Vec // point on plane
 	n   r3.Vec // normal to plane
-	bb  d3.Box // bounding box
+	bb  r3.Box // bounding box
 }
 
 // Cut3D cuts an SDF3 along a plane passing through a with normal n.
@@ -584,7 +584,7 @@ func (s *cut3) Evaluate(p r3.Vec) float64 {
 }
 
 // BoundingBox returns the bounding box of the cut SDF3.
-func (s *cut3) BoundingBox() d3.Box {
+func (s *cut3) BoundingBox() r3.Box {
 	return s.bb
 }
 
@@ -594,7 +594,7 @@ type array3 struct {
 	num  V3i
 	step r3.Vec
 	min  MinFunc
-	bb   d3.Box
+	bb   r3.Box
 }
 
 // Array3D returns an XYZ array of a given SDF3
@@ -609,9 +609,9 @@ func Array3D(sdf SDF3, num V3i, step r3.Vec) SDF3Union {
 	s.step = step
 	s.min = math.Min
 	// work out the bounding box
-	bb0 := sdf.BoundingBox()
+	bb0 := d3.Box(sdf.BoundingBox())
 	bb1 := bb0.Translate(d3.MulElem(step, num.SubScalar(1).ToV3()))
-	s.bb = bb0.Extend(bb1)
+	s.bb = r3.Box(bb0.Extend(bb1))
 	return &s
 }
 
@@ -635,7 +635,7 @@ func (s *array3) Evaluate(p r3.Vec) float64 {
 }
 
 // BoundingBox returns the bounding box of an XYZ SDF3 array.
-func (s *array3) BoundingBox() d3.Box {
+func (s *array3) BoundingBox() r3.Box {
 	return s.bb
 }
 
@@ -645,7 +645,7 @@ type rotateUnion struct {
 	num  int
 	step m44
 	min  MinFunc
-	bb   d3.Box
+	bb   r3.Box
 }
 
 // RotateUnion3D creates a union of SDF3s rotated about the z-axis.
@@ -661,7 +661,7 @@ func RotateUnion3D(sdf SDF3, num int, step m44) SDF3Union {
 	s.step = step.Inverse()
 	s.min = math.Min
 	// work out the bounding box
-	v := sdf.BoundingBox().Vertices()
+	v := d3.Box(sdf.BoundingBox()).Vertices()
 	bbMin := v[0]
 	bbMax := v[0]
 	for i := 0; i < s.num; i++ {
@@ -670,7 +670,7 @@ func RotateUnion3D(sdf SDF3, num int, step m44) SDF3Union {
 		mulVertices3(v, step)
 		// v.MulVertices(step)
 	}
-	s.bb = d3.Box{bbMin, bbMax}
+	s.bb = r3.Box{bbMin, bbMax}
 	return &s
 }
 
@@ -692,7 +692,7 @@ func (s *rotateUnion) SetMin(min MinFunc) {
 }
 
 // BoundingBox returns the bounding box of a rotate/union object.
-func (s *rotateUnion) BoundingBox() d3.Box {
+func (s *rotateUnion) BoundingBox() r3.Box {
 	return s.bb
 }
 
@@ -700,7 +700,7 @@ func (s *rotateUnion) BoundingBox() d3.Box {
 type rotateCopy3 struct {
 	sdf   SDF3
 	theta float64
-	bb    d3.Box
+	bb    r3.Box
 }
 
 // RotateCopy3D rotates and creates N copies of an SDF3 about the z-axis.
@@ -714,7 +714,7 @@ func RotateCopy3D(sdf SDF3, num int) SDF3 {
 	s.sdf = sdf
 	s.theta = tau / float64(num)
 	// work out the bounding box
-	bb := sdf.BoundingBox()
+	bb := d3.Box(sdf.BoundingBox())
 	zmax := bb.Max.Z
 	zmin := bb.Min.Z
 	rmax := 0.0
@@ -726,7 +726,7 @@ func RotateCopy3D(sdf SDF3, num int) SDF3 {
 			rmax = l
 		}
 	}
-	s.bb = d3.Box{r3.Vec{-rmax, -rmax, zmin}, r3.Vec{rmax, rmax, zmax}}
+	s.bb = r3.Box{r3.Vec{-rmax, -rmax, zmin}, r3.Vec{rmax, rmax, zmax}}
 	return &s
 }
 
@@ -739,7 +739,7 @@ func (s *rotateCopy3) Evaluate(p r3.Vec) float64 {
 }
 
 // BoundingBox returns the bounding box of a rotate/copy SDF3.
-func (s *rotateCopy3) BoundingBox() d3.Box {
+func (s *rotateCopy3) BoundingBox() r3.Box {
 	return s.bb
 }
 
@@ -790,7 +790,7 @@ func (s *ConnectedSDF3) BoundingBox() d3.Box {
 type offset3 struct {
 	sdf      SDF3    // the underlying SDF
 	distance float64 // the distance the SDF is offset by
-	bb       d3.Box  // bounding box
+	bb       r3.Box  // bounding box
 }
 
 // Offset3D returns an SDF3 that offsets the distance function of another SDF3.
@@ -800,8 +800,8 @@ func Offset3D(sdf SDF3, offset float64) SDF3 {
 		distance: offset,
 	}
 	// bounding box
-	bb := sdf.BoundingBox()
-	s.bb = d3.NewBox(bb.Center(), r3.Add(bb.Size(), d3.Elem(2*offset)))
+	bb := d3.Box(sdf.BoundingBox())
+	s.bb = r3.Box(d3.NewBox(bb.Center(), r3.Add(bb.Size(), d3.Elem(2*offset))))
 	return &s
 }
 
@@ -811,7 +811,7 @@ func (s *offset3) Evaluate(p r3.Vec) float64 {
 }
 
 // BoundingBox returns the bounding box of an offset SDF3.
-func (s *offset3) BoundingBox() d3.Box {
+func (s *offset3) BoundingBox() r3.Box {
 	return s.bb
 }
 
@@ -819,7 +819,7 @@ func (s *offset3) BoundingBox() d3.Box {
 type shell3 struct {
 	sdf   SDF3    // parent sdf3
 	delta float64 // half shell thickness
-	bb    d3.Box  // bounding box
+	bb    r3.Box  // bounding box
 }
 
 // Shell3D returns an SDF3 that shells the surface of an existing SDF3.
@@ -827,10 +827,11 @@ func Shell3D(sdf SDF3, thickness float64) SDF3 {
 	if thickness <= 0 {
 		return empty3From(sdf)
 	}
+	bb := d3.Box(sdf.BoundingBox())
 	return &shell3{
 		sdf:   sdf,
 		delta: 0.5 * thickness,
-		bb:    sdf.BoundingBox().Enlarge(r3.Vec{thickness, thickness, thickness}),
+		bb:    r3.Box(bb.Enlarge(r3.Vec{thickness, thickness, thickness})),
 	}
 }
 
@@ -840,7 +841,7 @@ func (s *shell3) Evaluate(p r3.Vec) float64 {
 }
 
 // BoundingBox returns the bounding box of a shelled SDF3.
-func (s *shell3) BoundingBox() d3.Box {
+func (s *shell3) BoundingBox() r3.Box {
 	return s.bb
 }
 
@@ -893,7 +894,7 @@ func Orient3D(s SDF3, base r3.Vec, directions d3.Set) SDF3 {
 
 func empty3From(s SDF3) empty3 {
 	return empty3{
-		center: s.BoundingBox().Center(),
+		center: d3.Box(s.BoundingBox()).Center(),
 	}
 }
 
@@ -907,8 +908,8 @@ func (e empty3) Evaluate(r3.Vec) float64 {
 	return math.MaxFloat64
 }
 
-func (e empty3) BoundingBox() d3.Box {
-	return d3.Box{
+func (e empty3) BoundingBox() r3.Box {
+	return r3.Box{
 		Min: e.center,
 		Max: e.center,
 	}

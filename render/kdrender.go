@@ -72,14 +72,14 @@ func (s kdSDF) Nearest(v r3.Vec) kdTriangle {
 	return got.(kdTriangle)
 }
 
-func (s kdSDF) BoundingBox() d3.Box {
+func (s kdSDF) BoundingBox() r3.Box {
 	bb := s.tree.Root.Bounding
 	if bb == nil {
 		panic("got nil bounding box?")
 	}
 	tMin := bb.Min.(kdTriangle)
 	tMax := bb.Max.(kdTriangle)
-	return d3.Box{
+	return r3.Box{
 		Min: d3.MinElem(tMin.V[2], d3.MinElem(tMin.V[0], tMin.V[1])),
 		Max: d3.MaxElem(tMax.V[2], d3.MaxElem(tMax.V[0], tMax.V[1])),
 	}

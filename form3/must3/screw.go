@@ -4,7 +4,6 @@ import (
 	"math"
 
 	"github.com/soypat/sdf"
-	"github.com/soypat/sdf/internal/d3"
 	"gonum.org/v1/gonum/spatial/r2"
 	"gonum.org/v1/gonum/spatial/r3"
 )
@@ -17,7 +16,7 @@ type screw struct {
 	length float64  // total length of screw
 	taper  float64  // thread taper angle
 	// starts int     // number of thread starts
-	bb d3.Box // bounding box
+	bb r3.Box // bounding box
 }
 
 // Screw returns a screw SDF3.
@@ -49,11 +48,11 @@ func Screw(thread sdf.SDF2, length float64, taper float64, pitch float64, starts
 	s.lead = -pitch * float64(starts)
 	// Work out the bounding box.
 	// The max-y axis of the sdf2 bounding box is the radius of the thread.
-	bb := s.thread.BoundingBox()
+	bb := s.thread.Bounds()
 	r := bb.Max.Y
 	// add the taper increment
 	r += s.length * math.Tan(taper)
-	s.bb = d3.Box{r3.Vec{X: -r, Y: -r, Z: -s.length}, r3.Vec{X: r, Y: r, Z: s.length}}
+	s.bb = r3.Box{r3.Vec{X: -r, Y: -r, Z: -s.length}, r3.Vec{X: r, Y: r, Z: s.length}}
 	return &s
 }
 
@@ -80,6 +79,6 @@ func (s *screw) Evaluate(p r3.Vec) float64 {
 }
 
 // BoundingBox returns the bounding box for a 3d screw form.
-func (s *screw) BoundingBox() d3.Box {
+func (s *screw) BoundingBox() r3.Box {
 	return s.bb
 }
