@@ -12,24 +12,25 @@ import (
 var (
 	_ sdf.SDF3         = kdSDF{}
 	_ kdtree.Interface = kdTriangles{}
+	_ kdtree.Bounder   = kdTriangles{}
 )
 
 func NewKDSDF(model []Triangle3) sdf.SDF3 {
 	mykd := make(kdTriangles, len(model))
-	var min, max r3.Vec
+	// var min, max r3.Vec
 	for i := range mykd {
 		tri := kdTriangle(model[i])
 		mykd[i] = tri
-		triMin := d3.MinElem(tri.V[2], d3.MinElem(tri.V[0], tri.V[1]))
-		triMax := d3.MaxElem(tri.V[2], d3.MaxElem(tri.V[0], tri.V[1]))
-		min = d3.MinElem(triMin, min)
-		max = d3.MaxElem(triMax, max)
+		// triMin := d3.MinElem(tri.V[2], d3.MinElem(tri.V[0], tri.V[1]))
+		// triMax := d3.MaxElem(tri.V[2], d3.MaxElem(tri.V[0], tri.V[1]))
+		// min = d3.MinElem(triMin, min)
+		// max = d3.MaxElem(triMax, max)
 	}
-	tree := kdtree.New(mykd, false)
-	tree.Root.Bounding = &kdtree.Bounding{
-		Min: kdTriangle{V: [3]r3.Vec{min, min, min}},
-		Max: kdTriangle{V: [3]r3.Vec{max, max, max}},
-	}
+	tree := kdtree.New(mykd, true)
+	// tree.Root.Bounding = &kdtree.Bounding{
+	// 	Min: kdTriangle{V: [3]r3.Vec{min, min, min}},
+	// 	Max: kdTriangle{V: [3]r3.Vec{max, max, max}},
+	// }
 	return kdSDF{
 		tree: *tree,
 	}
@@ -40,16 +41,24 @@ type kdSDF struct {
 }
 
 func (s kdSDF) Evaluate(v r3.Vec) float64 {
+	const eps = 1e-3
 	// do some ad-hoc math with the triangle normal ????
 	triangle := s.Nearest(v)
 	minDist := math.MaxFloat64
+	// Find closest vertex
+	closest := r3.Vec{}
 	for i := 0; i < 3; i++ {
-		minDist = math.Min(minDist, r3.Norm(r3.Sub(v, triangle.V[i])))
+		vDist := r3.Norm(r3.Sub(v, triangle.V[i]))
+		if vDist < minDist {
+			closest = triangle.V[i]
+			minDist = vDist
+		}
 	}
-	c := kdCentroid(triangle)
-	pointDir := r3.Sub(v, c)
+	if minDist < eps {
+		return 0
+	}
+	pointDir := r3.Sub(v, closest)
 	n := triangle.Normal()
-	// return math.Copysign(minDist, math.Pi/2-alpha)
 	alpha := math.Acos(r3.Cos(n, pointDir))
 	return math.Copysign(minDist, math.Pi/2-alpha)
 }
@@ -90,7 +99,7 @@ func (k kdTriangles) Len() int { return len(k) }
 // Pivot partitions the list based on the dimension specified.
 func (k kdTriangles) Pivot(d kdtree.Dim) int {
 	p := kdPlane{dim: int(d), triangles: k}
-	kdtree.Partition(p, kdtree.MedianOfMedians(p))
+	return kdtree.Partition(p, kdtree.MedianOfMedians(p))
 	return 0
 }
 
@@ -98,6 +107,22 @@ func (k kdTriangles) Pivot(d kdtree.Dim) int {
 // open indexing equivalent to built-in slice indexing.
 func (k kdTriangles) Slice(start, end int) kdtree.Interface {
 	return k[start:end]
+}
+
+func (k kdTriangles) Bounds() *kdtree.Bounding {
+	max := r3.Vec{-math.MaxFloat64, -math.MaxFloat64, -math.MaxFloat64}
+	min := r3.Vec{math.MaxFloat64, math.MaxFloat64, math.MaxFloat64}
+	for _, tri := range k {
+		tbounds := tri.Bounds()
+		tmin := tbounds.Min.(kdTriangle)
+		tmax := tbounds.Max.(kdTriangle)
+		min = d3.MinElem(min, tmin.V[0])
+		max = d3.MaxElem(max, tmax.V[0])
+	}
+	return &kdtree.Bounding{
+		Min: kdTriangle{V: [3]r3.Vec{min, min, min}},
+		Max: kdTriangle{V: [3]r3.Vec{max, max, max}},
+	}
 }
 
 // Compare returns the signed distance of a from the plane passing through
@@ -118,6 +143,15 @@ func (k kdTriangle) Dims() int {
 // the parameter.
 func (a kdTriangle) Distance(b kdtree.Comparable) float64 {
 	return kdDist(a, b.(kdTriangle))
+}
+
+func (a kdTriangle) Bounds() *kdtree.Bounding {
+	min := d3.MinElem(a.V[2], d3.MinElem(a.V[0], a.V[1]))
+	max := d3.MaxElem(a.V[2], d3.MaxElem(a.V[0], a.V[1]))
+	return &kdtree.Bounding{
+		Min: kdTriangle{V: [3]r3.Vec{min, min, min}},
+		Max: kdTriangle{V: [3]r3.Vec{max, max, max}},
+	}
 }
 
 func (a kdTriangle) Normal() r3.Vec {

@@ -4,6 +4,8 @@
 
 # sdf (originally sdfx)
 
+<img align="right" width="190px" src="https://user-images.githubusercontent.com/26156425/167976351-ae377891-a215-4711-b202-e973b815b6bb.png">
+
 A rewrite of the original CAD package [`sdfx`](https://github.com/deadsy/sdfx) for generating 2D and 3D geometry using [Go](https://go.dev/).
 
  * Objects are modelled with 2d and 3d signed distance functions (SDFs).
@@ -123,3 +125,8 @@ This presented a few problems:
 None planned.
 
 My understanding is the `sdfx` author has a very different design goal to what I envision. See the bullet-list of issues at the start of [Questionable API design](#questionable-api-design).
+
+## Logo work
+Gopher rendition by [Juliette Whittingslow](https://www.instagram.com/artewitty/).  
+Gopher design authored by [Renée French](https://www.instagram.com/reneefrench)
+is licensed by the Creative Commons Attribution 3.0 licensed.
