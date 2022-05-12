@@ -8,9 +8,7 @@ import (
 )
 
 // Box is a 2d bounding box.
-type Box struct {
-	Min, Max r2.Vec
-}
+type Box r2.Box
 
 // NewBox2 creates a 2d box with a given center and size.
 func NewBox2(center, size r2.Vec) Box {

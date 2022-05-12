@@ -350,7 +350,7 @@ type map2 struct {
 // newMap2 returns a 2d region to grid coordinates map.
 func newMap2(bb d2.Box, grid V2i, flipy bool) (*map2, error) {
 	// sanity check the bounding box
-	bbSize := bb.Size()
+	bbSize := d2.Box(bb).Size()
 	if bbSize.X <= 0 || bbSize.Y <= 0 {
 		return nil, errors.New("bad bounding box")
 	}

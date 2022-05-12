@@ -35,7 +35,7 @@ func TestSTLWriteReadback(t *testing.T) {
 		TotalLength: 40.,
 		ShankLength: 10.0,
 	})
-	size := r3.Norm(s0.BoundingBox().Size())
+	size := r3.Norm(d3.Box(s0.Bounds()).Size())
 	// calculate relative tolerance
 	rtol := tol * size / quality
 	input, err := RenderAll(NewOctreeRenderer(s0, quality))

@@ -29,7 +29,7 @@ func TestKDSDF(t *testing.T) {
 	}
 	t.Error(len(model), "triangles")
 	kdf := render.NewKDSDF(model)
-	t.Error(kdf.BoundingBox())
+	t.Error(kdf.Bounds())
 	start := time.Now()
 	outside := kdf.Evaluate(r3.Vec{2, 0, 0}) // evaluate point outside bounds
 	inside := kdf.Evaluate(r3.Vec{0, 0, 0})  // evaluate point inside bounds

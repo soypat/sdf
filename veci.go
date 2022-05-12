@@ -1,12 +1,8 @@
-/*
-
-Integer 2D/3D Vectors
-
-*/
-
 package sdf
 
 import "gonum.org/v1/gonum/spatial/r3"
+
+// Integer vectors
 
 // V2i is a 2D integer vector.
 type V2i [2]int

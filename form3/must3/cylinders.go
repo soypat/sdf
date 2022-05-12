@@ -14,7 +14,7 @@ import (
 type box struct {
 	size  r3.Vec
 	round float64
-	bb    d3.Box
+	bb    r3.Box
 }
 
 // Box return an SDF3 for a 3d box (rounded corners with round > 0).
@@ -30,7 +30,7 @@ func Box(size r3.Vec, round float64) *box {
 	s := box{
 		size:  r3.Sub(size, d3.Elem(round)),
 		round: round,
-		bb:    d3.Box{Min: r3.Scale(-1, size), Max: size},
+		bb:    r3.Box{Min: r3.Scale(-1, size), Max: size},
 	}
 	return &s
 }
@@ -41,7 +41,7 @@ func (s *box) Evaluate(p r3.Vec) float64 {
 }
 
 // BoundingBox returns the bounding box for a 3d box.
-func (s *box) BoundingBox() d3.Box {
+func (s *box) Bounds() r3.Box {
 	return s.bb
 }
 
@@ -50,7 +50,7 @@ func (s *box) BoundingBox() d3.Box {
 // sphere is a sphere.
 type sphere struct {
 	radius float64
-	bb     d3.Box
+	bb     r3.Box
 }
 
 // Sphere return an SDF3 for a sphere.
@@ -61,7 +61,7 @@ func Sphere(radius float64) *sphere {
 	d := r3.Vec{radius, radius, radius}
 	s := sphere{
 		radius: radius,
-		bb:     d3.Box{Min: r3.Scale(-1, d), Max: d},
+		bb:     r3.Box{Min: r3.Scale(-1, d), Max: d},
 	}
 	return &s
 }
@@ -72,7 +72,7 @@ func (s *sphere) Evaluate(p r3.Vec) float64 {
 }
 
 // BoundingBox returns the bounding box for a sphere.
-func (s *sphere) BoundingBox() d3.Box {
+func (s *sphere) Bounds() r3.Box {
 	return s.bb
 }
 
@@ -83,7 +83,7 @@ type cylinder struct {
 	height float64
 	radius float64
 	round  float64
-	bb     d3.Box
+	bb     r3.Box
 }
 
 // Cylinder return an SDF3 for a cylinder (rounded edges with round > 0).
@@ -105,7 +105,7 @@ func Cylinder(height, radius, round float64) *cylinder {
 	s.radius = radius - round
 	s.round = round
 	d := r3.Vec{radius, radius, height / 2}
-	s.bb = d3.Box{r3.Scale(-1, d), d}
+	s.bb = r3.Box{r3.Scale(-1, d), d}
 	return &s
 }
 
@@ -121,7 +121,7 @@ func (s *cylinder) Evaluate(p r3.Vec) float64 {
 }
 
 // BoundingBox returns the bounding box for a cylinder.
-func (s *cylinder) BoundingBox() d3.Box {
+func (s *cylinder) Bounds() r3.Box {
 	return s.bb
 }
 
@@ -136,7 +136,7 @@ type cone struct {
 	u      r2.Vec  // normalized cone slope vector
 	n      r2.Vec  // normal to cone slope (points outward)
 	l      float64 // length of cone slope
-	bb     d3.Box  // bounding box
+	bb     r3.Box  // bounding box
 }
 
 // Cone returns the SDF3 for a trucated cone (round > 0 gives rounded edges).
@@ -164,7 +164,7 @@ func Cone(height, r0, r1, round float64) *cone {
 	s.l = r2.Norm(r2.Vec{s.r1, s.height}.Sub(r2.Vec{s.r0, -s.height}))
 	// work out the bounding box
 	r := math.Max(s.r0+round, s.r1+round)
-	s.bb = d3.Box{r3.Vec{-r, -r, -height / 2}, r3.Vec{r, r, height / 2}}
+	s.bb = r3.Box{r3.Vec{-r, -r, -height / 2}, r3.Vec{r, r, height / 2}}
 	return &s
 }
 
@@ -201,7 +201,7 @@ func (s *cone) Evaluate(p r3.Vec) float64 {
 }
 
 // BoundingBox return the bounding box for the trucated cone..
-func (s *cone) BoundingBox() d3.Box {
+func (s *cone) Bounds() r3.Box {
 	return s.bb
 }
 
@@ -234,8 +234,8 @@ func sdfBox3d(p, s r3.Vec) float64 {
 // ChamferedCylinder intersects a chamfered cylinder with an SDF3.
 func ChamferedCylinder(s sdf.SDF3, kb, kt float64) sdf.SDF3 {
 	// get the length and radius from the bounding box
-	l := s.BoundingBox().Max.Z
-	r := s.BoundingBox().Max.X
+	l := s.Bounds().Max.Z
+	r := s.Bounds().Max.X
 	p := form2.NewPolygon()
 	p.Add(0, -l)
 	p.Add(r, -l).Chamfer(r * kb)

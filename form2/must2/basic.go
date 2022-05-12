@@ -10,7 +10,7 @@ import (
 // circle is the 2d signed distance object for a circle.
 type circle struct {
 	radius float64
-	bb     d2.Box
+	bb     r2.Box
 }
 
 // Circle returns the SDF2 for a 2d circle.
@@ -21,7 +21,7 @@ func Circle(radius float64) *circle {
 	s := circle{}
 	s.radius = radius
 	d := r2.Vec{radius, radius}
-	s.bb = d2.Box{r2.Scale(-1, d), d}
+	s.bb = r2.Box{r2.Scale(-1, d), d}
 	return &s
 }
 
@@ -31,7 +31,7 @@ func (s *circle) Evaluate(p r2.Vec) float64 {
 }
 
 // BoundingBox returns the bounding box of a 2d circle.
-func (s *circle) BoundingBox() d2.Box {
+func (s *circle) Bounds() r2.Box {
 	return s.bb
 }
 
@@ -41,7 +41,7 @@ func (s *circle) BoundingBox() d2.Box {
 type box struct {
 	size  r2.Vec
 	round float64
-	bb    d2.Box
+	bb    r2.Box
 }
 
 // Box returns a 2d box.
@@ -50,7 +50,7 @@ func Box(size r2.Vec, round float64) *box {
 	s := box{}
 	s.size = r2.Sub(size, d2.Elem(round))
 	s.round = round
-	s.bb = d2.Box{r2.Scale(-1, size), size}
+	s.bb = r2.Box{r2.Scale(-1, size), size}
 	return &s
 }
 
@@ -60,7 +60,7 @@ func (s *box) Evaluate(p r2.Vec) float64 {
 }
 
 // BoundingBox returns the bounding box for a 2d box.
-func (s *box) BoundingBox() d2.Box {
+func (s *box) Bounds() r2.Box {
 	return s.bb
 }
 
@@ -70,7 +70,7 @@ func (s *box) BoundingBox() d2.Box {
 type line struct {
 	l     float64 // line length
 	round float64 // rounding
-	bb    d2.Box  // bounding box
+	bb    r2.Box  // bounding box
 }
 
 // Line returns a line from (-l/2,0) to (l/2,0).
@@ -78,7 +78,7 @@ func Line(l, round float64) *line {
 	s := line{}
 	s.l = l / 2
 	s.round = round
-	s.bb = d2.Box{r2.Vec{-s.l - round, -round}, r2.Vec{s.l + round, round}}
+	s.bb = r2.Box{r2.Vec{-s.l - round, -round}, r2.Vec{s.l + round, round}}
 	return &s
 }
 
@@ -92,6 +92,6 @@ func (s *line) Evaluate(p r2.Vec) float64 {
 }
 
 // BoundingBox returns the bounding box for a 2d line.
-func (s *line) BoundingBox() d2.Box {
+func (s *line) Bounds() r2.Box {
 	return s.bb
 }

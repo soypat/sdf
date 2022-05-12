@@ -8,9 +8,7 @@ import (
 )
 
 // d3.Box is a 3d bounding box.
-type Box struct {
-	Min, Max r3.Vec
-}
+type Box r3.Box
 
 // Newd3.Box creates a 3d box with a given center and size.
 func NewBox(center, size r3.Vec) Box {
