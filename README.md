@@ -4,7 +4,7 @@
 
 # sdf (originally sdfx)
 
-<img align="right" width="190px" src="https://user-images.githubusercontent.com/26156425/167976351-ae377891-a215-4711-b202-e973b815b6bb.png">
+<img align="right" width="220px" src="https://user-images.githubusercontent.com/26156425/167976351-ae377891-a215-4711-b202-e973b815b6bb.png">
 
 A rewrite of the original CAD package [`sdfx`](https://github.com/deadsy/sdfx) for generating 2D and 3D geometry using [Go](https://go.dev/).
 
