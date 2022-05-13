@@ -23,7 +23,8 @@ func WriteSTL(w io.Writer, model []Triangle3) error {
 	if len(model) == 0 {
 		return errors.New("empty triangle slice")
 	}
-	nt := len(model)
+
+	nt := int64(len(model)) // int64 cast so that next line works correctly on 32bit machines.
 	if nt > math.MaxUint32 {
 		return errors.New("amount of triangles in model exceeds STL design limits")
 	}
