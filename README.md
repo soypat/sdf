@@ -32,6 +32,7 @@ Here is a rendered bolt from one of the unit tests under [form3_test.go](./rende
 ## Roadmap
 - [ ] Add a 2D renderer and it's respective `Renderer2` interface.
 - [ ] Make 3D renderer multicore
+- [ ] Clean up thread API mess
 
 ## Comparison
 

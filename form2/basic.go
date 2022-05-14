@@ -56,8 +56,3 @@ func Line(l, round float64) (s sdf.SDF2, err error) {
 	}()
 	return must2.Line(l, round), err
 }
-
-// ThreadLookup lookups the parameters for a thread by name.
-func ThreadLookup(name string) (must2.ThreadParameters, error) {
-	return must2.ThreadLookup(name)
-}

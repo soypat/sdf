@@ -56,7 +56,7 @@ func Cylinder(height, radius, round float64) (s sdf.SDF3, err error) {
 			}
 		}
 	}()
-	return must3.Sphere(radius), err
+	return must3.Cylinder(height, radius, round), err
 }
 
 // Capsule3D return an SDF3 for a capsule.

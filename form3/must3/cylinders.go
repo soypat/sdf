@@ -109,11 +109,6 @@ func Cylinder(height, radius, round float64) *cylinder {
 	return &s
 }
 
-// Capsule3D return an SDF3 for a capsule.
-func Capsule(height, radius float64) *cylinder {
-	return Cylinder(height, radius, radius)
-}
-
 // Evaluate returns the minimum distance to a cylinder.
 func (s *cylinder) Evaluate(p r3.Vec) float64 {
 	d := sdfBox2d(r2.Vec{math.Hypot(p.X, p.Y), p.Z}, r2.Vec{s.radius, s.height})

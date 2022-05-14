@@ -2,7 +2,7 @@ package obj3
 
 import (
 	"github.com/soypat/sdf"
-	form2 "github.com/soypat/sdf/form2/must2"
+	"github.com/soypat/sdf/form2/obj2"
 	form3 "github.com/soypat/sdf/form3/must3"
 	"gonum.org/v1/gonum/spatial/r3"
 )
@@ -21,7 +21,7 @@ type BoltParms struct {
 // Bolt returns a simple bolt suitable for 3d printing.
 func Bolt(k BoltParms) (s sdf.SDF3, err error) {
 	// validate parameters
-	t, err := form2.ThreadLookup(k.Thread)
+	t, err := obj2.ThreadLookup(k.Thread)
 	if err != nil {
 		panic(err)
 	}
@@ -63,7 +63,7 @@ func Bolt(k BoltParms) (s sdf.SDF3, err error) {
 	if threadLength != 0 {
 		r := t.Radius - k.Tolerance
 		threadOffset := threadLength/2 + shankLength
-		isoThread := form2.ISOThread(r, t.Pitch, true)
+		isoThread := obj2.ISOThread(r, t.Pitch, true)
 		thread = form3.Screw(isoThread, threadLength, t.Taper, t.Pitch, 1)
 		// chamfer the thread
 		thread = form3.ChamferedCylinder(thread, 0, 0.5)

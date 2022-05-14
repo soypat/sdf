@@ -1,4 +1,4 @@
-package must2
+package obj2
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 	"math"
 
 	"github.com/soypat/sdf"
+	"github.com/soypat/sdf/form2/must2"
 )
 
 // Screws
@@ -38,12 +39,10 @@ type threadDatabase map[string]ThreadParameters
 var threadDB = initThreadLookup()
 
 // UTSAdd adds a Unified Thread Standard to the thread database.
-func (m threadDatabase) UTSAdd(
-	name string, // thread name
-	diameter float64, // screw major diameter
-	tpi float64, // threads per inch
-	ftof float64, // hex head flat to flat distance
-) {
+// diameter is screw major diameter.
+// tpi is threads per inch.
+// ftof is hex head flat to flat distance.
+func (m threadDatabase) UTSAdd(name string, diameter float64, tpi float64, ftof float64) {
 	if ftof <= 0 {
 		log.Panicf("bad flat to flat distance for thread \"%s\"", name)
 	}
@@ -212,7 +211,7 @@ func AcmeThread(radius float64, pitch float64) sdf.SDF2 {
 	xOfs0 := 0.25*pitch - delta
 	xOfs1 := 0.25*pitch + delta
 
-	acme := NewPolygon()
+	acme := must2.NewPolygon()
 	acme.Add(radius, 0)
 	acme.Add(radius, h)
 	acme.Add(xOfs1, h)
@@ -222,7 +221,7 @@ func AcmeThread(radius float64, pitch float64) sdf.SDF2 {
 	acme.Add(-radius, h)
 	acme.Add(-radius, 0)
 
-	return Polygon(acme.Vertices())
+	return must2.Polygon(acme.Vertices())
 }
 
 // ISOThread returns the 2d profile for an ISO/UTS thread.
@@ -236,7 +235,7 @@ func ISOThread(radius float64, pitch float64, external bool) sdf.SDF2 {
 	rMajor := radius
 	r0 := rMajor - (7.0/8.0)*h
 
-	iso := NewPolygon()
+	iso := must2.NewPolygon()
 	if external {
 		rRoot := (pitch / 8.0) / math.Cos(theta)
 		xOfs := (1.0 / 16.0) * pitch
@@ -260,7 +259,7 @@ func ISOThread(radius float64, pitch float64, external bool) sdf.SDF2 {
 		iso.Add(-pitch, rMinor)
 		iso.Add(-pitch, 0)
 	}
-	return Polygon(iso.Vertices())
+	return must2.Polygon(iso.Vertices())
 }
 
 // ANSIButtressThread returns the 2d profile for an ANSI 45/7 buttress thread.
@@ -276,7 +275,7 @@ func ANSIButtressThread(radius float64, pitch float64) sdf.SDF2 {
 	h1 := ((b / 2.0) * pitch) + (0.5 * h0)
 	hp := pitch / 2.0
 
-	tp := NewPolygon()
+	tp := must2.NewPolygon()
 	tp.Add(pitch, 0)
 	tp.Add(pitch, radius)
 	tp.Add(hp-((h0-h1)*t1), radius)
@@ -285,7 +284,7 @@ func ANSIButtressThread(radius float64, pitch float64) sdf.SDF2 {
 	tp.Add(-pitch, radius)
 	tp.Add(-pitch, 0)
 
-	return Polygon(tp.Vertices())
+	return must2.Polygon(tp.Vertices())
 }
 
 // PlasticButtressThread returns the 2d profile for a screw top style plastic buttress thread.
@@ -300,7 +299,7 @@ func PlasticButtressThread(radius float64, pitch float64) sdf.SDF2 {
 	h1 := ((b / 2.0) * pitch) + (0.5 * h0)
 	hp := pitch / 2.0
 
-	tp := NewPolygon()
+	tp := must2.NewPolygon()
 	tp.Add(pitch, 0)
 	tp.Add(pitch, radius)
 	tp.Add(hp-((h0-h1)*t1), radius).Smooth(0.05*pitch, 5)
@@ -309,5 +308,7 @@ func PlasticButtressThread(radius float64, pitch float64) sdf.SDF2 {
 	tp.Add(-pitch, radius)
 	tp.Add(-pitch, 0)
 
-	return Polygon(tp.Vertices())
+	return must2.Polygon(tp.Vertices())
 }
+func d2r(degrees float64) float64 { return degrees * math.Pi / 180. }
+func r2d(radians float64) float64 { return radians / math.Pi * 180. }

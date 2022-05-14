@@ -2,7 +2,7 @@ package obj3
 
 import (
 	"github.com/soypat/sdf"
-	form2 "github.com/soypat/sdf/form2/must2"
+	"github.com/soypat/sdf/form2/obj2"
 	form3 "github.com/soypat/sdf/form3/must3"
 )
 
@@ -19,7 +19,7 @@ func Nut(k NutParms) (s sdf.SDF3, err error) {
 		panic("Tolerance < 0")
 	}
 	// validate parameters
-	t, err := form2.ThreadLookup(k.Thread)
+	t, err := obj2.ThreadLookup(k.Thread)
 	if err != nil {
 		panic(err)
 	}
@@ -40,7 +40,7 @@ func Nut(k NutParms) (s sdf.SDF3, err error) {
 	}
 
 	// internal thread
-	isoThread := form2.ISOThread(t.Radius+k.Tolerance, t.Pitch, false)
+	isoThread := obj2.ISOThread(t.Radius+k.Tolerance, t.Pitch, false)
 
 	thread := form3.Screw(isoThread, nh, t.Taper, t.Pitch, 1)
 	return sdf.Difference3D(nut, thread), err // TODO error handling
