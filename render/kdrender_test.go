@@ -34,10 +34,10 @@ func TestKDSDF(t *testing.T) {
 	kdf := NewKDSDF(model)
 	t.Log(kdf.Bounds())
 	start := time.Now()
-	outside := kdf.Evaluate(r3.Vec{2, 0, 0}) // evaluate point outside bounds
-	inside := kdf.Evaluate(r3.Vec{0, 0, 0})  // evaluate point inside bounds
+	outside := kdf.Evaluate(r3.Vec{X: 2, Y: 0, Z: 0}) // evaluate point outside bounds
+	inside := kdf.Evaluate(r3.Vec{X: 0, Y: 0, Z: 0})  // evaluate point inside bounds
 
-	surface := kdf.Evaluate(r3.Vec{1, 0, 0}) // evaluate point on surface
+	surface := kdf.Evaluate(r3.Vec{X: 1, Y: 0, Z: 0}) // evaluate point on surface
 
 	t.Logf("outside:%.2g, inside:%.2g, surface:%.2g in %s", outside, inside, surface, time.Since(start))
 	// render.CreateSTL("kd_after.stl", render.NewOctreeRenderer(sdf, quality/6))
@@ -133,7 +133,6 @@ func (k kdTriangles) Len() int { return len(k) }
 func (k kdTriangles) Pivot(d kdtree.Dim) int {
 	p := kdPlane{dim: int(d), triangles: k}
 	return kdtree.Partition(p, kdtree.MedianOfMedians(p))
-	return 0
 }
 
 // Slice returns a slice of the list using zero-based half
@@ -143,8 +142,8 @@ func (k kdTriangles) Slice(start, end int) kdtree.Interface {
 }
 
 func (k kdTriangles) Bounds() *kdtree.Bounding {
-	max := r3.Vec{-math.MaxFloat64, -math.MaxFloat64, -math.MaxFloat64}
-	min := r3.Vec{math.MaxFloat64, math.MaxFloat64, math.MaxFloat64}
+	max := r3.Vec{X: -math.MaxFloat64, Y: -math.MaxFloat64, Z: -math.MaxFloat64}
+	min := r3.Vec{X: math.MaxFloat64, Y: math.MaxFloat64, Z: math.MaxFloat64}
 	for _, tri := range k {
 		tbounds := tri.Bounds()
 		tmin := tbounds.Min.(kdTriangle)

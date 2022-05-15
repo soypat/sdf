@@ -8,10 +8,6 @@
 
 A rewrite of the original CAD package [`sdfx`](https://github.com/deadsy/sdfx) for generating 2D and 3D geometry using [Go](https://go.dev/).
 
- * Objects are modelled with 2d and 3d signed distance functions (SDFs).
- * Objects are defined with Go code.
- * Objects are rendered to an STL file to be viewed and/or 3d printed.
-
 ## Highlights
 * 3d and 2d objects modelled with signed distance functions (SDFs).
 * Minimal and idiomatic API.

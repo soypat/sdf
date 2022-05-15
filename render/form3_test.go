@@ -110,7 +110,7 @@ func cylinderToSTL(t testing.TB, filename string) {
 }
 
 func boxToSTL(t testing.TB, filename string) {
-	object := form3.Box(r3.Vec{1, 2, 1}, .3)
+	object := form3.Box(r3.Vec{X: 1, Y: 2, Z: 1}, .3)
 	err := render.CreateSTL(filename, render.NewOctreeRenderer(object, quality))
 	if err != nil {
 		t.Fatal(err)
