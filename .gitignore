@@ -6,6 +6,7 @@
 
 # Exclude CPU and memory profiles
 *.prof
+*.pprof
 
 *.png
 # Exclude all png files except for test files

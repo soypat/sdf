@@ -67,6 +67,8 @@ Advantages of soypat/sdf:
 - Uses gonum's `spatial` package
   - `sdfx` has own vector types with methods which [hurt code legibility](https://github.com/deadsy/sdfx/issues/48)
   - `spatial` types from gonum library with correct Triangle degeneracy calculation. `deadsy/sdfx`'s Degenerate calculation is incorrect.
+- Idiomatic [`thread`](./form3/obj3/thread/thread.go) package. Define arbitrary threads with ease using `Threader` interface.
+  - `deadsy/sdfx` defines threads with strings i.e. `"M16x2"`. `sdf` Defines threads with types corresponding to standards. i.e: `thread.ISO{D:16, P:2}`, which defines an M16x2 ISO thread.
 
 
 ## Contributing

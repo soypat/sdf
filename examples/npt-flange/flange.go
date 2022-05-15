@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/soypat/sdf"
 	form3 "github.com/soypat/sdf/form3/must3"
-	"github.com/soypat/sdf/form3/obj3"
+	"github.com/soypat/sdf/form3/obj3/thread"
 	"github.com/soypat/sdf/render"
 	"gonum.org/v1/gonum/spatial/r3"
 )
@@ -14,18 +14,19 @@ const (
 	internalDiameter = 1.5 / 2.
 	flangeH          = 7 / 25.4
 	flangeD          = 60. / 25.4
-	thread           = "npt_1/2"
 	// internal diameter scaling.
 	plaScale = 1.03
 )
 
 func main() {
 	var (
+		npt    thread.NPT
 		flange sdf.SDF3
 	)
-	pipe, err := obj3.Nut(obj3.NutParms{
-		Thread: thread,
-		Style:  obj3.CylinderCircular,
+	npt.SetFromNominal(1.0 / 2.0)
+	pipe, err := thread.Nut(thread.NutParms{
+		Thread: npt,
+		Style:  thread.NutCircular,
 	})
 	if err != nil {
 		panic(err)

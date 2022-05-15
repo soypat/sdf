@@ -2,6 +2,7 @@ package sdf
 
 import (
 	"math"
+	"strconv"
 
 	"github.com/soypat/sdf/internal/d2"
 	"github.com/soypat/sdf/internal/d3"
@@ -350,6 +351,9 @@ type transform3 struct {
 
 // Transform3D applies a transformation matrix to an SDF3.
 func Transform3D(sdf SDF3, matrix m44) SDF3 {
+	if sdf == nil {
+		panic("nil SDF3 argument")
+	}
 	s := transform3{}
 	s.sdf = sdf
 	s.matrix = matrix
@@ -418,9 +422,9 @@ func Union3D(sdf ...SDF3) SDF3Union {
 	s := union3{
 		sdf: sdf,
 	}
-	for _, x := range s.sdf {
+	for i, x := range s.sdf {
 		if x == nil {
-			panic("nil sdf argument found")
+			panic("nil sdf argument (" + strconv.Itoa(i) + ") to Union3D")
 		}
 	}
 	// work out the bounding box

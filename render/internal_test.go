@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/soypat/sdf/form3/obj3"
+	"github.com/soypat/sdf/form3/obj3/thread"
 	"github.com/soypat/sdf/internal/d3"
 	"gonum.org/v1/gonum/spatial/r3"
 )
@@ -28,9 +28,9 @@ func TestSTLWriteReadback(t *testing.T) {
 		quality = 200
 		tol     = 1e-5
 	)
-	s0, _ := obj3.Bolt(obj3.BoltParms{
-		Thread:      "M16x2",
-		Style:       obj3.CylinderHex,
+	s0, _ := thread.Bolt(thread.BoltParms{
+		Thread:      thread.ISO{D: 16, P: 2}, // M16x2
+		Style:       thread.NutHex,
 		Tolerance:   0.1,
 		TotalLength: 40.,
 		ShankLength: 10.0,

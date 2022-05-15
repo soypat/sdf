@@ -1,12 +1,36 @@
-package must3
+package thread
 
 import (
+	"errors"
 	"math"
 
 	"github.com/soypat/sdf"
 	"gonum.org/v1/gonum/spatial/r2"
 	"gonum.org/v1/gonum/spatial/r3"
 )
+
+// Screws
+// Screws are made by taking a 2D thread profile, rotating it about the z-axis and
+// spiralling it upwards as we move along z.
+//
+// The 2D thread profiles are a polygon of a single thread centered on the y-axis with
+// the x-axis as the screw axis. Most thread profiles are symmetric about the y-axis
+// but a few aren't (E.g. buttress threads) so in general we build the profile of
+// an entire pitch period.
+//
+// This code doesn't deal with thread tolerancing. If you want threads to fit properly
+// the radius of the thread will need to be tweaked (+/-) to give internal/external thread
+// clearance.
+
+type Threader interface {
+	Thread() (sdf.SDF2, error)
+	Parameters() Parameters
+}
+
+type ScrewParameters struct {
+	Length float64
+	Taper  float64
+}
 
 // screw is a 3d screw form.
 type screw struct {
@@ -24,36 +48,32 @@ type screw struct {
 // - thread taper angle (radians)
 // - pitch thread to thread distance
 // - number of thread starts (< 0 for left hand threads)
-func Screw(thread sdf.SDF2, length float64, taper float64, pitch float64, starts int) sdf.SDF3 {
+func Screw(length float64, thread Threader) (sdf.SDF3, error) {
 	if thread == nil {
-		panic("thread == nil")
+		return nil, errors.New("nil threader")
 	}
 	if length <= 0 {
-		panic("length <= 0")
+		return nil, errors.New("need greater than zero length")
 	}
-	if taper < 0 {
-		panic("taper < 0")
+	tsdf, err := thread.Thread()
+	if err != nil {
+		return nil, err
 	}
-	if taper >= math.Pi*0.5 {
-		panic("taper >= Pi * 0.5")
-	}
-	if pitch <= 0 {
-		panic("pitch <= 0")
-	}
+	params := thread.Parameters()
 	s := screw{}
-	s.thread = thread
-	s.pitch = pitch
+	s.thread = tsdf
+	s.pitch = params.Pitch
 	s.length = length / 2
-	s.taper = taper
-	s.lead = -pitch * float64(starts)
+	s.taper = params.Taper
+	s.lead = -s.pitch * float64(params.Starts)
 	// Work out the bounding box.
 	// The max-y axis of the sdf2 bounding box is the radius of the thread.
 	bb := s.thread.Bounds()
 	r := bb.Max.Y
 	// add the taper increment
-	r += s.length * math.Tan(taper)
-	s.bb = r3.Box{r3.Vec{X: -r, Y: -r, Z: -s.length}, r3.Vec{X: r, Y: r, Z: s.length}}
-	return &s
+	r += s.length * math.Tan(s.taper)
+	s.bb = r3.Box{Min: r3.Vec{X: -r, Y: -r, Z: -s.length}, Max: r3.Vec{X: r, Y: r, Z: s.length}}
+	return &s, nil
 }
 
 // Evaluate returns the minimum distance to a 3d screw form.
@@ -81,4 +101,10 @@ func (s *screw) Evaluate(p r3.Vec) float64 {
 // BoundingBox returns the bounding box for a 3d screw form.
 func (s *screw) Bounds() r3.Box {
 	return s.bb
+}
+
+func sawTooth(x, period float64) float64 {
+	x += period / 2
+	t := x / period
+	return period*(t-math.Floor(t)) - period/2
 }

@@ -59,12 +59,12 @@ func main() {
 
 	// Begin working on regulated step-down block
 	regOut = sdf.Array2D(bananaPlugSmall, sdf.V2i{2, 1}, r2.Vec{bananaSpacing, bananaSpacing})
-	bplugX := bbSize(regBlock.Bounds()).X
+	bplugX := bbSize(regOut.Bounds()).X
 	vDisp := sdf.Transform2D(voltageDisplay, sdf.Translate2d(r2.Vec{bplugX / 2, vDispH/2 + bananaSpacing/2}))
 	regOut = sdf.Union2D(regOut, vDisp)
 	regOut = sdf.Transform2D(regOut, sdf.Translate2d(r2.Vec{-atxW/2 - bplugX/2 + vDispW/2 + 12, atxH/2 - 12 - vDispH/2 - bananaSpacing}))
 	// Create mound for step up outputs.
-	regSz := bbSize(regBlock.Bounds())
+	regSz := bbSize(regOut.Bounds())
 	regBlock = form2.Box(r2.Vec{regSz.X + regBlockMargin, regSz.Y + regBlockMargin}, regBlockMargin/2)
 	regBlock = sdf.Transform2D(regBlock, sdf.Translate2d(bbCenter(regOut.Bounds())))
 	regBlock = sdf.Difference2D(regBlock, regOut)

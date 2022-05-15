@@ -19,6 +19,7 @@ func TestSTLCreateWriteRead(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer os.Remove("box.stl")
 	bfile, err := io.ReadAll(fp)
 	if err != nil {
 		t.Fatal(err)

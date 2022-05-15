@@ -10,7 +10,7 @@ import (
 	"github.com/soypat/sdf"
 	form2 "github.com/soypat/sdf/form2/must2"
 	form3 "github.com/soypat/sdf/form3/must3"
-	"github.com/soypat/sdf/form3/obj3"
+	"github.com/soypat/sdf/form3/obj3/thread"
 	"github.com/soypat/sdf/internal/d3"
 	"github.com/soypat/sdf/render"
 	"gonum.org/v1/gonum/spatial/r3"
@@ -126,14 +126,24 @@ func hexToSTL(t testing.TB, filename string) {
 }
 
 func boltToSTL(t testing.TB, filename string) {
-	object, _ := obj3.Bolt(obj3.BoltParms{
-		Thread:      "M16x2",
-		Style:       obj3.CylinderHex,
+	object, err := thread.Bolt(thread.BoltParms{
+		Thread:      thread.ISO{D: 16, P: 2}, // M16x2
+		Style:       thread.NutHex,
 		Tolerance:   0.1,
 		TotalLength: 60.0,
 		ShankLength: 10.0,
 	})
-	err := render.CreateSTL(filename, render.NewOctreeRenderer(object, quality))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// object, _ = obj3.Bolt(obj3.BoltParms{
+	// 	Thread:      "M16x2",
+	// 	Style:       obj3.CylinderHex,
+	// 	Tolerance:   0.1,
+	// 	TotalLength: 60.0,
+	// 	ShankLength: 10.0,
+	// })
+	err = render.CreateSTL(filename, render.NewOctreeRenderer(object, quality))
 	if err != nil {
 		t.Fatal(err)
 	}

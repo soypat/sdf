@@ -7,7 +7,7 @@ import (
 
 	"github.com/deadsy/sdfx/obj"
 	sdfxrender "github.com/deadsy/sdfx/render"
-	"github.com/soypat/sdf/form3/obj3"
+	"github.com/soypat/sdf/form3/obj3/thread"
 	"github.com/soypat/sdf/internal/d3"
 	"github.com/soypat/sdf/render"
 	"gonum.org/v1/gonum/spatial/r3"
@@ -38,9 +38,11 @@ func BenchmarkSDFXBolt(b *testing.B) {
 
 func BenchmarkBolt(b *testing.B) {
 	const output = "our_bolt.stl"
-	object, _ := obj3.Bolt(obj3.BoltParms{
-		Thread:      "npt_1/2",
-		Style:       obj3.CylinderHex,
+	npt := thread.NPT{}
+	npt.SetFromNominal(1.0 / 2.0)
+	object, _ := thread.Bolt(thread.BoltParms{
+		Thread:      npt, // M16x2
+		Style:       thread.NutHex,
 		Tolerance:   0.1,
 		TotalLength: 20,
 		ShankLength: 10,
@@ -51,7 +53,7 @@ func BenchmarkBolt(b *testing.B) {
 	}
 }
 
-func TestStressProfile(t *testing.T) {
+func testStressProfile(t *testing.T) {
 	const stlName = "stress.stl"
 	startProf(t, "stress.prof")
 	stlStressTest(t, stlName)
@@ -66,13 +68,14 @@ func TestStressProfile(t *testing.T) {
 }
 
 func stlStressTest(t testing.TB, filename string) {
-	object, _ := obj3.Bolt(obj3.BoltParms{
-		Thread:      "M16x2",
-		Style:       obj3.CylinderHex,
+	object, _ := thread.Bolt(thread.BoltParms{
+		Thread:      thread.ISO{D: 16, P: 2}, // M16x2
+		Style:       thread.NutHex,
 		Tolerance:   0.1,
 		TotalLength: 60.0,
 		ShankLength: 10.0,
 	})
+
 	err := render.CreateSTL(filename, render.NewOctreeRenderer(object, 500))
 	if err != nil {
 		t.Fatal(err)

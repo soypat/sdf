@@ -25,7 +25,7 @@ Click on image to go to code directory.
 
 | Example | Execution Time | File size |
 |---|---|---|
-|[ATX Bench power supply mod](atx-bench-supply)|0.5s|4540kB|
+|[ATX Bench power supply mod](atx-bench-supply)|1s|4540kB|
 
 [![ATX Bench power supply mod](fig/atx-bench-supply.png)](atx-bench-supply)
 
