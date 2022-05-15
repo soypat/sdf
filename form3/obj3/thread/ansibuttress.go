@@ -16,8 +16,8 @@ type ANSIButtress struct {
 
 var _ Threader = ANSIButtress{} // Compile time check of interface implementation.
 
-func (butt ANSIButtress) Parameters() Parameters {
-	return basic{D: butt.D, P: butt.P}.Parameters()
+func (butt ANSIButtress) ThreadParams() Parameters {
+	return basic{D: butt.D, P: butt.P}.ThreadParams()
 }
 
 // ANSIButtressThread returns the 2d profile for an ANSI 45/7 buttress thread.

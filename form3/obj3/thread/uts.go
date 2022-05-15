@@ -14,8 +14,8 @@ type UTS struct {
 
 var _ Threader = UTS{} // Interface implementation.
 
-func (uts UTS) Parameters() Parameters {
-	p := basic{D: uts.D, P: 1.0 / uts.TPI}.Parameters()
+func (uts UTS) ThreadParams() Parameters {
+	p := basic{D: uts.D, P: 1.0 / uts.TPI}.ThreadParams()
 	// TODO(soypat) add imperial hex flat-to-flat. See NPT for what that could look like.
 	return p
 }

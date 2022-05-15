@@ -17,8 +17,8 @@ type Acme struct {
 
 var _ Threader = Acme{} // Compile time check of interface implementation.
 
-func (acme Acme) Parameters() Parameters {
-	return basic{D: acme.D, P: acme.P}.Parameters()
+func (acme Acme) ThreadParams() Parameters {
+	return basic{D: acme.D, P: acme.P}.ThreadParams()
 }
 
 // AcmeThread returns the 2d profile for an acme thread.

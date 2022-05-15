@@ -21,9 +21,9 @@ type ISO struct {
 
 var _ Threader = ISO{} // Compile time check of interface implementation.
 
-func (iso ISO) Parameters() Parameters {
+func (iso ISO) ThreadParams() Parameters {
 	b := basic{D: iso.D, P: iso.P}
-	return b.Parameters()
+	return b.ThreadParams()
 }
 
 func (iso ISO) Thread() (sdf.SDF2, error) {

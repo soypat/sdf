@@ -24,7 +24,7 @@ import (
 
 type Threader interface {
 	Thread() (sdf.SDF2, error)
-	Parameters() Parameters
+	ThreadParams() Parameters
 }
 
 type ScrewParameters struct {
@@ -59,7 +59,7 @@ func Screw(length float64, thread Threader) (sdf.SDF3, error) {
 	if err != nil {
 		return nil, err
 	}
-	params := thread.Parameters()
+	params := thread.ThreadParams()
 	s := screw{}
 	s.thread = tsdf
 	s.pitch = params.Pitch

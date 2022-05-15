@@ -19,8 +19,8 @@ type NPT struct {
 
 var _ Threader = NPT{} // Compile time check of interface implementation.
 
-func (npt NPT) Parameters() Parameters {
-	p := ISO{D: npt.D, P: 1.0 / npt.TPI}.Parameters()
+func (npt NPT) ThreadParams() Parameters {
+	p := ISO{D: npt.D, P: 1.0 / npt.TPI}.ThreadParams()
 	p.Name = "NPT"
 	p.Taper = math.Atan(1.0 / 32.0) // standard NPT taper.
 	if npt.F2F > 0 {

@@ -16,8 +16,8 @@ type PlasticButtress struct {
 
 var _ Threader = PlasticButtress{} // Compile time check of interface implementation.
 
-func (butt PlasticButtress) Parameters() Parameters {
-	return basic{D: butt.D, P: butt.P}.Parameters()
+func (butt PlasticButtress) ThreadParams() Parameters {
+	return basic{D: butt.D, P: butt.P}.ThreadParams()
 }
 
 // Thread returns the 2d profile for a screw top style plastic buttress thread.

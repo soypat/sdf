@@ -10,7 +10,7 @@ type basic struct {
 	P float64
 }
 
-func (b basic) Parameters() Parameters {
+func (b basic) ThreadParams() Parameters {
 	radius := b.D / 2
 	return Parameters{
 		Name:   "basic",

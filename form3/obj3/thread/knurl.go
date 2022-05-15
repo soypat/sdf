@@ -36,8 +36,8 @@ func (k KnurlParams) Thread() (sdf.SDF2, error) {
 }
 
 // Parameters implements the Threader interface.
-func (k KnurlParams) Parameters() Parameters {
-	p := ISO{D: k.Radius * 2, P: k.Pitch, Ext: true}.Parameters()
+func (k KnurlParams) ThreadParams() Parameters {
+	p := ISO{D: k.Radius * 2, P: k.Pitch, Ext: true}.ThreadParams()
 	p.Starts = k.starts
 	return p
 }

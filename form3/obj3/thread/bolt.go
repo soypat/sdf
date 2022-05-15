@@ -31,7 +31,7 @@ func Bolt(k BoltParms) (s sdf.SDF3, err error) {
 	case k.Tolerance < 0:
 		err = errors.New("tolerance < 0")
 	}
-	param := k.Thread.Parameters()
+	param := k.Thread.ThreadParams()
 	// head
 	var head sdf.SDF3
 

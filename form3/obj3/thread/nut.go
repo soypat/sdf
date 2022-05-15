@@ -49,7 +49,7 @@ func Nut(k NutParms) (s sdf.SDF3, err error) {
 		return nil, err
 	}
 
-	params := k.Thread.Parameters()
+	params := k.Thread.ThreadParams()
 	// nut body
 	var nut sdf.SDF3
 	nr := params.HexRadius()
