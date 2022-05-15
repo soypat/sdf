@@ -68,7 +68,7 @@ func Cut2D(sdf SDF2, a, v r2.Vec) SDF2 {
 	s.sdf = sdf
 	s.a = a
 	v = r2.Unit(v)
-	s.n = r2.Vec{-v.Y, v.X}
+	s.n = r2.Vec{X: -v.Y, Y: v.X}
 	// TODO - cut the bounding box
 	s.bb = sdf.Bounds()
 	return &s
@@ -127,7 +127,7 @@ type ScaleUniformSDF2 struct {
 // ScaleUniform2D scales an SDF2 by k on each axis.
 // Distance is correct with scaling.
 func ScaleUniform2D(sdf SDF2, k float64) SDF2 {
-	m := Scale2d(r2.Vec{k, k})
+	m := Scale2d(r2.Vec{X: k, Y: k})
 	return &ScaleUniformSDF2{
 		sdf:  sdf,
 		k:    k,
@@ -150,14 +150,14 @@ func (s *ScaleUniformSDF2) Bounds() r2.Box {
 // Center2D centers the origin of an SDF2 on it's bounding box.
 func Center2D(s SDF2) SDF2 {
 	ofs := r2.Scale(-1, d2.Box(s.Bounds()).Center())
-	return Transform2D(s, Translate2d(ofs))
+	return Transform2D(s, Translate2D(ofs))
 }
 
 // CenterAndScale2D centers the origin of an SDF2 on it's bounding box, and then scales it.
 // Distance is correct with scaling.
 func CenterAndScale2D(s SDF2, k float64) SDF2 {
 	ofs := r2.Scale(-1, d2.Box(s.Bounds()).Center())
-	s = Transform2D(s, Translate2d(ofs))
+	s = Transform2D(s, Translate2D(ofs))
 	return ScaleUniform2D(s, k)
 }
 
@@ -201,7 +201,7 @@ func (s *array2) Evaluate(p r2.Vec) float64 {
 	d := math.MaxFloat64
 	for j := 0; j < s.num[0]; j++ {
 		for k := 0; k < s.num[1]; k++ {
-			x := p.Sub(r2.Vec{float64(j) * s.step.X, float64(k) * s.step.Y})
+			x := p.Sub(r2.Vec{X: float64(j) * s.step.X, Y: float64(k) * s.step.Y})
 			d = s.min(d, s.sdf.Evaluate(x))
 		}
 	}
@@ -243,7 +243,7 @@ func RotateUnion2D(sdf SDF2, num int, step m33) SDF2 {
 		bbMax = d2.MaxElem(bbMax, vset.Max())
 		MulVertices2(vset, step)
 	}
-	s.bb = r2.Box{bbMin, bbMax}
+	s.bb = r2.Box{Min: bbMin, Max: bbMax}
 	return &s
 }
 
@@ -295,7 +295,8 @@ func RotateCopy2D(sdf SDF2, n int) SDF2 {
 			rmax = l
 		}
 	}
-	s.bb = r2.Box{r2.Vec{-rmax, -rmax}, r2.Vec{rmax, rmax}}
+	max := r2.Vec{X: rmax, Y: rmax}
+	s.bb = r2.Box{Min: r2.Scale(-1, max), Max: max}
 	return &s
 }
 
@@ -351,9 +352,9 @@ func Slice2D(sdf SDF3, a, n r3.Vec) SDF2 {
 		va := v.Sub(s.a)
 		pa := va.Sub(r3.Scale(r3.Dot(n, va), n))
 		// work out the 3d point in terms of the 2d unit vectors
-		vec[i] = r2.Vec{pa.Dot(s.u), pa.Dot(s.v)}
+		vec[i] = r2.Vec{X: pa.Dot(s.u), Y: pa.Dot(s.v)}
 	}
-	s.bb = r2.Box{vec.Min(), vec.Max()}
+	s.bb = r2.Box{Min: vec.Min(), Max: vec.Max()}
 	return &s
 }
 
@@ -558,7 +559,7 @@ func LineOf2D(s SDF2, p0, p1 r2.Vec, pattern string) SDF2 {
 		dx = r2.Scale(1/float64(len(pattern)), dx)
 		for _, c := range pattern {
 			if c == 'x' {
-				objects = append(objects, Transform2D(s, Translate2d(x)))
+				objects = append(objects, Transform2D(s, Translate2D(x)))
 			}
 			x = x.Add(dx)
 		}
@@ -579,7 +580,7 @@ func Multi2D(s SDF2, positions d2.Set) SDF2 {
 	}
 	objects := make([]SDF2, len(positions))
 	for i, p := range positions {
-		objects[i] = Transform2D(s, Translate2d(p))
+		objects[i] = Transform2D(s, Translate2D(p))
 	}
 	return Union2D(objects...)
 }

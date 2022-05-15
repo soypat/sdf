@@ -52,28 +52,28 @@ func main() {
 	var outputs, regOut, regBlock sdf.SDF2
 	// Outputs banana plugs
 	outputs = sdf.Array2D(bananaPlugBig, sdf.V2i{4, 2}, r2.Vec{-bananaSpacing, bananaSpacing})
-	outputs = sdf.Transform2D(outputs, sdf.Translate2d(r2.Vec{atxW/2 - 15, -atxH/2 + 15}))
+	outputs = sdf.Transform2D(outputs, sdf.Translate2D(r2.Vec{atxW/2 - 15, -atxH/2 + 15}))
 
-	panel = sdf.Difference2D(panel, sdf.Transform2D(onButton, sdf.Translate2d(r2.Vec{atxW/2 - 25, atxH/2 - 15})))
+	panel = sdf.Difference2D(panel, sdf.Transform2D(onButton, sdf.Translate2D(r2.Vec{atxW/2 - 25, atxH/2 - 15})))
 	panel = sdf.Difference2D(panel, outputs)
 
 	// Begin working on regulated step-down block
 	regOut = sdf.Array2D(bananaPlugSmall, sdf.V2i{2, 1}, r2.Vec{bananaSpacing, bananaSpacing})
 	bplugX := bbSize(regOut.Bounds()).X
-	vDisp := sdf.Transform2D(voltageDisplay, sdf.Translate2d(r2.Vec{bplugX / 2, vDispH/2 + bananaSpacing/2}))
+	vDisp := sdf.Transform2D(voltageDisplay, sdf.Translate2D(r2.Vec{bplugX / 2, vDispH/2 + bananaSpacing/2}))
 	regOut = sdf.Union2D(regOut, vDisp)
-	regOut = sdf.Transform2D(regOut, sdf.Translate2d(r2.Vec{-atxW/2 - bplugX/2 + vDispW/2 + 12, atxH/2 - 12 - vDispH/2 - bananaSpacing}))
+	regOut = sdf.Transform2D(regOut, sdf.Translate2D(r2.Vec{-atxW/2 - bplugX/2 + vDispW/2 + 12, atxH/2 - 12 - vDispH/2 - bananaSpacing}))
 	// Create mound for step up outputs.
 	regSz := bbSize(regOut.Bounds())
 	regBlock = form2.Box(r2.Vec{regSz.X + regBlockMargin, regSz.Y + regBlockMargin}, regBlockMargin/2)
-	regBlock = sdf.Transform2D(regBlock, sdf.Translate2d(bbCenter(regOut.Bounds())))
+	regBlock = sdf.Transform2D(regBlock, sdf.Translate2D(bbCenter(regOut.Bounds())))
 	regBlock = sdf.Difference2D(regBlock, regOut)
 	regBlock3 := sdf.Extrude3D(regBlock, panelThickness+regBlockDepth) // extrude does it both ways.
 	regBlock3 = sdf.Transform3D(regBlock3, sdf.Translate3D(r3.Vec{0, 0, regBlockDepth / 2}))
 	panel = sdf.Difference2D(panel, regOut)
 
 	// Speaker clamps
-	scHole := sdf.Transform2D(speakerClamps, sdf.Translate2d(r2.Vec{-atxW/2 + spkClampW/2 + 12, -atxH/2 + spkClampH/2 + 12}))
+	scHole := sdf.Transform2D(speakerClamps, sdf.Translate2D(r2.Vec{-atxW/2 + spkClampW/2 + 12, -atxH/2 + spkClampH/2 + 12}))
 	panel = sdf.Difference2D(panel, scHole)
 
 	// Generate model

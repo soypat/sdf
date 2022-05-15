@@ -32,7 +32,7 @@ func (a V3i) AddScalar(b int) V3i {
 
 // Tor3.Vec converts V3i (integer) to r3.Vec (float).
 func (a V3i) ToV3() r3.Vec {
-	return r3.Vec{float64(a[0]), float64(a[1]), float64(a[2])}
+	return r3.Vec{X: float64(a[0]), Y: float64(a[1]), Z: float64(a[2])}
 }
 
 // Add adds two vectors. Return v = a + b.
