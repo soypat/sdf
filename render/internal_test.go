@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
-	"os"
+	"runtime"
 	"testing"
 
 	"github.com/soypat/sdf/form3/must3"
@@ -76,20 +76,44 @@ func TestSTLWriteReadback(t *testing.T) {
 }
 
 func TestOctreeMultithread(t *testing.T) {
-	oct := NewOctreeRenderer(must3.Sphere(1), 8)
+	oct := NewOctreeRenderer(must3.Sphere(20), 100)
 	oct.concurrent = 2
-	buf := make([]Triangle3, oct.concurrent*10)
+	buf := make([]Triangle3, oct.concurrent*100)
 	var err error
 	var nt int
 	var model []Triangle3
 	for err == nil {
 		nt, err = oct.ReadTriangles(buf)
-		model = append(model, buf[nt:]...)
+		model = append(model, buf[:nt]...)
 	}
 	if err != io.EOF {
 		t.Fatal(err)
 	}
-	fp, _ := os.Create("mt.stl")
-	defer fp.Close()
-	WriteSTL(fp, model)
+	if len(model) != oct.triangles {
+		t.Errorf("triangles lost. got %d. octree read %d", len(model), oct.triangles)
+	}
+	if oct.cubes != oct.cubesP {
+		t.Errorf("number of non empty cubes found %d must match number of cubes processed %d", oct.cubes, oct.cubesP)
+	}
+	t.Log(oct.triangles)
+
+}
+
+func BenchmarkBoltThreaded(b *testing.B) {
+	const output = "threaded_bolt.stl"
+	npt := thread.NPT{}
+	npt.SetFromNominal(1.0 / 2.0)
+	object, _ := thread.Bolt(thread.BoltParms{
+		Thread:      npt, // M16x2
+		Style:       thread.NutHex,
+		Tolerance:   0.1,
+		TotalLength: 20,
+		ShankLength: 10,
+	})
+
+	for i := 0; i < b.N; i++ {
+		oct := NewOctreeRenderer(object, 300)
+		oct.concurrent = runtime.NumCPU()
+		CreateSTL(output, oct)
+	}
 }

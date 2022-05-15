@@ -18,6 +18,12 @@ type octree struct {
 	unwritten triangle3Buffer
 	// concurrent goroutine processing.
 	concurrent int
+	// Number of triangles generated.
+	triangles int
+	// number of non empty cubes found.
+	cubes int
+	// number of cubes processed.
+	cubesP int
 }
 
 type cube struct {
@@ -56,8 +62,8 @@ func NewOctreeRenderer(s sdf.SDF3, meshCells int) *octree {
 	return &octree{
 		dc:        *newDc3(s, bb.Min, resolution, levels),
 		unwritten: triangle3Buffer{buf: make([]Triangle3, 0, 1024)},
-		todo:      cubes, //[]cube{{sdf.V3i{0, 0, 0}, levels - 1}}, // process the octree, start at the top level
-		// concurrent: 2,
+		todo:      cubes,
+		cubes:     1,
 	}
 }
 
@@ -79,7 +85,7 @@ func (oc *octree) ReadTriangles(dst []Triangle3) (n int, err error) {
 	}
 	// Number of additional triangles proccessed.
 	var nt int
-	if oc.concurrent <= 1 || len(oc.todo) < oc.concurrent || n < oc.concurrent {
+	if oc.concurrent < 1 || len(oc.todo) < oc.concurrent || len(dst) < oc.concurrent {
 		tproc, nc, newCubes := oc.readTriangles(dst[n:], oc.todo)
 		oc.todo = append(oc.todo, newCubes...)
 		oc.todo = oc.todo[nc:] // this leaks, luckily this is a short lived function?
@@ -124,6 +130,7 @@ func (oc *octree) readTriangles(dst []Triangle3, todo []cube) (n, cubesProcessed
 }
 
 // readTrianglesThreaded is a multithreaded triangle reader implementation for octree.
+// It writes nt triangles into dst.
 func (oc *octree) readTrianglesThreaded(dst []Triangle3) (nt int) {
 	var wg sync.WaitGroup
 	div := len(dst) / oc.concurrent
@@ -136,8 +143,13 @@ func (oc *octree) readTrianglesThreaded(dst []Triangle3) (nt int) {
 		wg.Add(1)
 		go func() {
 			start := div * i
-			work[i] = dst[start : start+div]
-			cubeWork[i] = oc.todo[i*divC : (i+1)*divC]
+			if i == oc.concurrent-1 {
+				work[i] = dst[start:]
+				cubeWork[i] = oc.todo[i*divC:]
+			} else {
+				work[i] = dst[start : start+div]
+				cubeWork[i] = oc.todo[i*divC : (i+1)*divC]
+			}
 			ntc, nc, newC := oc.readTriangles(work[i], cubeWork[i])
 			newCubesC[i] = newC
 			work[i] = work[i][:ntc]
@@ -153,8 +165,8 @@ func (oc *octree) readTrianglesThreaded(dst []Triangle3) (nt int) {
 		// Triangles written.
 		start := div*i - offset
 		if i != oc.concurrent-1 && len(work[i]) != div {
-			offset += div - len(work[i])
 			copy(dst[start+len(work[i]):], dst[start+div:])
+			offset += div - len(work[i])
 		}
 		nt += len(work[i])
 		// Cubes unprocessed.
@@ -207,6 +219,11 @@ func (oc *octree) processCube(dst []Triangle3, c cube) (writtenTriangles int, ne
 			}
 		}
 	}
+	oc.mu.Lock()
+	oc.triangles += writtenTriangles
+	oc.cubes += len(newCubes)
+	oc.cubesP++
+	oc.mu.Unlock()
 	return writtenTriangles, newCubes
 }
 

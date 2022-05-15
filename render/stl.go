@@ -76,7 +76,7 @@ func (h stlHeader) put(b []byte) {
 	binary.LittleEndian.PutUint32(b[80:], h.Count)
 }
 
-const trianglesInBuffer = 1 << 10
+const trianglesInBuffer = 1 << 14
 
 type stlReader struct {
 	r   Renderer
