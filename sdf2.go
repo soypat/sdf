@@ -127,7 +127,7 @@ type ScaleUniformSDF2 struct {
 // ScaleUniform2D scales an SDF2 by k on each axis.
 // Distance is correct with scaling.
 func ScaleUniform2D(sdf SDF2, k float64) SDF2 {
-	m := Scale2d(r2.Vec{X: k, Y: k})
+	m := Scale2D(r2.Vec{X: k, Y: k})
 	return &ScaleUniformSDF2{
 		sdf:  sdf,
 		k:    k,
@@ -241,7 +241,7 @@ func RotateUnion2D(sdf SDF2, num int, step m33) SDF2 {
 		bbMin = d2.MinElem(bbMin, vset.Min())
 		bbMin = d2.MinElem(bbMin, vset.Min())
 		bbMax = d2.MaxElem(bbMax, vset.Max())
-		MulVertices2(vset, step)
+		mulVertices2(vset, step)
 	}
 	s.bb = r2.Box{Min: bbMin, Max: bbMax}
 	return &s
@@ -250,7 +250,7 @@ func RotateUnion2D(sdf SDF2, num int, step m33) SDF2 {
 // Evaluate returns the minimum distance to a union of rotated SDF2s.
 func (s *rotateUnion2) Evaluate(p r2.Vec) float64 {
 	d := math.MaxFloat64
-	rot := Identity2d()
+	rot := identity2d()
 	for i := 0; i < s.num; i++ {
 		x := rot.MulPosition(p)
 		d = s.min(d, s.sdf.Evaluate(x))

@@ -81,8 +81,8 @@ func randomM44(a, b float64) m44 {
 	return m
 }
 
-// Identity3d returns a 4x4 identity matrix.
-func Identity3d() m44 {
+// identity3d returns a 4x4 identity matrix.
+func identity3d() m44 {
 	return m44{
 		1, 0, 0, 0,
 		0, 1, 0, 0,
@@ -90,16 +90,16 @@ func Identity3d() m44 {
 		0, 0, 0, 1}
 }
 
-// Identity2d returns a 3x3 identity matrix.
-func Identity2d() m33 {
+// identity2d returns a 3x3 identity matrix.
+func identity2d() m33 {
 	return m33{
 		1, 0, 0,
 		0, 1, 0,
 		0, 0, 1}
 }
 
-// Identity returns a 2x2 identity matrix.
-func Identity() m22 {
+// identity returns a 2x2 identity matrix.
+func identity() m22 {
 	return m22{
 		1, 0,
 		0, 1}
@@ -122,9 +122,9 @@ func Translate2D(v r2.Vec) m33 {
 		0, 0, 1}
 }
 
-// Scale3d returns a 4x4 scaling matrix.
+// Scale3D returns a 4x4 scaling matrix.
 // Scaling does not preserve distance. See: ScaleUniform3D()
-func Scale3d(v r3.Vec) m44 {
+func Scale3D(v r3.Vec) m44 {
 	return m44{
 		v.X, 0, 0, 0,
 		0, v.Y, 0, 0,
@@ -132,17 +132,17 @@ func Scale3d(v r3.Vec) m44 {
 		0, 0, 0, 1}
 }
 
-// Scale2d returns a 3x3 scaling matrix.
+// Scale2D returns a 3x3 scaling matrix.
 // Scaling does not preserve distance. See: ScaleUniform2D().
-func Scale2d(v r2.Vec) m33 {
+func Scale2D(v r2.Vec) m33 {
 	return m33{
 		v.X, 0, 0,
 		0, v.Y, 0,
 		0, 0, 1}
 }
 
-// Rotate3d returns an orthographic 4x4 rotation matrix (right hand rule).
-func Rotate3d(v r3.Vec, a float64) m44 {
+// Rotate3D returns an orthographic 4x4 rotation matrix (right hand rule).
+func Rotate3D(v r3.Vec, a float64) m44 {
 	v = r3.Unit(v)
 	s, c := math.Sincos(a)
 	m := 1 - c
@@ -156,17 +156,17 @@ func Rotate3d(v r3.Vec, a float64) m44 {
 
 // RotateX returns a 4x4 matrix with rotation about the X axis.
 func RotateX(a float64) m44 {
-	return Rotate3d(r3.Vec{X: 1, Y: 0, Z: 0}, a)
+	return Rotate3D(r3.Vec{X: 1, Y: 0, Z: 0}, a)
 }
 
 // RotateY returns a 4x4 matrix with rotation about the Y axis.
 func RotateY(a float64) m44 {
-	return Rotate3d(r3.Vec{X: 0, Y: 1, Z: 0}, a)
+	return Rotate3D(r3.Vec{X: 0, Y: 1, Z: 0}, a)
 }
 
 // RotateZ returns a 4x4 matrix with rotation about the Z axis.
 func RotateZ(a float64) m44 {
-	return Rotate3d(r3.Vec{X: 0, Y: 0, Z: 1}, a)
+	return Rotate3D(r3.Vec{X: 0, Y: 0, Z: 1}, a)
 }
 
 // MirrorXY returns a 4x4 matrix with mirroring across the XY plane.
@@ -221,8 +221,8 @@ func MirrorY() m33 {
 		0, 0, 1}
 }
 
-// Rotate2d returns an orthographic 3x3 rotation matrix (right hand rule).
-func Rotate2d(a float64) m33 {
+// Rotate2D returns an orthographic 3x3 rotation matrix (right hand rule).
+func Rotate2D(a float64) m33 {
 	s := math.Sin(a)
 	c := math.Cos(a)
 	return m33{
@@ -292,20 +292,6 @@ func (a m33) MulPosition(b r2.Vec) r2.Vec {
 func (a m22) MulPosition(b r2.Vec) r2.Vec {
 	return r2.Vec{X: a.x00*b.X + a.x01*b.Y,
 		Y: a.x10*b.X + a.x11*b.Y}
-}
-
-// MulVertices multiples a set of V2 vertices by a rotate/translate matrix.
-func MulVertices2(v d2.Set, a m33) {
-	for i := range v {
-		v[i] = a.MulPosition(v[i])
-	}
-}
-
-// MulVertices multiples a set of r3.Vec vertices by a rotate/translate matrix.
-func MulVertices3(v d3.Set, a m44) {
-	for i := range v {
-		v[i] = a.MulPosition(v[i])
-	}
 }
 
 // Mul multiplies 4x4 matrices.
@@ -515,14 +501,14 @@ func (a m22) Inverse() m22 {
 func rotateToVec(a, b r3.Vec) m44 {
 	// is either vector == 0?
 	if d3.EqualWithin(a, r3.Vec{}, epsilon) || d3.EqualWithin(b, r3.Vec{}, epsilon) {
-		return Identity3d()
+		return identity3d()
 	}
 	// normalize both vectors
 	a = r3.Unit(a)
 	b = r3.Unit(b)
 	// are the vectors the same?
 	if d3.EqualWithin(a, b, epsilon) {
-		return Identity3d()
+		return identity3d()
 	}
 
 	// are the vectors opposite (180 degrees apart)?

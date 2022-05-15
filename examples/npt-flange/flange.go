@@ -32,7 +32,7 @@ func main() {
 		panic(err)
 	}
 	// PLA scaling to thread
-	pipe = sdf.Transform3D(pipe, sdf.Scale3d(r3.Vec{plaScale, plaScale, 1}))
+	pipe = sdf.Transform3D(pipe, sdf.Scale3D(r3.Vec{plaScale, plaScale, 1}))
 	flange = form3.Cylinder(flangeH, flangeD/2, flangeH/8)
 	flange = sdf.Transform3D(flange, sdf.Translate3D(r3.Vec{0, 0, -tlen / 2}))
 	union := sdf.Union3D(pipe, flange)

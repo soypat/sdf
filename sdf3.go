@@ -384,7 +384,7 @@ type scaleUniform3 struct {
 
 // ScaleUniform3D uniformly scales an SDF3 on all axes.
 func ScaleUniform3D(sdf SDF3, k float64) SDF3 {
-	m := Scale3d(r3.Vec{X: k, Y: k, Z: k})
+	m := Scale3D(r3.Vec{X: k, Y: k, Z: k})
 	return &scaleUniform3{
 		sdf:  sdf,
 		k:    k,
@@ -688,7 +688,7 @@ func RotateUnion3D(sdf SDF3, num int, step m44) SDF3Union {
 // Evaluate returns the minimum distance to a rotate/union object.
 func (s *rotateUnion) Evaluate(p r3.Vec) float64 {
 	d := math.MaxFloat64
-	rot := Identity3d()
+	rot := identity3d()
 	for i := 0; i < s.num; i++ {
 		x := rot.MulPosition(p)
 		d = s.min(d, s.sdf.Evaluate(x))
