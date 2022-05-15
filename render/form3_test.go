@@ -55,6 +55,12 @@ func TestForm3Gen(t *testing.T) {
 		formFunc func(t testing.TB, stlpath string)
 	}{
 		{
+			name:     "knurl ",
+			defacto:  "testdata/defactoKnurl.png",
+			formFunc: knurlToSTL,
+			view:     defaultView,
+		},
+		{
 			name:     "bolt",
 			defacto:  "testdata/defactoBolt.png",
 			formFunc: boltToSTL,
@@ -119,6 +125,14 @@ func boxToSTL(t testing.TB, filename string) {
 
 func hexToSTL(t testing.TB, filename string) {
 	object := sdf.Extrude3D(form2.Polygon(form2.Nagon(6, 1)), 1)
+	err := render.CreateSTL(filename, render.NewOctreeRenderer(object, quality))
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func knurlToSTL(t testing.TB, filename string) {
+	object, _ := thread.KnurledHead(.5, 1, .1)
 	err := render.CreateSTL(filename, render.NewOctreeRenderer(object, quality))
 	if err != nil {
 		t.Fatal(err)
