@@ -169,9 +169,6 @@ func min(a, b int) int {
 	return b
 }
 
-func DONOTUSE(r io.Reader) (output []Triangle3, readErr error) {
-	return readBinarySTL(r)
-}
 func readBinarySTL(r io.Reader) (output []Triangle3, readErr error) {
 	var header stlHeader
 	if err := binary.Read(r, binary.LittleEndian, &header); err != nil {
