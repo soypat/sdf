@@ -8,6 +8,8 @@
 *.prof
 *.pprof
 
+*bin
+
 *.png
 # Exclude all png files except for test files
 !render/testdata/defacto*.png

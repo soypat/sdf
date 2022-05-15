@@ -3,8 +3,11 @@ package render
 import (
 	"bytes"
 	"errors"
+	"io"
+	"os"
 	"testing"
 
+	"github.com/soypat/sdf/form3/must3"
 	"github.com/soypat/sdf/form3/obj3/thread"
 	"github.com/soypat/sdf/internal/d3"
 	"gonum.org/v1/gonum/spatial/r3"
@@ -70,4 +73,23 @@ func TestSTLWriteReadback(t *testing.T) {
 			t.Fatal("too many mismatches")
 		}
 	}
+}
+
+func TestOctreeMultithread(t *testing.T) {
+	oct := NewOctreeRenderer(must3.Sphere(1), 8)
+	oct.concurrent = 2
+	buf := make([]Triangle3, oct.concurrent*10)
+	var err error
+	var nt int
+	var model []Triangle3
+	for err == nil {
+		nt, err = oct.ReadTriangles(buf)
+		model = append(model, buf[nt:]...)
+	}
+	if err != io.EOF {
+		t.Fatal(err)
+	}
+	fp, _ := os.Create("mt.stl")
+	defer fp.Close()
+	WriteSTL(fp, model)
 }

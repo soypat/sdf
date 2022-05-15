@@ -7,7 +7,8 @@ import (
 )
 
 const (
-	marchingCubesEpsilon      = 1e-12
+	marchingCubesEpsilon = 1e-12
+	// max number of triangles that can be formed from a single cube.
 	marchingCubesMaxTriangles = 5
 )
 
