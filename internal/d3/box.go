@@ -16,6 +16,14 @@ func NewBox(center, size r3.Vec) Box {
 	return Box{Min: r3.Sub(center, half), Max: r3.Add(center, half)}
 }
 
+// CenteredBox creates a Box with a given center and size.
+// Negative components of size will be interpreted as zero.
+func CenteredBox(center, size r3.Vec) Box {
+	size = MaxElem(size, r3.Vec{}) // set negative values to zero.
+	half := r3.Scale(0.5, size)
+	return Box{Min: r3.Sub(center, half), Max: r3.Add(center, half)}
+}
+
 // Equals test the equality of 3d boxes.
 func (a Box) Equals(b Box, tol float64) bool {
 	return EqualWithin(a.Min, b.Min, tol) && EqualWithin(a.Max, b.Max, tol)

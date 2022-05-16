@@ -9,6 +9,7 @@
 A rewrite of the original CAD package [`sdfx`](https://github.com/deadsy/sdfx) for generating 2D and 3D geometry using [Go](https://go.dev/).
 
 ## Highlights
+* GUI with real-time rendering using [sdf3ui](https://github.com/soypat/sdf3ui).
 * 3d and 2d objects modelled with signed distance functions (SDFs).
 * Minimal and idiomatic API.
 * Render objects as triangles or save to STL, 3MF(experimental) file format.
