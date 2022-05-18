@@ -1,6 +1,7 @@
 package sdfexp_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/soypat/sdf/form3"
@@ -10,7 +11,7 @@ import (
 )
 
 func TestImportModel(t *testing.T) {
-	const quality = 80
+	const quality = 128
 	s, _ := form3.Sphere(5)
 	s, _ = thread.Bolt(thread.BoltParms{
 		Thread:      thread.ISO{D: 16, P: 2},
@@ -18,6 +19,12 @@ func TestImportModel(t *testing.T) {
 		TotalLength: 20,
 	})
 	model, err := render.RenderAll(render.NewOctreeRenderer(s, quality))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fp, _ := os.Create("src.stl")
+	defer fp.Close()
+	err = render.WriteSTL(fp, model)
 	if err != nil {
 		t.Fatal(err)
 	}
