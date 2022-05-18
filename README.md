@@ -16,6 +16,7 @@ A rewrite of the original CAD package [`sdfx`](https://github.com/deadsy/sdfx) f
 * End-to-end testing using image comparison.
 * `must` and `form` packages provide panicking and normal error handling basic shape generation APIs for different scenarios.
 * Dead-simple, single method `Renderer` interface.
+* **Import mesh files**: Edit STL and 3MF files as if they were native SDFs using [`sdfexp.ImportModel`](./helpers/sdfexp/import.go)
 
 
 ## Examples
