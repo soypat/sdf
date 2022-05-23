@@ -37,6 +37,12 @@ var examples = []struct {
 }{
 	// Add new examples here!
 	{
+		Name:      "Metric spacers M3,M4,M6,M8,M16",
+		Dir:       "metric-spacers",
+		resultSTL: "spacers.stl",
+		view:      defaultView,
+	},
+	{
 		Name:      "ADZ Nagano sensor cover",
 		Dir:       "adz-sensor-cover",
 		resultSTL: "cover.stl",
