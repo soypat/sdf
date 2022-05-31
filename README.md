@@ -17,7 +17,7 @@ A rewrite of the original CAD package [`sdfx`](https://github.com/deadsy/sdfx) f
 * `must` and `form` packages provide panicking and normal error handling basic shape generation APIs for different scenarios.
 * Dead-simple, single method `Renderer` interface.
 * **Import mesh files**: Edit STL and 3MF files as if they were native SDFs using [`sdfexp.ImportModel`](./helpers/sdfexp/import.go)
-* **Tetrahedron mesher**: Measure volume or create physics models of your shapes using [`sdfexp.UniformTetrahedronMesh`](./helpers/sdfexp/basicmesh.go). _Experimental feature_.
+* **Tetrahedron mesher**: Measure volume or create physics models of your shapes using [`sdfexp.UniformTetrahedronMesh`](./helpers/sdfexp/basicmesh.go). _Experimental feature_. [Example result image.](https://user-images.githubusercontent.com/26156425/171092816-2101224a-1a93-4140-8962-dad3a25a15cc.png)
 
 
 ## Examples
