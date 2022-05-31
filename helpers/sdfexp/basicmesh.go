@@ -7,7 +7,7 @@ import (
 
 // UniformTetrahedronMesh assembles a volumetric tetrahedron mesh that tries its
 // very best to encapsulate the sdf model. For best results mesh smooth parts
-// that make good use of rounding and MinFunc and MaxFunc in Union, Difference
+// that make good use of rounding, MinFunc and MaxFunc in Union, Difference
 // and Intersect operations.
 func UniformTetrahedronMesh(resolution float64, s sdf.SDF3) (nodes []r3.Vec, tetras [][4]int) {
 	bcc := makeBCCMesh(s.Bounds(), resolution)
