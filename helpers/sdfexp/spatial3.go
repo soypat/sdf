@@ -127,3 +127,24 @@ func lowerVec(v r3.Vec) r2.Vec {
 func centroid(t render.Triangle3) r3.Vec {
 	return r3.Scale(1./3., r3.Add(r3.Add(t[0], t[1]), t[2]))
 }
+
+// gradient returns the gradient of a scalar field. This also returns the normal
+// vector of a sdf surface.
+func gradient(p r3.Vec, tol float64, f func(r3.Vec) float64) r3.Vec {
+	return r3.Vec{
+		X: f(r3.Add(p, r3.Vec{X: tol})) - f(r3.Add(p, r3.Vec{X: -tol})),
+		Y: f(r3.Add(p, r3.Vec{Y: tol})) - f(r3.Add(p, r3.Vec{Y: -tol})),
+		Z: f(r3.Add(p, r3.Vec{Z: tol})) - f(r3.Add(p, r3.Vec{Z: -tol})),
+	}
+}
+
+func divergence(p r3.Vec, tol float64, f func(r3.Vec) r3.Vec) float64 {
+	dx := r3.Sub(f(r3.Add(p, r3.Vec{X: tol})), f(r3.Add(p, r3.Vec{X: -tol})))
+	dy := r3.Sub(f(r3.Add(p, r3.Vec{Y: tol})), f(r3.Add(p, r3.Vec{Y: -tol})))
+	dz := r3.Sub(f(r3.Add(p, r3.Vec{Z: tol})), f(r3.Add(p, r3.Vec{Z: -tol})))
+	return dx.X + dy.Y + dz.Z
+}
+
+func laplacian(p r3.Vec, tol float64, f func(r3.Vec) float64) float64 {
+	return divergence(p, tol, func(v r3.Vec) r3.Vec { return gradient(p, tol, f) })
+}
