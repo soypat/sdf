@@ -141,7 +141,7 @@ func makeBCCMesh(b r3.Box, resolution float64) *bccMesh {
 
 func (t *bccMesh) meshTetraBCC() (nodes []r3.Vec, tetras [][4]int) {
 	n := 0
-	tetras = make([][4]int, len(t.matrix.nodes))
+	tetras = make([][4]int, 0, len(t.matrix.nodes))
 	t.matrix.foreach(func(_, _, _ int, node *bccNode) {
 		bb := d3.Box(node.box())
 		vert := bb.Vertices()
