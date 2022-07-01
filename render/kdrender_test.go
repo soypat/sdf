@@ -50,7 +50,7 @@ var (
 	_ kdtree.Bounder   = kdTriangles{}
 )
 
-func NewKDSDF(model []Triangle3) sdf.SDF3 {
+func NewKDSDF(model []r3.Triangle) sdf.SDF3 {
 	mykd := make(kdTriangles, len(model))
 	// var min, max r3.Vec
 	for i := range mykd {
@@ -93,7 +93,7 @@ func (s kdSDF) Evaluate(v r3.Vec) float64 {
 		return 0
 	}
 	pointDir := r3.Sub(v, closest)
-	n := triangle.Normal()
+	n := r3.Unit(triangle.Normal())
 	alpha := math.Acos(r3.Cos(n, pointDir))
 	return math.Copysign(minDist, math.Pi/2-alpha)
 }
@@ -120,7 +120,7 @@ func (s kdSDF) Bounds() r3.Box {
 
 type kdTriangles []kdTriangle
 
-type kdTriangle Triangle3
+type kdTriangle r3.Triangle
 
 func (k kdTriangles) Index(i int) kdtree.Comparable {
 	return k[i]
@@ -187,7 +187,7 @@ func (a kdTriangle) Bounds() *kdtree.Bounding {
 }
 
 func (a kdTriangle) Normal() r3.Vec {
-	v := Triangle3(a)
+	v := r3.Triangle(a)
 	return v.Normal()
 }
 

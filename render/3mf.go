@@ -109,7 +109,7 @@ type mf3Triangle struct {
 	V3 int `xml:"v3,attr"`
 }
 
-func (m *model) AddObject(name string, src []Triangle3) error {
+func (m *model) AddObject(name string, src []r3.Triangle) error {
 	id := len(m.Resources.Objects) + 1
 	type vertexEntry struct {
 		idx   int

@@ -60,7 +60,7 @@ func TestSTLWriteReadback(t *testing.T) {
 	mismatches := 0
 	for iface, expect := range input {
 		got := output[iface]
-		if got.Degenerate(1e-12) {
+		if got.IsDegenerate(1e-12) {
 			t.Fatalf("triangle degenerate: %+v", got)
 		}
 		for i := range expect {
@@ -78,10 +78,10 @@ func TestSTLWriteReadback(t *testing.T) {
 func TestOctreeMultithread(t *testing.T) {
 	oct := NewOctreeRenderer(must3.Sphere(20), 100)
 	oct.concurrent = 2
-	buf := make([]Triangle3, oct.concurrent*100)
+	buf := make([]r3.Triangle, oct.concurrent*100)
 	var err error
 	var nt int
-	var model []Triangle3
+	var model []r3.Triangle
 	for err == nil {
 		nt, err = oct.ReadTriangles(buf)
 		model = append(model, buf[:nt]...)

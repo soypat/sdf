@@ -19,7 +19,7 @@ func CreateSTL(path string, r Renderer) error {
 }
 
 // WriteSTL writes model triangles to a writer in STL file format.
-func WriteSTL(w io.Writer, model []Triangle3) error {
+func WriteSTL(w io.Writer, model []r3.Triangle) error {
 	if len(model) == 0 {
 		return errors.New("empty triangle slice")
 	}
@@ -43,7 +43,7 @@ func WriteSTL(w io.Writer, model []Triangle3) error {
 	var d stlTriangle
 	for _, triangle := range model {
 		var b [50]byte
-		n := triangle.Normal()
+		n := r3.Unit(triangle.Normal())
 		d.Normal[0] = float32(n.X)
 		d.Normal[1] = float32(n.Y)
 		d.Normal[2] = float32(n.Z)
@@ -80,7 +80,7 @@ const trianglesInBuffer = 1 << 14
 
 type stlReader struct {
 	r   Renderer
-	buf [trianglesInBuffer]Triangle3
+	buf [trianglesInBuffer]r3.Triangle
 }
 
 func (w *stlReader) Read(b []byte) (int, error) {
@@ -109,7 +109,7 @@ func (w *stlReader) Read(b []byte) (int, error) {
 			panic("bug: buffer overflow")
 		}
 		for _, triangle := range w.buf[:nt] {
-			n := triangle.Normal()
+			n := r3.Unit(triangle.Normal())
 			d.Normal[0] = float32(n.X)
 			d.Normal[1] = float32(n.Y)
 			d.Normal[2] = float32(n.Z)
@@ -169,7 +169,7 @@ func min(a, b int) int {
 	return b
 }
 
-func readBinarySTL(r io.Reader) (output []Triangle3, readErr error) {
+func readBinarySTL(r io.Reader) (output []r3.Triangle, readErr error) {
 	var header stlHeader
 	if err := binary.Read(r, binary.LittleEndian, &header); err != nil {
 		if errors.Is(err, io.ErrUnexpectedEOF) {
@@ -213,7 +213,7 @@ func readBinarySTL(r io.Reader) (output []Triangle3, readErr error) {
 				return nil, err
 			}
 		}
-		output = append(output, d.toTriangle3())
+		output = append(output, d.Triangle())
 	}
 	// NormalMismatch error validation may be returned.
 	// For high resolution models this error may be incorrectly returned.
@@ -324,8 +324,8 @@ func equalWithin3F32(a, b [3]float32, tol float32) bool {
 		math32.Abs(a[2]-b[2]) <= tol
 }
 
-func (d stlTriangle) toTriangle3() Triangle3 {
-	return Triangle3{
+func (d stlTriangle) Triangle() r3.Triangle {
+	return r3.Triangle{
 		r3From3F32(d.Vertex1),
 		r3From3F32(d.Vertex2),
 		r3From3F32(d.Vertex3),

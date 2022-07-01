@@ -12,7 +12,7 @@ const (
 	marchingCubesMaxTriangles = 5
 )
 
-func mcToTriangles(dst []Triangle3, p [8]r3.Vec, v [8]float64, x float64) (n int) {
+func mcToTriangles(dst []r3.Triangle, p [8]r3.Vec, v [8]float64, x float64) (n int) {
 	if len(dst) < marchingCubesMaxTriangles {
 		panic("destination triangle buffer must be greater than 5")
 	}
@@ -41,12 +41,12 @@ func mcToTriangles(dst []Triangle3, p [8]r3.Vec, v [8]float64, x float64) (n int
 	table := mcTriangleTable[index]
 	count := len(table) / 3 // max count is 5, a.k.a marchingCubesMaxTriangles
 	for i := 0; i < count; i++ {
-		t := Triangle3{
+		t := r3.Triangle{
 			points[table[i*3+2]],
 			points[table[i*3+1]],
 			points[table[i*3+0]],
 		}
-		if !t.Degenerate(1e-12) {
+		if !t.IsDegenerate(1e-12) {
 			dst[n] = t
 			n++
 		}

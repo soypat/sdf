@@ -4,7 +4,6 @@ import (
 	"math"
 
 	"github.com/soypat/sdf/internal/d3"
-	"github.com/soypat/sdf/render"
 	"gonum.org/v1/gonum/spatial/kdtree"
 	"gonum.org/v1/gonum/spatial/r2"
 	"gonum.org/v1/gonum/spatial/r3"
@@ -83,8 +82,8 @@ func (t *meshTriangle) CopySign(p r3.Vec, dist float64) (signed float64) {
 	return math.Copysign(dist, signed)
 }
 
-func (t *meshTriangle) triangle() render.Triangle3 {
-	return render.Triangle3{
+func (t *meshTriangle) triangle() r3.Triangle {
+	return r3.Triangle{
 		t.m.vertices[t.Vertices[0]].V,
 		t.m.vertices[t.Vertices[1]].V,
 		t.m.vertices[t.Vertices[2]].V,
@@ -96,7 +95,7 @@ func (t *meshTriangle) triangle() render.Triangle3 {
 //  - the triangle's first edge (t_0,t_1) is on the X axis
 //  - the triangle's first vertex t_0 is at the origin
 //  - the triangle's last vertex t_2 is in the XY plane.
-func canalisTransform(t render.Triangle3) d3.Transform {
+func canalisTransform(t r3.Triangle) d3.Transform {
 	u2 := r3.Sub(t[1], t[0])
 	u3 := r3.Sub(t[2], t[0])
 
@@ -124,7 +123,7 @@ func lowerVec(v r3.Vec) r2.Vec {
 	return r2.Vec{X: v.X, Y: v.Y}
 }
 
-func centroid(t render.Triangle3) r3.Vec {
+func centroid(t r3.Triangle) r3.Vec {
 	return r3.Scale(1./3., r3.Add(r3.Add(t[0], t[1]), t[2]))
 }
 

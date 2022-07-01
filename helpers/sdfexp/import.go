@@ -6,7 +6,6 @@ import (
 	"math"
 
 	"github.com/soypat/sdf/internal/d3"
-	"github.com/soypat/sdf/render"
 	"gonum.org/v1/gonum/spatial/kdtree"
 	"gonum.org/v1/gonum/spatial/r3"
 )
@@ -17,7 +16,7 @@ import (
 // using vertexTol.
 // vertexTol should be of the order of 1/1000th of the size of the smallest
 // triangle in the model. If set to 0 then it is inferred automatically.
-func ImportModel(model []render.Triangle3, vertexTolOrZero float64) (ImportedSDF3, error) {
+func ImportModel(model []r3.Triangle, vertexTolOrZero float64) (ImportedSDF3, error) {
 	m, err := newMesh(model, vertexTolOrZero)
 	if err != nil {
 		return ImportedSDF3{}, err
@@ -61,7 +60,7 @@ type pseudoVertex struct {
 	N r3.Vec // Vertex Normal
 }
 
-func newMesh(triangles []render.Triangle3, tol float64) (*mesh, error) {
+func newMesh(triangles []r3.Triangle, tol float64) (*mesh, error) {
 	bb := d3.Box{d3.Elem(math.MaxFloat64), d3.Elem(-math.MaxFloat64)}
 	minDist2 := math.MaxFloat64
 	maxDist2 := -math.MaxFloat64
@@ -102,7 +101,7 @@ func newMesh(triangles []render.Triangle3, tol float64) (*mesh, error) {
 	cache := make(map[[3]int64]int)
 	ri := 1 / tol
 	for i, tri := range triangles {
-		norm := tri.Normal()
+		norm := r3.Unit(tri.Normal())
 		Tform := canalisTransform(tri)
 		InvT := Tform.Inv()
 		sdfT := meshTriangle{
