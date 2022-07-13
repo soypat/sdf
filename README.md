@@ -50,7 +50,7 @@ Advantages of soypat/sdf:
   - `deadsy/sdfx` is over 2 times slower and has ~5 times more allocations.
 - Minimal and idiomatic API
 - `Renderer` interface is dead-simple, [idiomatic Go](https://pkg.go.dev/io#Reader) and not limited to SDFs
-  - deadsy/sdfx `Renderer3` interface has filled `render` package with technical debt. See [Questionable API design](#questionable-api-design).
+  - deadsy/sdfx `Renderer3` interface has filled `render` package with technical debt.
 - Has `SDFUnion` and `SDFDiff` interfaces for blending shapes easily
   - `MinPoly` redesign to allow for _n_-degree polynomials. Also returns a sensible "undefined output" `MinFunc` before dividing by zero.
 - No `nil` valued SDFs
@@ -76,8 +76,8 @@ See [CONTRIBUTING](./CONTRIBUTING.md).
 # Why was sdfx rewritten?
 The original `sdfx` package is amazing. I thank deadsy for putting all that great work into making an amazing tool I use daily. That said, there are some things that were not compatible with my needs:
 
-### Performance
-sdfx is needlessly slow. Here is a benchmark rendering a threaded bolt:
+### Rendering speed
+Here is a benchmark rendering a threaded bolt:
 
 ```
 $ go test -benchmem -run=^$ -bench ^(BenchmarkSDFXBolt|BenchmarkBolt)$ ./render
@@ -92,7 +92,7 @@ ok  	github.com/soypat/sdf/render	4.390s
 ```
 `BenchmarkBolt-8` is this implementation of Octree. `BenchmarkSDFXBolt-8` is the `sdfx` implementation of said algorithm.
 
-### Questionable API design
+### Unwieldy API design
 * https://github.com/deadsy/sdfx/issues/48 Vector API redesign
 * https://github.com/deadsy/sdfx/issues/35 Better STL save functions.
 * https://github.com/deadsy/sdfx/issues/50 Removing returned errors from shape generation functions
@@ -126,8 +126,6 @@ This presented a few problems:
 
 ### `sdf` and `sdfx` consolidation
 None planned.
-
-My understanding is the `sdfx` author has a very different design goal to what I envision. See the bullet-list of issues at the start of [Questionable API design](#questionable-api-design).
 
 ## Logo work
 Gopher rendition by [Juliette Whittingslow](https://www.instagram.com/artewitty/).  
