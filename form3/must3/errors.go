@@ -7,7 +7,7 @@ import (
 
 func sdfBox2d(p, s r2.Vec) float64 {
 	p = d2.AbsElem(p)
-	d := p.Sub(s)
+	d := r2.Sub(p, s)
 	k := s.Y - s.X
 	if d.X > 0 && d.Y > 0 {
 		return r2.Norm(d) //d.Length()

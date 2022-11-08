@@ -47,12 +47,12 @@ func (a Box) Include(v r3.Vec) Box {
 
 // Translate translates a 3d box.
 func (a Box) Translate(v r3.Vec) Box {
-	return Box{a.Min.Add(v), a.Max.Add(v)}
+	return Box{r3.Add(a.Min, v), r3.Add(a.Max, v)}
 }
 
 // Size returns the size of a 3d box.
 func (a Box) Size() r3.Vec {
-	return a.Max.Sub(a.Min)
+	return r3.Sub(a.Max, a.Min)
 }
 
 // Center returns the center of a 3d box.

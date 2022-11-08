@@ -149,14 +149,14 @@ func Cone(height, r0, r1, round float64) *cone {
 	s.height = (height / 2) - round
 	s.round = round
 	// cone slope vector and normal
-	s.u = r2.Unit(r2.Vec{r1, height / 2}.Sub(r2.Vec{r0, -height / 2}))
+	s.u = r2.Unit(r2.Sub(r2.Vec{r1, height / 2}, r2.Vec{r0, -height / 2}))
 	s.n = r2.Vec{s.u.Y, -s.u.X}
 	// inset the radii for the rounding
 	ofs := round / s.n.X
 	s.r0 = r0 - (1+s.n.Y)*ofs
 	s.r1 = r1 - (1-s.n.Y)*ofs
 	// cone slope length
-	s.l = r2.Norm(r2.Vec{s.r1, s.height}.Sub(r2.Vec{s.r0, -s.height}))
+	s.l = r2.Norm(r2.Sub(r2.Vec{s.r1, s.height}, r2.Vec{s.r0, -s.height}))
 	// work out the bounding box
 	r := math.Max(s.r0+round, s.r1+round)
 	s.bb = r3.Box{r3.Vec{-r, -r, -height / 2}, r3.Vec{r, r, height / 2}}
@@ -176,14 +176,14 @@ func (s *cone) Evaluate(p r3.Vec) float64 {
 		return -p2.Y - s.height - s.round
 	}
 	// distance to slope line
-	v := p2.Sub(r2.Vec{s.r0, -s.height})
-	dSlope := v.Dot(s.n)
+	v := r2.Sub(p2, r2.Vec{s.r0, -s.height})
+	dSlope := r2.Dot(v, s.n)
 	// is p2 inside the cone?
 	if dSlope < 0 && math.Abs(p2.Y) < s.height {
 		return -math.Min(-dSlope, s.height-math.Abs(p2.Y)) - s.round
 	}
 	// is p2 closest to the slope line?
-	t := v.Dot(s.u)
+	t := r2.Dot(v, s.u)
 	if t >= 0 && t <= s.l {
 		return dSlope - s.round
 	}
@@ -192,7 +192,7 @@ func (s *cone) Evaluate(p r3.Vec) float64 {
 		return r2.Norm(v) - s.round
 	}
 	// p2 is closest to the top radius vertex
-	return r2.Norm(p2.Sub(r2.Vec{s.r1, s.height})) - s.round
+	return r2.Norm(r2.Sub(p2, r2.Vec{s.r1, s.height})) - s.round
 }
 
 // BoundingBox return the bounding box for the trucated cone..

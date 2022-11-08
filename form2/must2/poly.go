@@ -41,7 +41,7 @@ func Polygon(vertex []r2.Vec) sdf.SDF2 {
 	vmax := s.vertex[0]
 
 	for i := 0; i < nsegs; i++ {
-		l := s.vertex[i+1].Sub(s.vertex[i])
+		l := r2.Sub(s.vertex[i+1], s.vertex[i])
 		s.length[i] = r2.Norm(l)
 		s.vector[i] = r2.Unit(l)
 		vmin = d2.MinElem(vmin, s.vertex[i])
@@ -59,17 +59,17 @@ func (s *polygon) Evaluate(p r2.Vec) float64 {
 
 	// iterate over the line segments
 	nsegs := len(s.vertex) - 1
-	pb := p.Sub(s.vertex[0])
+	pb := r2.Sub(p, s.vertex[0])
 
 	for i := 0; i < nsegs; i++ {
 		a := s.vertex[i]
 		b := s.vertex[i+1]
 
 		pa := pb
-		pb = p.Sub(b)
+		pb = r2.Sub(p, b)
 
-		t := pa.Dot(s.vector[i])                            // t-parameter of projection onto line
-		dn := pa.Dot(r2.Vec{s.vector[i].Y, -s.vector[i].X}) // normal distance from p to line
+		t := r2.Dot(pa, s.vector[i])                            // t-parameter of projection onto line
+		dn := r2.Dot(pa, r2.Vec{s.vector[i].Y, -s.vector[i].X}) // normal distance from p to line
 
 		// Distance to line segment
 		if t < 0 {
@@ -230,28 +230,28 @@ func (p *PolygonBuilder) arcVertex(i int) bool {
 	a := pv.vertex
 	b := v.vertex
 	// Normal to chord
-	ba := r2.Unit(b.Sub(a)) //.Normalize()
+	ba := r2.Unit(r2.Sub(b, a)) //.Normalize()
 	n := r2.Scale(side, r2.Vec{ba.Y, -ba.X})
 	// midpoint
-	mid := r2.Scale(0.5, a.Add(b))
+	mid := r2.Scale(0.5, r2.Add(a, b))
 	// distance from a to midpoint
-	dMid := r2.Norm(mid.Sub(a))
+	dMid := r2.Norm(r2.Sub(mid, a))
 	// distance from midpoint to center of arc
 	dCenter := math.Sqrt((radius * radius) - (dMid * dMid))
 	// center of arc
-	c := mid.Add(r2.Scale(dCenter, n))
+	c := r2.Add(mid, r2.Scale(dCenter, n))
 	// work out the angle
-	ac := r2.Unit(a.Sub(c))
-	bc := r2.Unit(b.Sub(c))
-	dtheta := -side * math.Acos(ac.Dot(bc)) / float64(v.facets)
+	ac := r2.Unit(r2.Sub(a, c))
+	bc := r2.Unit(r2.Sub(b, c))
+	dtheta := -side * math.Acos(r2.Dot(ac, bc)) / float64(v.facets)
 	// rotation matrix
 	m := sdf.Rotate(dtheta)
 	// radius vector
-	rv := m.MulPosition(a.Sub(c))
+	rv := m.MulPosition(r2.Sub(a, c))
 	// work out the new vertices
 	vlist := make([]polygonVertex, v.facets-1)
 	for j := range vlist {
-		vlist[j] = polygonVertex{vertex: c.Add(rv)}
+		vlist[j] = polygonVertex{vertex: r2.Add(c, rv)}
 		rv = m.MulPosition(rv)
 	}
 	// insert the new vertices between the arc endpoints
@@ -290,32 +290,32 @@ func (p *PolygonBuilder) smoothVertex(i int) bool {
 		return false
 	}
 	// work out the angle
-	v0 := r2.Unit(vp.vertex.Sub(v.vertex))
-	v1 := r2.Unit(vn.vertex.Sub(v.vertex))
-	theta := math.Acos(v0.Dot(v1))
+	v0 := r2.Unit(r2.Sub(vp.vertex, v.vertex))
+	v1 := r2.Unit(r2.Sub(vn.vertex, v.vertex))
+	theta := math.Acos(r2.Dot(v0, v1))
 	// distance from vertex to circle tangent
 	d1 := v.radius / math.Tan(theta/2.0)
-	if d1 > r2.Norm(vp.vertex.Sub(v.vertex)) || d1 > r2.Norm(vn.vertex.Sub(v.vertex)) {
+	if d1 > r2.Norm(r2.Sub(vp.vertex, v.vertex)) || d1 > r2.Norm(r2.Sub(vn.vertex, v.vertex)) {
 		// unable to smooth - radius is too large
 		return false
 	}
 	// tangent points
-	p0 := v.vertex.Add(r2.Scale(d1, v0))
+	p0 := r2.Add(v.vertex, r2.Scale(d1, v0))
 	// distance from vertex to circle center
 	d2 := v.radius / math.Sin(theta/2.0)
 	// center of circle
-	vc := r2.Unit(v0.Add(v1))
-	c := v.vertex.Add(r2.Scale(d2, vc))
+	vc := r2.Unit(r2.Add(v0, v1))
+	c := r2.Add(v.vertex, r2.Scale(d2, vc))
 	// rotation angle
-	dtheta := Sign(v1.Cross(v0)) * (math.Pi - theta) / float64(v.facets)
+	dtheta := Sign(r2.Cross(v1, v0)) * (math.Pi - theta) / float64(v.facets)
 	// rotation matrix
 	rm := sdf.Rotate(dtheta)
 	// radius vector
-	rv := p0.Sub(c)
+	rv := r2.Sub(p0, c)
 	// work out the new points
 	points := make([]polygonVertex, v.facets+1)
 	for j := range points {
-		points[j] = polygonVertex{vertex: c.Add(rv)}
+		points[j] = polygonVertex{vertex: r2.Add(c, rv)}
 		rv = rm.MulPosition(rv)
 	}
 	// replace the old point with the new points
@@ -345,7 +345,7 @@ func (p *PolygonBuilder) relToAbs() error {
 			if pv.relative {
 				return fmt.Errorf("relative vertex needs an absolute reference")
 			}
-			v.vertex = v.vertex.Add(pv.vertex)
+			v.vertex = r2.Add(v.vertex, pv.vertex)
 			v.relative = false
 		}
 	}

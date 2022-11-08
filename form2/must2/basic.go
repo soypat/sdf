@@ -88,7 +88,7 @@ func (s *line) Evaluate(p r2.Vec) float64 {
 	if p.X <= s.l {
 		return p.Y - s.round
 	}
-	return r2.Norm(p.Sub(r2.Vec{s.l, 0})) - s.round
+	return r2.Norm(r2.Sub(p, r2.Vec{s.l, 0})) - s.round
 }
 
 // BoundingBox returns the bounding box for a 2d line.

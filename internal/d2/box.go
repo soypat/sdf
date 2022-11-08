@@ -13,7 +13,7 @@ type Box r2.Box
 // NewBox2 creates a 2d box with a given center and size.
 func NewBox2(center, size r2.Vec) Box {
 	half := r2.Scale(0.5, size)
-	return Box{center.Sub(half), center.Add(half)}
+	return Box{r2.Sub(center, half), r2.Add(center, half)}
 }
 
 // Equals test the equality of 2d boxes.
@@ -36,17 +36,17 @@ func (a Box) Include(v r2.Vec) Box {
 
 // Translate translates a 2d box.
 func (a Box) Translate(v r2.Vec) Box {
-	return Box{a.Min.Add(v), a.Max.Add(v)}
+	return Box{r2.Add(a.Min, v), r2.Add(a.Max, v)}
 }
 
 // Size returns the size of a 2d box.
 func (a Box) Size() r2.Vec {
-	return a.Max.Sub(a.Min)
+	return r2.Sub(a.Max, a.Min)
 }
 
 // Center returns the center of a 2d box.
 func (a Box) Center() r2.Vec {
-	return a.Min.Add(r2.Scale(0.5, a.Size()))
+	return r2.Add(a.Min, r2.Scale(0.5, a.Size()))
 	// return a.Min.Add(a.Size().MulScalar(0.5))
 }
 
@@ -59,7 +59,7 @@ func (a Box) ScaleAboutCenter(k float64) Box {
 // Enlarge returns a new 2d box enlarged by a size vector.
 func (a Box) Enlarge(v r2.Vec) Box {
 	v = r2.Scale(0.5, v)
-	return Box{a.Min.Sub(v), a.Max.Add(v)}
+	return Box{r2.Sub(a.Min, v), r2.Add(a.Max, v)}
 }
 
 // Contains checks if the 2d box contains the given vector (considering bounds as inside).

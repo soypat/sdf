@@ -47,7 +47,7 @@ func R3ToI(a r3.Vec) V3i {
 
 // R3FromI temporary home for this function.
 //
-//Deprecated: R3FromI is deprecated.
+// Deprecated: R3FromI is deprecated.
 func R3FromI(a V3i) r3.Vec {
 	return r3.Vec{X: float64(a[0]), Y: float64(a[1]), Z: float64(a[2])}
 }
@@ -142,9 +142,9 @@ func minPoly(n int, k float64) MinFunc {
 
 // MinPoly creates a n-degree polynomial MinFunc with
 // parameter k that controls radius of the smoothing function.
-//  - n<0 or k<=0 undefined output
-//  - n=0 returns a chamfer-like MinFunc
-//  - n=1 returns math.Min
+//   - n<0 or k<=0 undefined output
+//   - n=0 returns a chamfer-like MinFunc
+//   - n=1 returns math.Min
 func MinPoly(n int, k float64) MinFunc {
 	if n < 0 || k <= 0 {
 		// Let users go crazy?
@@ -221,11 +221,11 @@ func TwistExtrude(height, twist float64) ExtrudeFunc {
 func ScaleExtrude(height float64, scale r2.Vec) ExtrudeFunc {
 	inv := r2.Vec{X: 1 / scale.X, Y: 1 / scale.Y}
 	// TODO verify
-	m := d2.DivElem(inv.Sub(r2.Vec{X: 1, Y: 1}), d2.Elem(height)) // slope
+	m := d2.DivElem(r2.Sub(inv, r2.Vec{X: 1, Y: 1}), d2.Elem(height)) // slope
 	b := r2.Add(d2.DivElem(inv, d2.Elem(2)), d2.Elem(0.5))
 	// b := inv.DivScalar(2).AddScalar(0.5)     // intercept
 	return func(p r3.Vec) r2.Vec {
-		return d2.MulElem(r2.Vec{X: p.X, Y: p.Y}, r2.Scale(p.Z, m).Add(b))
+		return d2.MulElem(r2.Vec{X: p.X, Y: p.Y}, r2.Add(b, r2.Scale(p.Z, m)))
 	}
 }
 
@@ -305,9 +305,9 @@ func raycast2(s SDF2, from, dir r2.Vec, scaleAndSigmoid, stepScale, epsilon, max
 // Computed by sampling it several times inside a box of side 2*eps centered on p.
 func normal3(s SDF3, p r3.Vec, eps float64) r3.Vec {
 	return r3.Unit(r3.Vec{
-		X: s.Evaluate(p.Add(r3.Vec{X: eps})) - s.Evaluate(p.Add(r3.Vec{X: -eps})),
-		Y: s.Evaluate(p.Add(r3.Vec{Y: eps})) - s.Evaluate(p.Add(r3.Vec{Y: -eps})),
-		Z: s.Evaluate(p.Add(r3.Vec{Z: eps})) - s.Evaluate(p.Add(r3.Vec{Z: -eps})),
+		X: s.Evaluate(r3.Add(p, r3.Vec{X: eps})) - s.Evaluate(r3.Add(p, r3.Vec{X: -eps})),
+		Y: s.Evaluate(r3.Add(p, r3.Vec{Y: eps})) - s.Evaluate(r3.Add(p, r3.Vec{Y: -eps})),
+		Z: s.Evaluate(r3.Add(p, r3.Vec{Z: eps})) - s.Evaluate(r3.Add(p, r3.Vec{Z: -eps})),
 	})
 }
 
@@ -315,8 +315,8 @@ func normal3(s SDF3, p r3.Vec, eps float64) r3.Vec {
 // Computed by sampling it several times inside a box of side 2*eps centered on p.
 func normal2(s SDF2, p r2.Vec, eps float64) r2.Vec {
 	return r2.Unit(r2.Vec{
-		X: s.Evaluate(p.Add(r2.Vec{X: eps})) - s.Evaluate(p.Add(r2.Vec{X: -eps})),
-		Y: s.Evaluate(p.Add(r2.Vec{Y: eps})) - s.Evaluate(p.Add(r2.Vec{Y: -eps})),
+		X: s.Evaluate(r2.Add(p, r2.Vec{X: eps})) - s.Evaluate(r2.Add(p, r2.Vec{X: -eps})),
+		Y: s.Evaluate(r2.Add(p, r2.Vec{Y: eps})) - s.Evaluate(r2.Add(p, r2.Vec{Y: -eps})),
 	})
 }
 
@@ -377,17 +377,17 @@ func (m *map2) ToV2(p V2i) r2.Vec {
 	} else {
 		origin = m.bb.BottomLeft()
 	}
-	return origin.Add(ofs)
+	return r2.Add(origin, ofs)
 }
 
 // ToV2i converts 2d region float coordinates to grid integer coordinates.
 func (m *map2) ToV2i(p r2.Vec) V2i {
 	var v r2.Vec
 	if m.flipy {
-		v = p.Sub(m.bb.TopLeft())
+		v = r2.Sub(p, m.bb.TopLeft())
 		v.Y = -v.Y
 	} else {
-		v = p.Sub(m.bb.BottomLeft())
+		v = r2.Sub(p, m.bb.BottomLeft())
 	}
 	return R2ToI(d2.DivElem(v, m.delta)) // v.Div(m.delta).ToV2i()
 }
