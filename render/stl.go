@@ -302,8 +302,8 @@ func (t stlTriangle) normalFromVertices() [3]float32 {
 	v1 := r3.Scale(10, r3From3F32(t.Vertex1))
 	v2 := r3.Scale(10, r3From3F32(t.Vertex2))
 	v3 := r3.Scale(10, r3From3F32(t.Vertex3))
-	e1 := v2.Sub(v1)
-	e2 := v3.Sub(v1)
+	e1 := r3.Sub(v2, v1)
+	e2 := r3.Sub(v3, v1)
 	n := r3.Unit(r3.Cross(e1, e2))
 	n32 := [3]float32{float32(n.X), float32(n.Y), float32(n.Z)}
 	return n32

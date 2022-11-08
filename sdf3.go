@@ -43,7 +43,8 @@ type revolution3 struct {
 
 // Revolve3D returns an SDF3 for a solid of revolution.
 // theta is in radians. For a full revolution call
-//  Revolve3D(s0, 2*math.Pi)
+//
+//	Revolve3D(s0, 2*math.Pi)
 func Revolve3D(sdf SDF2, theta float64) SDF3 {
 	if sdf == nil {
 		panic("nil SDF2 argument")
@@ -93,7 +94,7 @@ func (s *revolution3) Evaluate(p r3.Vec) float64 {
 	b := a
 	if s.theta != 0 {
 		// combine two vertical planes to give an intersection wedge
-		d := s.norm.Dot(r2.Vec{X: p.X, Y: p.Y})
+		d := r2.Dot(s.norm, r2.Vec{X: p.X, Y: p.Y})
 		if s.theta < pi {
 			b = math.Max(-p.Y, d) // intersect
 		} else {
@@ -522,7 +523,7 @@ func Elongate3D(sdf SDF3, h r3.Vec) SDF3 {
 
 // Evaluate returns the minimum distance to a elongated SDF2.
 func (s *elongate3) Evaluate(p r3.Vec) float64 {
-	q := p.Sub(d3.Clamp(p, s.hn, s.hp))
+	q := r3.Sub(p, d3.Clamp(p, s.hn, s.hp))
 	return s.sdf.Evaluate(q)
 }
 
@@ -591,7 +592,7 @@ func Cut3D(sdf SDF3, a, n r3.Vec) SDF3 {
 
 // Evaluate returns the minimum distance to the cut SDF3.
 func (s *cut3) Evaluate(p r3.Vec) float64 {
-	return math.Max(p.Sub(s.a).Dot(s.n), s.sdf.Evaluate(p))
+	return math.Max(r3.Dot(s.n, r3.Sub(p, s.a)), s.sdf.Evaluate(p))
 }
 
 // BoundingBox returns the bounding box of the cut SDF3.
@@ -637,7 +638,7 @@ func (s *array3) Evaluate(p r3.Vec) float64 {
 	for j := 0; j < s.num[0]; j++ {
 		for k := 0; k < s.num[1]; k++ {
 			for l := 0; l < s.num[2]; l++ {
-				x := p.Sub(r3.Vec{X: float64(j) * s.step.X, Y: float64(k) * s.step.Y, Z: float64(l) * s.step.Z})
+				x := r3.Sub(p, r3.Vec{X: float64(j) * s.step.X, Y: float64(k) * s.step.Y, Z: float64(l) * s.step.Z})
 				d = s.min(d, s.sdf.Evaluate(x))
 			}
 		}
@@ -867,7 +868,7 @@ func LineOf3D(s SDF3, p0, p1 r3.Vec, pattern string) SDF3 {
 			if c == 'x' {
 				objects = append(objects, Transform3D(s, Translate3D(x)))
 			}
-			x = x.Add(dx)
+			x = r3.Add(x, dx)
 		}
 	}
 	return Union3D(objects...)

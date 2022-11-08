@@ -103,8 +103,8 @@ func (a Transform) ApplyBox(box Box) Box {
 	yb := r2.Scale(box.Max.Y, u)
 	xa, xb = MinElem(xa, xb), MaxElem(xa, xb)
 	ya, yb = MinElem(ya, yb), MaxElem(ya, yb)
-	min := xa.Add(ya).Add(t)
-	max := xb.Add(yb).Add(t)
+	min := r2.Add(t, r2.Add(xa, ya))
+	max := r2.Add(t, r2.Add(xb, yb))
 	return Box{min, max}
 }
 

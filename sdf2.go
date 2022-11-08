@@ -40,7 +40,7 @@ type MinFunc func(a, b float64) float64
 
 func sdfBox2d(p, s r2.Vec) float64 {
 	p = d2.AbsElem(p)
-	d := p.Sub(s)
+	d := r2.Sub(p, s)
 	k := s.Y - s.X
 	if d.X > 0 && d.Y > 0 {
 		return r2.Norm(d)
@@ -76,7 +76,7 @@ func Cut2D(sdf SDF2, a, v r2.Vec) SDF2 {
 
 // Evaluate returns the minimum distance to cut SDF2.
 func (s *CutSDF2) Evaluate(p r2.Vec) float64 {
-	return math.Max(p.Sub(s.a).Dot(s.n), s.sdf.Evaluate(p))
+	return math.Max(r2.Dot(s.n, r2.Sub(p, s.a)), s.sdf.Evaluate(p))
 }
 
 // BoundingBox returns the bounding box for the cut SDF2.
@@ -201,7 +201,7 @@ func (s *array2) Evaluate(p r2.Vec) float64 {
 	d := math.MaxFloat64
 	for j := 0; j < s.num[0]; j++ {
 		for k := 0; k < s.num[1]; k++ {
-			x := p.Sub(r2.Vec{X: float64(j) * s.step.X, Y: float64(k) * s.step.Y})
+			x := r2.Sub(p, r2.Vec{X: float64(j) * s.step.X, Y: float64(k) * s.step.Y})
 			d = s.min(d, s.sdf.Evaluate(x))
 		}
 	}
@@ -337,7 +337,7 @@ func Slice2D(sdf SDF3, a, n r3.Vec) SDF2 {
 	} else {
 		s.u = r3.Vec{X: n.Y, Y: -n.X, Z: 0}
 	}
-	s.v = n.Cross(s.u)
+	s.v = r3.Cross(n, s.u)
 	s.u = r3.Unit(s.u)
 	s.v = r3.Unit(s.v)
 	// work out the bounding box
@@ -349,10 +349,10 @@ func Slice2D(sdf SDF3, a, n r3.Vec) SDF2 {
 	n = r3.Unit(n)
 	for i, v := range v3 {
 		// project the 3d bounding box vertex onto the plane
-		va := v.Sub(s.a)
-		pa := va.Sub(r3.Scale(r3.Dot(n, va), n))
+		va := r3.Sub(v, s.a)
+		pa := r3.Sub(va, r3.Scale(r3.Dot(n, va), n))
 		// work out the 3d point in terms of the 2d unit vectors
-		vec[i] = r2.Vec{X: pa.Dot(s.u), Y: pa.Dot(s.v)}
+		vec[i] = r2.Vec{X: r3.Dot(pa, s.u), Y: r3.Dot(pa, s.v)}
 	}
 	s.bb = r2.Box{Min: vec.Min(), Max: vec.Max()}
 	return &s
@@ -516,7 +516,7 @@ func Elongate2D(sdf SDF2, h r2.Vec) SDF2 {
 
 // Evaluate returns the minimum distance to an elongated SDF2.
 func (s *elongate2) Evaluate(p r2.Vec) float64 {
-	q := p.Sub(d2.Clamp(p, s.hn, s.hp))
+	q := r2.Sub(p, d2.Clamp(p, s.hn, s.hp))
 	return s.sdf.Evaluate(q)
 }
 
@@ -561,7 +561,7 @@ func LineOf2D(s SDF2, p0, p1 r2.Vec, pattern string) SDF2 {
 			if c == 'x' {
 				objects = append(objects, Transform2D(s, Translate2D(x)))
 			}
-			x = x.Add(dx)
+			x = r2.Add(x, dx)
 		}
 	}
 	if len(objects) == 1 {

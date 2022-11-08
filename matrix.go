@@ -398,8 +398,8 @@ func (a m44) MulBox(box r3.Box) r3.Box {
 	xa, xb = d3.MinElem(xa, xb), d3.MaxElem(xa, xb)
 	ya, yb = d3.MinElem(ya, yb), d3.MaxElem(ya, yb)
 	za, zb = d3.MinElem(za, zb), d3.MaxElem(za, zb)
-	min := xa.Add(ya).Add(za).Add(t)
-	max := xb.Add(yb).Add(zb).Add(t)
+	min := r3.Add(xa, r3.Add(ya, r3.Add(za, t)))
+	max := r3.Add(xb, r3.Add(yb, r3.Add(zb, t)))
 	return r3.Box{Min: min, Max: max}
 }
 
@@ -414,8 +414,10 @@ func (a m33) MulBox(box r2.Box) r2.Box {
 	yb := r2.Scale(box.Max.Y, u)
 	xa, xb = d2.MinElem(xa, xb), d2.MaxElem(xa, xb)
 	ya, yb = d2.MinElem(ya, yb), d2.MaxElem(ya, yb)
-	min := xa.Add(ya).Add(t)
-	max := xb.Add(yb).Add(t)
+	min := r2.Add(xa, r2.Add(ya, t))
+	max := r2.Add(xb, r2.Add(yb, t))
+	// min := xa.Add(ya).Add(t)
+	// max := xb.Add(yb).Add(t)
 	return r2.Box{Min: min, Max: max}
 }
 
