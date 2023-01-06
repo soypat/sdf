@@ -6,7 +6,7 @@
 
 <img align="right" width="220px" src="https://user-images.githubusercontent.com/26156425/167976351-ae377891-a215-4711-b202-e973b815b6bb.png">
 
-A rewrite of the original CAD package [`sdfx`](https://github.com/deadsy/sdfx) for generating 2D and 3D geometry using [Go](https://go.dev/).
+A rewrite of the original [Signed Distance Function](https://en.wikipedia.org/wiki/Signed_distance_function) CAD package [`sdfx`](https://github.com/deadsy/sdfx) for generating 2D and 3D geometry using [Go](https://go.dev/).
 
 ## Highlights
 * GUI with real-time rendering using [sdf3ui](https://github.com/soypat/sdf3ui) (or [SDF Viewer](https://github.com/Yeicor/sdf-viewer-go)).
