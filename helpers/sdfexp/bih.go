@@ -1,16 +1,16 @@
 package sdfexp
 
 import (
-	"gonum.org/v1/gonum/spatial/r3"
-
-	"github.com/soypat/sdf/internal/d3"
-)
-
-import (
+	"errors"
 	"fmt"
 	"math"
 	"sort"
 	"unsafe" // used to store floats and ints in the same value
+)
+
+import (
+	"github.com/soypat/sdf/internal/d3"
+	"gonum.org/v1/gonum/spatial/r3"
 )
 
 const (
@@ -428,7 +428,7 @@ func calc_alpha_wnormal(tri [3]int, vert_idx int, vertices []r3.Vec) (float64, r
 	return alpha, r3.Scale(alpha, r3.Unit(norm))
 }
 
-func ImportModelV2(model []r3.Triangle, vertTol float64) (BIH, error) {
+func ImportModelV2(model []r3.Triangle, tol float64) (*BIH, error) {
 	vertices := make([]r3.Vec, 0)
 	mesh := make([][3]int, len(model))
 	bb := r3.Box{
@@ -436,21 +436,50 @@ func ImportModelV2(model []r3.Triangle, vertTol float64) (BIH, error) {
 		Max: r3.Vec{-math.MaxFloat64, -math.MaxFloat64, -math.MaxFloat64},
 	}
 
+	minDist2 := math.MaxFloat64
+	maxDist2 := -math.MaxFloat64
+	for i := range model {
+		for j, vert := range model[i] {
+			// Calculate bounding box
+			bb.Min = d3.MinElem(bb.Min, vert)
+			bb.Max = d3.MaxElem(bb.Max, vert)
+			// Calculate minimum side
+			vert2 := model[i][(j+1)%3]
+			side2 := r3.Norm2(r3.Sub(vert2, vert))
+			minDist2 = math.Min(minDist2, side2)
+			maxDist2 = math.Max(maxDist2, side2)
+		}
+	}
+	suggested := math.Sqrt(minDist2) / 256
+	if tol > math.Sqrt(maxDist2)/2 {
+		return nil, fmt.Errorf("vertex tolerance is too large to generate appropiate mesh, suggested tolerance: %g", suggested)
+	}
+	if tol == 0 {
+		tol = suggested
+	}
+	size := bb.Size()
+	maxDim := math.Max(size.X, math.Max(size.Y, size.Z))
+	div := int64(maxDim/tol + 1e-12)
+	if div <= 0 {
+		return nil, errors.New("tolerance larger than model size")
+	}
+	if div > math.MaxInt64/2 {
+		return nil, errors.New("tolerance too small. overflowed int64")
+	}
+
 	vert_cache := make(map[[3]int64]int)
 	// copy the model into the vertex and mesh arrays
-	hvertTol := 0.5 * vertTol
+	hTol := 0.5 * tol
 	for i, tri := range model {
 		for j, v := range tri {
 			// look for a vertex within tolerance
 			index := [3]int64{
-				int64((v.X + hvertTol) / vertTol),
-				int64((v.Y + hvertTol) / vertTol),
-				int64((v.Z + hvertTol) / vertTol),
+				int64((v.X + hTol) / tol),
+				int64((v.Y + hTol) / tol),
+				int64((v.Z + hTol) / tol),
 			}
 			if vidx, ok := vert_cache[index]; !ok {
 				vertices = append(vertices, v)
-				bb.Min = d3.MinElem(bb.Min, v)
-				bb.Max = d3.MaxElem(bb.Max, v)
 				mesh[i][j] = len(vertices) - 1
 				vert_cache[index] = len(vertices) - 1
 			} else {
@@ -523,6 +552,7 @@ func ImportModelV2(model []r3.Triangle, vertTol float64) (BIH, error) {
 		// for each vertex check to see if it hasn't already been calculated
 		// if it hasn't then calculate it
 		for j, idx := range tri {
+			// if it hasn't been calculated it should be zero
 			if dist_sq(vertex_pseudonormals[idx]) < 0.5 {
 				// calculate it by traversing along all the edges sharing that vertex
 				alpha, wnormal := calc_alpha_wnormal(tri, idx, vertices)
@@ -568,7 +598,7 @@ func ImportModelV2(model []r3.Triangle, vertTol float64) (BIH, error) {
 		}
 	}
 
-	return BIH{
+	return &BIH{
 		Mesh: Mesh{
 			Edge_adj: edges,
 			Indices:  mesh,
