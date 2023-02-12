@@ -1,4 +1,4 @@
-package sdf
+package sdfexp
 
 import (
 	"gonum.org/v1/gonum/spatial/r3"
@@ -80,58 +80,6 @@ type Mesh struct {
 	Indices  [][3]int       // indices into the vertex list
 	Vertices []r3.Vec
 	Bb       r3.Box
-}
-
-func NewMesh(model []r3.Triangle, vertTol float64) Mesh {
-	vertices := make([]r3.Vec, 0)
-	mesh := make([][3]int, len(model))
-	bb := r3.Box{
-		Min: r3.Vec{math.MaxFloat64, math.MaxFloat64, math.MaxFloat64},
-		Max: r3.Vec{-math.MaxFloat64, -math.MaxFloat64, -math.MaxFloat64},
-	}
-
-	vert_cache := make(map[[3]int64]int)
-	// copy the model into the vertex and mesh arrays
-	hvertTol := 0.5 * vertTol
-	for i, tri := range model {
-		for j, v := range tri {
-			// look for a vertex within tolerance
-			index := [3]int64{
-				int64((v.X + hvertTol) / vertTol),
-				int64((v.Y + hvertTol) / vertTol),
-				int64((v.Z + hvertTol) / vertTol),
-			}
-			if vidx, ok := vert_cache[index]; !ok {
-				vertices = append(vertices, v)
-				bb.Min = minVec(bb.Min, v)
-				bb.Max = maxVec(bb.Max, v)
-				mesh[i][j] = len(vertices) - 1
-				vert_cache[index] = len(vertices) - 1
-			} else {
-				mesh[i][j] = vidx
-			}
-		}
-	}
-
-	// generate edge adjacency list and calculate pseudonormals
-	edges := make(map[[2]int]int)
-	for i, tri := range mesh {
-		id := [2]int{tri[0], tri[1]}
-		edges[id] = i
-		id[0] = tri[1]
-		id[1] = tri[2]
-		edges[id] = i
-		id[0] = tri[2]
-		id[1] = tri[0]
-		edges[id] = i
-	}
-
-	return Mesh{
-		Edge_adj: edges,
-		Indices:  mesh,
-		Vertices: vertices,
-		Bb:       bb,
-	}
 }
 
 // TODO figure out what to make public
@@ -399,14 +347,6 @@ func (b *BIH) DistNearestTri(target r3.Vec) float64 {
 	}
 }
 
-func minVec(a r3.Vec, b r3.Vec) r3.Vec {
-	return r3.Vec{min(a.X, b.X), min(a.Y, b.Y), min(a.Z, b.Z)}
-}
-
-func maxVec(a r3.Vec, b r3.Vec) r3.Vec {
-	return r3.Vec{max(a.X, b.X), max(a.Y, b.Y), max(a.Z, b.Z)}
-}
-
 func subdivide(b []bihInternal, bih_idx int, mesh_idx int, mesh [][3]int, verts []r3.Vec, centroids map[[3]int][3]float64, bb r3.Box) []bihInternal {
 	//fmt.Printf("%d %d %d %v \n", bih_idx, mesh_idx, len(mesh), bb)
 	if len(mesh) <= 4 {
@@ -448,14 +388,14 @@ func subdivide(b []bihInternal, bih_idx int, mesh_idx int, mesh [][3]int, verts 
 
 		for _, tri := range mesh[0:left_half] {
 			for _, idx := range tri {
-				left_bb.Min = minVec(left_bb.Min, verts[idx])
-				left_bb.Max = maxVec(left_bb.Max, verts[idx])
+				left_bb.Min = d3.MinElem(left_bb.Min, verts[idx])
+				left_bb.Max = d3.MaxElem(left_bb.Max, verts[idx])
 			}
 		}
 		for _, tri := range mesh[left_half:len(mesh)] {
 			for _, idx := range tri {
-				right_bb.Min = minVec(right_bb.Min, verts[idx])
-				right_bb.Max = maxVec(right_bb.Max, verts[idx])
+				right_bb.Min = d3.MinElem(right_bb.Min, verts[idx])
+				right_bb.Max = d3.MaxElem(right_bb.Max, verts[idx])
 			}
 		}
 		//fmt.Printf("sub %v %v\n", left_bb, right_bb)
@@ -512,7 +452,7 @@ func calc_alpha_wnormal(tri [3]int, vert_idx int, vertices []r3.Vec) (float64, r
 	return alpha, r3.Scale(alpha, r3.Unit(norm))
 }
 
-func ImportModelV2(model []r3.Triangle, vertTol float64) BIH {
+func ImportModelV2(model []r3.Triangle, vertTol float64) (BIH, error) {
 	vertices := make([]r3.Vec, 0)
 	mesh := make([][3]int, len(model))
 	bb := r3.Box{
@@ -533,8 +473,8 @@ func ImportModelV2(model []r3.Triangle, vertTol float64) BIH {
 			}
 			if vidx, ok := vert_cache[index]; !ok {
 				vertices = append(vertices, v)
-				bb.Min = minVec(bb.Min, v)
-				bb.Max = maxVec(bb.Max, v)
+				bb.Min = d3.MinElem(bb.Min, v)
+				bb.Max = d3.MaxElem(bb.Max, v)
 				mesh[i][j] = len(vertices) - 1
 				vert_cache[index] = len(vertices) - 1
 			} else {
@@ -663,7 +603,7 @@ func ImportModelV2(model []r3.Triangle, vertTol float64) BIH {
 		face_normals: face_normals,
 		edge_normals: edge_pseudonormals,
 		vert_normals: vertex_pseudonormals,
-	}
+	}, nil
 }
 
 func (b *BIH) Evaluate(p r3.Vec) float64 {
