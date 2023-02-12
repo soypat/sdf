@@ -2,6 +2,8 @@ package sdfexp
 
 import (
 	"gonum.org/v1/gonum/spatial/r3"
+
+	"github.com/soypat/sdf/internal/d3"
 )
 
 import (
@@ -50,28 +52,12 @@ func (b *bihInternal) rightClip() float64 {
 	return *(*float64)(unsafe.Pointer(&b.right))
 }
 
-func max(a, b float64) float64 {
-	if a > b {
-		return a
-	} else {
-		return b
-	}
-}
-
-func min(a, b float64) float64 {
-	if a < b {
-		return a
-	} else {
-		return b
-	}
-}
-
 func minDistBox(target r3.Vec, bb r3.Box) float64 {
 	// pretty cool formula based on this stackoverflow answer:
 	// https://math.stackexchange.com/questions/2133217/minimal-distance-to-a-cube-in-2d-and-3d-from-a-point-lying-outside
-	dx := max(0, max(target.X-bb.Max.X, bb.Min.X-target.X))
-	dy := max(0, max(target.Y-bb.Max.Y, bb.Min.Y-target.Y))
-	dz := max(0, max(target.Z-bb.Max.Z, bb.Min.Z-target.Z))
+	dx := math.Max(0, math.Max(target.X-bb.Max.X, bb.Min.X-target.X))
+	dy := math.Max(0, math.Max(target.Y-bb.Max.Y, bb.Min.Y-target.Y))
+	dz := math.Max(0, math.Max(target.Z-bb.Max.Z, bb.Min.Z-target.Z))
 	return dx*dx + dy*dy + dz*dz - 1e-6
 }
 
