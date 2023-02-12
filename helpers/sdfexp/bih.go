@@ -238,16 +238,6 @@ func (bi *BIH) getMinInterior(p0 [2]float64, h0 float64,
 	return p
 }
 
-// pick the smaller magnitude number, effectively the distance from
-// the closest triangle
-func minAbs(a float64, b float64) float64 {
-	if math.Abs(a) < math.Abs(b) {
-		return a
-	} else {
-		return b
-	}
-}
-
 func (b *BIH) nearestDistHelper(target r3.Vec, idx int, bb r3.Box, cur_dist_sq float64, cur_dist r3.Vec, dist_idx int) (out_dist_sq float64, out_dist r3.Vec, out_idx int) {
 	bih := &b.bih[idx]
 
