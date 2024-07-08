@@ -72,6 +72,12 @@ var examples = []struct {
 		resultSTL: "support.stl",
 		view:      defaultView,
 	},
+	{
+		Name:      "Topographic Map",
+		Dir:       "topomap",
+		resultSTL: "topomap.stl",
+		view:      defaultView,
+	},
 }
 
 func main() {
