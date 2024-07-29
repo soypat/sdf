@@ -7,7 +7,7 @@
 # Exclude CPU and memory profiles
 *.prof
 *.pprof
-
+local
 *bin
 
 *.png
