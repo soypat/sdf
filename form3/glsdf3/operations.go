@@ -3,6 +3,9 @@ package glsdf
 import (
 	"errors"
 	"fmt"
+	"math"
+
+	"gonum.org/v1/gonum/spatial/r3"
 )
 
 // Union
@@ -164,8 +167,60 @@ func (s *scale) AppendShaderBody(b []byte) []byte {
 	return b
 }
 
-func Translate(s Shader, to Vec3) Shader {
-	return &translate{s: s, p: to}
+func Rotate(s Shader, radians float32, v r3.Vec) Shader {
+	if v == (r3.Vec{}) {
+		panic("null vector")
+	}
+	v = r3.Unit(v)
+	return &rotate{s: s, p: r3tovec(v), q: radians}
+}
+
+type rotate struct {
+	s Shader
+	p Vec3
+	q float32
+}
+
+func (u *rotate) Bounds() (min, max Vec3) {
+	min, max = u.s.Bounds()
+	min = Vec3{X: min.X - u.p.X, Y: min.Y - u.p.Y, Z: min.Z - u.p.Z}
+	max = Vec3{X: max.X - u.p.X, Y: max.Y - u.p.Y, Z: max.Z - u.p.Z}
+	return min, max
+}
+
+func (s *rotate) ForEachChild(flags Flags, fn func(flags Flags, s Shader) error) error {
+	return fn(flags, s.s)
+}
+
+func (s *rotate) AppendShaderName(b []byte) []byte {
+	b = append(b, "rotate"...)
+	b = vecappend(b, s.p, 0, 'n', 'p')
+	b = fappend(b, s.q, 'n', 'p')
+	b = append(b, '_')
+	b = s.s.AppendShaderName(b)
+	return b
+}
+
+func (r *rotate) AppendShaderBody(b []byte) []byte {
+	v := r.p
+	s64, c64 := math.Sincos(float64(r.q))
+	s, c := float32(s64), float32(c64)
+	m := 1 - c
+	mat44 := [...]float32{
+		m*v.X*v.X + c, m*v.X*v.Y - v.Z*s, m*v.Z*v.X + v.Y*s, 0,
+		m*v.X*v.Y + v.Z*s, m*v.Y*v.Y + c, m*v.Y*v.Z - v.X*s, 0,
+		m*v.Z*v.X - v.Y*s, m*v.Y*v.Z + v.X*s, m*v.Z*v.Z + c, 0,
+		0, 0, 0, 1,
+	}
+	b = appendMat4Decl(b, "rot", mat44)
+	b = append(b, "return "...)
+	b = r.s.AppendShaderName(b)
+	b = append(b, "(invert(rot) * p);"...)
+	return b
+}
+
+func Translate(s Shader, to r3.Vec) Shader {
+	return &translate{s: s, p: r3tovec(to)}
 }
 
 type translate struct {
@@ -240,37 +295,38 @@ func (s *round) AppendShaderBody(b []byte) []byte {
 	return b
 }
 
-// Array is the domain repetition operation.
-func Array(s Shader, x, y, z float32, nx, ny, nz int) (Shader, error) {
+// Array is the domain repetition operation. It repeats domain centered around (x,y,z)=(0,0,0)
+func Array(s Shader, spacingX, spacingY, spacingZ float32, nx, ny, nz int) (Shader, error) {
 	if nx <= 0 || ny <= 0 || nz <= 0 {
 		return nil, errors.New("invalid repeat param")
 	}
-	return &repeat{s: s, d: Vec3{X: x, Y: y, Z: z}, nx: nx - 1, ny: ny - 1, nz: nz - 1}, nil
+	return &array{s: s, d: Vec3{X: spacingX, Y: spacingY, Z: spacingZ}, nx: nx, ny: ny, nz: nz}, nil
 }
 
-type repeat struct {
+type array struct {
 	s          Shader
 	d          Vec3
 	nx, ny, nz int
 }
 
-func (u *repeat) Bounds() (min, max Vec3) {
+func (u *array) Bounds() (min, max Vec3) {
 	return u.s.Bounds() // TODO: fix this.
 }
 
-func (s *repeat) ForEachChild(flags Flags, fn func(flags Flags, s Shader) error) error {
+func (s *array) ForEachChild(flags Flags, fn func(flags Flags, s Shader) error) error {
 	return fn(flags, s.s)
 }
 
-func (s *repeat) AppendShaderName(b []byte) []byte {
+func (s *array) AppendShaderName(b []byte) []byte {
 	b = append(b, "repeat"...)
-	b = vecappend(b, s.d, '0', 'n', 'p')
+	b = vecappend(b, s.d, 'q', 'n', 'p')
+	b = vecappend(b, Vec3{X: float32(s.nx), Y: float32(s.ny), Z: float32(s.nz)}, 'q', 'n', 'p')
 	b = append(b, '_')
 	b = s.s.AppendShaderName(b)
 	return b
 }
 
-func (s *repeat) AppendShaderBody(b []byte) []byte {
+func (s *array) AppendShaderBody(b []byte) []byte {
 	sdf := string(s.s.AppendShaderName(nil))
 	// id is the tile index in 3 directions.
 	// o is neighbor offset direction (which neighboring tile is closest in 3 directions)
@@ -294,7 +350,7 @@ for( int i=0; i<2; i++ )
 	d = min( d, %s(r) );
 }
 return d;`, s.d.X, s.d.Y, s.d.Z,
-		s.nx, s.ny, s.nz, sdf,
+		s.nx-1, s.ny-1, s.nz-1, sdf,
 	)
 	b = append(b, body...)
 	return b

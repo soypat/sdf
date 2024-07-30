@@ -6,6 +6,8 @@ import (
 	"io"
 	"math"
 	"strconv"
+
+	"gonum.org/v1/gonum/spatial/r3"
 )
 
 // Shader can create SDF shader source code for an arbitrary shape.
@@ -127,6 +129,20 @@ func appendFloatDecl(b []byte, name string, v float32) []byte {
 	return b
 }
 
+func appendMat4Decl(b []byte, name string, m44 [16]float32) []byte {
+	b = append(b, "mat4 "...)
+	b = append(b, name...)
+	b = append(b, "=mat4("...)
+	for i, v := range m44 {
+		b = fappend(b, v, '-', '.')
+		if i != 15 {
+			b = append(b, ',')
+		}
+	}
+	b = append(b, ");\n"...)
+	return b
+}
+
 func fappend(b []byte, v float32, neg, decimal byte) []byte {
 	start := len(b)
 	b = strconv.AppendFloat(b, float64(v), 'f', 6, 32)
@@ -150,4 +166,8 @@ func vecappend(b []byte, v Vec3, sep, neg, decimal byte) []byte {
 	}
 	b = fappend(b, v.Z, neg, decimal)
 	return b
+}
+
+func r3tovec(v r3.Vec) Vec3 {
+	return Vec3{X: float32(v.X), Y: float32(v.Y), Z: float32(v.Z)}
 }
