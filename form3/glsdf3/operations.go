@@ -240,12 +240,12 @@ func (s *round) AppendShaderBody(b []byte) []byte {
 	return b
 }
 
-// Repeat is the domain repetition operation.
-func Repeat(s Shader, x, y, z float32, nx, ny, nz int) (Shader, error) {
+// Array is the domain repetition operation.
+func Array(s Shader, x, y, z float32, nx, ny, nz int) (Shader, error) {
 	if nx <= 0 || ny <= 0 || nz <= 0 {
 		return nil, errors.New("invalid repeat param")
 	}
-	return &repeat{s: s, d: Vec3{X: x, Y: y, Z: z}, nx: nx, ny: ny, nz: nz}, nil
+	return &repeat{s: s, d: Vec3{X: x, Y: y, Z: z}, nx: nx - 1, ny: ny - 1, nz: nz - 1}, nil
 }
 
 type repeat struct {
@@ -271,137 +271,31 @@ func (s *repeat) AppendShaderName(b []byte) []byte {
 }
 
 func (s *repeat) AppendShaderBody(b []byte) []byte {
+	sdf := string(s.s.AppendShaderName(nil))
+	// id is the tile index in 3 directions.
+	// o is neighbor offset direction (which neighboring tile is closest in 3 directions)
+	// s is scaling factors in 3 directions.
+	// rid is the neighboring tile index, which is then corrected for limited repetition using clamp.
 	body := fmt.Sprintf(`
 vec3 s = vec3(%f,%f,%f);
-ivec3 n = ivec3(%d,%d,%d);
-vec3 id = round(vec3(p.x/s.x,p.y/s.y,p.z/s.z));
-vec3 normid = vec3(id.x*s.x,id.y*s.y,id.z*s.z);
-vec3 o = sign(p-normid);
+vec3 n = vec3(%d.,%d.,%d.);
+vec3 minlim = vec3(0.,0.,0.);
+vec3 id = round(p/s);
+vec3 o = sign(p-s*id);
 float d = 1e20;
+for( int k=0; k<2; k++ )
 for( int j=0; j<2; j++ )
 for( int i=0; i<2; i++ )
-for( int k=0; k<2; k++ )
 {
 	vec3 rid = id + vec3(i,j,k)*o;
 	// limited repetition
-	rid = clamp(rid,-(size-1.0)*0.5,(size-1.0)*0.5);
+	rid = clamp(rid, minlim, n);
 	vec2 r = p - s*rid;
-	d = min( d, sdf(r) );
+	d = min( d, %s(r) );
 }
 return d;`, s.d.X, s.d.Y, s.d.Z,
-		s.nx, s.ny, s.nz,
+		s.nx, s.ny, s.nz, sdf,
 	)
 	b = append(b, body...)
 	return b
 }
-
-/*
-float sdTriangle( in vec2 p, in vec2 p0, in vec2 p1, in vec2 p2 )
-{
-    vec2 e0 = p1-p0, e1 = p2-p1, e2 = p0-p2;
-    vec2 v0 = p -p0, v1 = p -p1, v2 = p -p2;
-    vec2 pq0 = v0 - e0*clamp( dot(v0,e0)/dot(e0,e0), 0.0, 1.0 );
-    vec2 pq1 = v1 - e1*clamp( dot(v1,e1)/dot(e1,e1), 0.0, 1.0 );
-    vec2 pq2 = v2 - e2*clamp( dot(v2,e2)/dot(e2,e2), 0.0, 1.0 );
-    float s = sign( e0.x*e2.y - e0.y*e2.x );
-    vec2 d = min(min(vec2(dot(pq0,pq0), s*(v0.x*e0.y-v0.y*e0.x)),
-                     vec2(dot(pq1,pq1), s*(v1.x*e1.y-v1.y*e1.x))),
-                     vec2(dot(pq2,pq2), s*(v2.x*e2.y-v2.y*e2.x)));
-    return -sqrt(d.x)*sign(d.y);
-}
-
-float sdf(in vec2 p)
-{
-    vec2 p1 = vec2(-.1, -.1);
-    vec2 p2 = vec2(.1, -.1);
-    vec2 p3 = vec2(0.1,.1);
-    return sdTriangle(p, p1,p2,p3);
-}
-// Check neighboring tiles for closest points, infinite repeating.
-float repeat_neighbors(in vec2 p,  in vec2 scal, in ivec2 n )
-{
-    vec2 minlim = vec2(0, 0);
-    vec2 maxlim = 0.5*vec2(n-1)*scal;
-
-    // Tile index.
-    vec2 id = round(p/scal);
-    // Repeat-transform point, as obtained by naive repeat.
-    vec2 transf = p - scal*id;
-    // neighbor offset direction
-    vec2  o = sign(transf);
-    float d = 1e20;
-    for( int j=0; j<2; j++ )
-    for( int i=0; i<2; i++ )
-    {
-        vec2 rid = id + vec2(i,j)*o;
-        rid = clamp(rid, minlim, maxlim);
-        vec2 r = p - scal*rid;
-        d = min( d, sdf(r) );
-    }
-    return d;
-}
-float repeated_fix(in vec2 p, in vec2 size, in vec2 scal )
-{
-    vec2 id = round(p/scal);
-    vec2 o = sign(p-scal*id);
-    float d = 1e20;
-    for( int j=0; j<2; j++ )
-    {
-        for( int i=0; i<2; i++ )
-        {
-            vec2 rid = id + vec2(i,j)*o;
-            // limited repetition
-            rid = clamp(rid,-(size-1.0)*0.5,(size-1.0)*0.5);
-            vec2 r = p - scal*rid;
-            d = min( d, sdf(r) );
-        }
-    }
-    return d;
-}
-
-
-float repeated(in vec2 p, in vec2 size, in vec2 scal )
-{
-    vec2 id = round(p/scal);
-    vec2 o = sign(p-scal*id);
-    float d = 1e20;
-    for( int j=0; j<2; j++ )
-    {
-        for( int i=0; i<2; i++ )
-        {
-            vec2 rid = id + vec2(i,j)*o;
-            // limited repetition
-            rid = clamp(rid,-(size-1.0)*0.5,(size-1.0)*0.5);
-            vec2 r = p - scal*rid;
-            d = min( d, sdf(r) );
-        }
-    }
-    return d;
-}
-
-
-void mainImage( out vec4 fragColor, in vec2 fragCoord )
-{
-    vec2 n = vec2(3., 4);
-    vec2 rep = vec2(2., 1.);
-	vec2 p = (6.0*fragCoord-iResolution.xy)/iResolution.y;
-    vec2 m = (6.0*iMouse.xy-iResolution.xy)/iResolution.y;
-    p = p - vec2(3., 2.);
-	float d = repeated(p, n, rep);
-
-	// coloring
-    vec3 col = (d>0.0) ? vec3(0.9,0.6,0.3) : vec3(0.65,0.85,1.0);
-    col *= 1.0 - exp(-6.0*abs(d));
-	col *= 0.8 + 0.2*cos(150.0*d);
-	col = mix( col, vec3(1.0), 1.0-smoothstep(0.0,0.01,abs(d)) );
-
-    if( iMouse.z>0.001 )
-    {
-    d = repeated(m, n, rep);
-    col = mix(col, vec3(1.0,1.0,0.0), 1.0-smoothstep(0.0, 0.005, abs(length(p-m)-abs(d))-0.0025));
-    col = mix(col, vec3(1.0,1.0,0.0), 1.0-smoothstep(0.0, 0.005, length(p-m)-0.015));
-    }
-
-	fragColor = vec4(col,1.0);
-}
-*/
