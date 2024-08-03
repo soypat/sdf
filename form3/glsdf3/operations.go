@@ -8,7 +8,7 @@ import (
 	"gonum.org/v1/gonum/spatial/r3"
 )
 
-// Union
+// Union joins the shapes of two shaders into one.
 func Union(s1, s2 Shader) Shader {
 	if s1 == nil || s2 == nil {
 		panic("nil object")
@@ -23,8 +23,8 @@ type union struct {
 func (u *union) Bounds() (min, max Vec3) {
 	min1, max1 := u.s1.Bounds()
 	min2, max2 := u.s2.Bounds()
-	min = Vec3{X: minf(min1.X, min2.X), Y: minf(min1.Y, min2.Y), Z: minf(min1.Z, min2.Z)}
-	max = Vec3{X: maxf(max1.X, max2.X), Y: maxf(max1.Y, max2.Y), Z: maxf(max1.Z, max2.Z)}
+	min = minv3(min1, min2)
+	max = maxv3(max1, max2)
 	return min, max
 }
 
@@ -109,8 +109,8 @@ type intersect struct {
 func (u *intersect) Bounds() (min, max Vec3) {
 	min1, max1 := u.s1.Bounds()
 	min2, max2 := u.s2.Bounds()
-	min = Vec3{X: maxf(min1.X, min2.X), Y: maxf(min1.Y, min2.Y), Z: maxf(min1.Z, min2.Z)}
-	max = Vec3{X: minf(max1.X, max2.X), Y: minf(max1.Y, max2.Y), Z: minf(max1.Z, max2.Z)}
+	min = maxv3(min1, min2)
+	max = minv3(max1, max2)
 	return min, max
 }
 
@@ -137,6 +137,11 @@ func (s *intersect) AppendShaderBody(b []byte) []byte {
 	b = s.s2.AppendShaderBody(b)
 	b = append(b, "(p));"...)
 	return b
+}
+
+// Scale scales s by scaleFactor around the origin.
+func Scale(s Shader, scaleFactor float32) Shader {
+	return &scale{s: s, scale: scaleFactor}
 }
 
 type scale struct {
@@ -167,12 +172,63 @@ func (s *scale) AppendShaderBody(b []byte) []byte {
 	return b
 }
 
-func Rotate(s Shader, radians float32, v r3.Vec) Shader {
-	if v == (r3.Vec{}) {
+// Symmetry reflects the SDF around one or more cartesian planes.
+func Symmetry(s Shader, mirrorX, mirrorY, mirrorZ bool) Shader {
+	if !mirrorX && !mirrorY && !mirrorZ {
+		panic("ineffective symmetry")
+	}
+	return &symmetry{s: s, xyz: newXYZBits(mirrorX, mirrorY, mirrorZ)}
+}
+
+type symmetry struct {
+	s   Shader
+	xyz xyzBits
+}
+
+func (u *symmetry) Bounds() (min, max Vec3) {
+	min1, max1 := u.s.Bounds()
+	if u.xyz&xBit != 0 {
+		min1.X = minf(min1.X, -max1.X)
+	}
+	if u.xyz&yBit != 0 {
+		min1.Y = minf(min1.Y, -max1.Y)
+	}
+	if u.xyz&zBit != 0 {
+		min1.Z = minf(min1.Z, -max1.Z)
+	}
+	return min1, max1
+}
+
+func (s *symmetry) ForEachChild(flags Flags, fn func(flags Flags, s Shader) error) error {
+	return fn(flags, s.s)
+}
+
+func (s *symmetry) AppendShaderName(b []byte) []byte {
+	b = append(b, "symmetry"...)
+	b = s.xyz.AppendMapped(b, [3]byte{'X', 'Y', 'Z'})
+	b = append(b, '_')
+	b = s.s.AppendShaderName(b)
+	return b
+}
+
+func (s *symmetry) AppendShaderBody(b []byte) []byte {
+	b = append(b, "p."...)
+	b = s.xyz.AppendMapped(b, [3]byte{'x', 'y', 'z'})
+	b = append(b, "=abs(p."...)
+	b = s.xyz.AppendMapped(b, [3]byte{'x', 'y', 'z'})
+	b = append(b, ");\n return "...)
+	b = s.s.AppendShaderBody(b)
+	b = append(b, "(p);"...)
+	return b
+}
+
+// Rotate is the rotation of radians angle around vector v.
+func Rotate(s Shader, radians float32, axis r3.Vec) Shader {
+	if axis == (r3.Vec{}) {
 		panic("null vector")
 	}
-	v = r3.Unit(v)
-	return &rotate{s: s, p: r3tovec(v), q: radians}
+	axis = r3.Unit(axis)
+	return &rotate{s: s, p: r3tovec(axis), q: radians}
 }
 
 type rotate struct {
@@ -182,9 +238,7 @@ type rotate struct {
 }
 
 func (u *rotate) Bounds() (min, max Vec3) {
-	min, max = u.s.Bounds()
-	min = Vec3{X: min.X - u.p.X, Y: min.Y - u.p.Y, Z: min.Z - u.p.Z}
-	max = Vec3{X: max.X - u.p.X, Y: max.Y - u.p.Y, Z: max.Z - u.p.Z}
+	min, max = u.s.Bounds() // TODO
 	return min, max
 }
 
@@ -206,7 +260,7 @@ func (r *rotate) AppendShaderBody(b []byte) []byte {
 	s64, c64 := math.Sincos(float64(r.q))
 	s, c := float32(s64), float32(c64)
 	m := 1 - c
-	mat44 := [...]float32{
+	mat44 := [16]float32{
 		m*v.X*v.X + c, m*v.X*v.Y - v.Z*s, m*v.Z*v.X + v.Y*s, 0,
 		m*v.X*v.Y + v.Z*s, m*v.Y*v.Y + c, m*v.Y*v.Z - v.X*s, 0,
 		m*v.Z*v.X - v.Y*s, m*v.Y*v.Z + v.X*s, m*v.Z*v.Z + c, 0,
@@ -219,8 +273,9 @@ func (r *rotate) AppendShaderBody(b []byte) []byte {
 	return b
 }
 
-func Translate(s Shader, to r3.Vec) Shader {
-	return &translate{s: s, p: r3tovec(to)}
+// Translate moves the shader s by a vector
+func Translate(s Shader, dirX, dirY, dirZ float32) Shader {
+	return &translate{s: s, p: Vec3{X: dirX, Y: dirY, Z: dirZ}}
 }
 
 type translate struct {
@@ -230,8 +285,8 @@ type translate struct {
 
 func (u *translate) Bounds() (min, max Vec3) {
 	min, max = u.s.Bounds()
-	min = Vec3{X: min.X - u.p.X, Y: min.Y - u.p.Y, Z: min.Z - u.p.Z}
-	max = Vec3{X: max.X - u.p.X, Y: max.Y - u.p.Y, Z: max.Z - u.p.Z}
+	min = addv3(min, u.p)
+	max = addv3(max, u.p)
 	return min, max
 }
 
@@ -271,7 +326,7 @@ type round struct {
 }
 
 func (u *round) Bounds() (min, max Vec3) {
-	return u.s.Bounds() // TODO: fix this.
+	return u.s.Bounds()
 }
 
 func (s *round) ForEachChild(flags Flags, fn func(flags Flags, s Shader) error) error {
@@ -298,7 +353,9 @@ func (s *round) AppendShaderBody(b []byte) []byte {
 // Array is the domain repetition operation. It repeats domain centered around (x,y,z)=(0,0,0)
 func Array(s Shader, spacingX, spacingY, spacingZ float32, nx, ny, nz int) (Shader, error) {
 	if nx <= 0 || ny <= 0 || nz <= 0 {
-		return nil, errors.New("invalid repeat param")
+		return nil, errors.New("invalid array repeat param")
+	} else if spacingX <= 0 || spacingY <= 0 || spacingZ <= 0 {
+		return nil, errors.New("invalid array spacing")
 	}
 	return &array{s: s, d: Vec3{X: spacingX, Y: spacingY, Z: spacingZ}, nx: nx, ny: ny, nz: nz}, nil
 }
@@ -310,7 +367,8 @@ type array struct {
 }
 
 func (u *array) Bounds() (min, max Vec3) {
-	return u.s.Bounds() // TODO: fix this.
+	max = mulelemv3(u.nvec3(), u.d.Scale(0.5))
+	return u.d.Scale(-0.5), max
 }
 
 func (s *array) ForEachChild(flags Flags, fn func(flags Flags, s Shader) error) error {
@@ -320,11 +378,13 @@ func (s *array) ForEachChild(flags Flags, fn func(flags Flags, s Shader) error) 
 func (s *array) AppendShaderName(b []byte) []byte {
 	b = append(b, "repeat"...)
 	b = vecappend(b, s.d, 'q', 'n', 'p')
-	b = vecappend(b, Vec3{X: float32(s.nx), Y: float32(s.ny), Z: float32(s.nz)}, 'q', 'n', 'p')
+	b = vecappend(b, s.nvec3(), 'q', 'n', 'p')
 	b = append(b, '_')
 	b = s.s.AppendShaderName(b)
 	return b
 }
+
+func (s *array) nvec3() Vec3 { return Vec3{X: float32(s.nx), Y: float32(s.ny), Z: float32(s.nz)} }
 
 func (s *array) AppendShaderBody(b []byte) []byte {
 	sdf := string(s.s.AppendShaderName(nil))
@@ -350,8 +410,143 @@ for( int i=0; i<2; i++ )
 	d = min( d, %s(r) );
 }
 return d;`, s.d.X, s.d.Y, s.d.Z,
-		s.nx-1, s.ny-1, s.nz-1, sdf,
+		s.nx-1, s.ny-1, s.nz-1,
+		sdf,
 	)
 	b = append(b, body...)
+	return b
+}
+
+// SmoothUnion joins the shapes of two shaders into one with a smoothing blend.
+func SmoothUnion(s1, s2 Shader, k float32) Shader {
+	if s1 == nil || s2 == nil {
+		panic("nil object")
+	}
+	return &smoothUnion{union: union{s1: s1, s2: s2}, k: k}
+}
+
+type smoothUnion struct {
+	union
+	k float32
+}
+
+func (s *smoothUnion) AppendShaderName(b []byte) []byte {
+	b = append(b, "smoothUnion_"...)
+	b = fappend(b, s.k, 'n', 'd')
+	b = append(b, '_')
+	b = s.s1.AppendShaderName(b)
+	b = append(b, '_')
+	b = s.s2.AppendShaderName(b)
+	return b
+}
+
+func (s *smoothUnion) AppendShaderBody(b []byte) []byte {
+	b = appendDistanceDecl(b, s.s1, "d1", "p")
+	b = appendDistanceDecl(b, s.s2, "d2", "p")
+	b = appendFloatDecl(b, "k", s.k)
+	b = append(b, `float h = clamp( 0.5 + 0.5*(d2-d1)/k, 0.0, 1.0 );
+    return mix( d2, d1, h ) - k*h*(1.0-h);`...)
+	return b
+}
+
+// SmoothDifference performs the difference of two SDFs with a smoothing parameter.
+func SmoothDifference(s1, s2 Shader, k float32) Shader {
+	if s1 == nil || s2 == nil {
+		panic("nil object")
+	}
+	return &smoothDiff{diff: diff{s1: s1, s2: s2}, k: k}
+}
+
+type smoothDiff struct {
+	diff
+	k float32
+}
+
+func (s *smoothDiff) AppendShaderName(b []byte) []byte {
+	b = append(b, "smoothDiff"...)
+	b = fappend(b, s.k, 'n', 'd')
+	b = append(b, '_')
+	b = s.s1.AppendShaderName(b)
+	b = append(b, '_')
+	b = s.s2.AppendShaderName(b)
+	return b
+}
+
+func (s *smoothDiff) AppendShaderBody(b []byte) []byte {
+	b = appendDistanceDecl(b, s.s1, "d1", "p")
+	b = appendDistanceDecl(b, s.s2, "d2", "p")
+	b = appendFloatDecl(b, "k", s.k)
+	b = append(b, `float h = clamp( 0.5 - 0.5*(d2+d1)/k, 0.0, 1.0 );
+return mix( d2, -d1, h ) + k*h*(1.0-h);`...)
+	return b
+}
+
+// SmoothIntersect performs the intesection of two SDFs with a smoothing parameter.
+func SmoothIntersect(s1, s2 Shader, k float32) Shader {
+	if s1 == nil || s2 == nil {
+		panic("nil object")
+	}
+	return &smoothIntersect{intersect: intersect{s1: s1, s2: s2}, k: k}
+}
+
+type smoothIntersect struct {
+	intersect
+	k float32
+}
+
+func (s *smoothIntersect) AppendShaderName(b []byte) []byte {
+	b = append(b, "smoothIntersect"...)
+	b = fappend(b, s.k, 'n', 'd')
+	b = append(b, '_')
+	b = s.s1.AppendShaderName(b)
+	b = append(b, '_')
+	b = s.s2.AppendShaderName(b)
+	return b
+}
+
+func (s *smoothIntersect) AppendShaderBody(b []byte) []byte {
+	b = appendDistanceDecl(b, s.s1, "d1", "p")
+	b = appendDistanceDecl(b, s.s2, "d2", "p")
+	b = appendFloatDecl(b, "k", s.k)
+	b = append(b, `float h = clamp( 0.5 - 0.5*(d2-d1)/k, 0.0, 1.0 );
+return mix( d2, d1, h ) + k*h*(1.0-h);`...)
+	return b
+}
+
+// Elongate "stretches" the SDF in a direction by splitting it on the origin in
+// the plane perpendicular to the argument direction.
+func Elongate(s Shader, dirX, dirY, dirZ float32) Shader {
+	return &elongate{s: s, h: Vec3{X: dirX, Y: dirY, Z: dirZ}}
+}
+
+type elongate struct {
+	s Shader
+	h Vec3
+}
+
+func (u *elongate) Bounds() (min, max Vec3) {
+	min, max = u.s.Bounds()
+	min = minv3(min, addv3(min, u.h))
+	max = maxv3(max, addv3(max, u.h))
+	return min, max
+}
+
+func (s *elongate) ForEachChild(flags Flags, fn func(flags Flags, s Shader) error) error {
+	return fn(flags, s.s)
+}
+
+func (s *elongate) AppendShaderName(b []byte) []byte {
+	b = append(b, "elongate"...)
+	b = vecappend(b, s.h, 'i', 'n', 'p')
+	b = append(b, '_')
+	b = s.s.AppendShaderName(b)
+	return b
+}
+
+func (s *elongate) AppendShaderBody(b []byte) []byte {
+	b = appendVec3Decl(b, "h", s.h)
+	b = append(b, "vec3 q = abs(p)-h;"...)
+	b = appendDistanceDecl(b, s.s, "d", "max(q,0.0)")
+	b = append(b, "return d + min(max(q.x,max(q.y,q.z)),0.0);"...)
 	return b
 }

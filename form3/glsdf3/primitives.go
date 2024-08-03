@@ -123,3 +123,78 @@ func (s *cylinder) Bounds() (min, max Vec3) {
 	max = min.Abs()
 	return min, max
 }
+
+func NewHexagonalPrism(side, h float32) (Shader, error) {
+	if side <= 0 || h <= 0 {
+		return nil, errors.New("invalid hexagonal prism parameter")
+	}
+	return &hex{side: side, h: h}, nil
+}
+
+type hex struct {
+	side, h float32
+}
+
+func (s *hex) ForEachChild(flags Flags, fn func(flags Flags, s Shader) error) error { return nil }
+
+func (s *hex) AppendShaderName(b []byte) []byte {
+	b = append(b, "hex"...)
+	b = fappend(b, s.side, 'n', 'p')
+	b = fappend(b, s.h, 'n', 'p')
+	return b
+}
+
+func (s *hex) AppendShaderBody(b []byte) []byte {
+	b = appendFloatDecl(b, "h", s.h)
+	b = appendFloatDecl(b, "side", s.side)
+	b = append(b, `vec2 h = vec2(side,h);
+const vec3 k = vec3(-0.8660254, 0.5, 0.57735);
+p = abs(p);
+p.xy -= 2.0*min(dot(k.xy, p.xy), 0.0)*k.xy;
+vec2 d = vec2(
+	length(p.xy-vec2(clamp(p.x,-k.z*h.x,k.z*h.x), h.x))*sign(p.y-h.x),
+	p.z-h.y );
+return min(max(d.x,d.y),0.0) + length(max(d,0.0));`...)
+	return b
+}
+
+func (s *hex) Bounds() (min, max Vec3) {
+	l := s.side * 2
+	min = Vec3{X: -l, Y: -l, Z: -s.h}
+	return min, min.Abs()
+}
+
+func NewTriangularPrism(side, h float32) (Shader, error) {
+	if side <= 0 || h <= 0 {
+		return nil, errors.New("invalid triangular prism parameter")
+	}
+	return &tri{side: side, h: h}, nil
+}
+
+type tri struct {
+	side, h float32
+}
+
+func (s *tri) ForEachChild(flags Flags, fn func(flags Flags, s Shader) error) error { return nil }
+
+func (s *tri) AppendShaderName(b []byte) []byte {
+	b = append(b, "tri"...)
+	b = fappend(b, s.side, 'n', 'p')
+	b = fappend(b, s.h, 'n', 'p')
+	return b
+}
+
+func (s *tri) AppendShaderBody(b []byte) []byte {
+	b = appendFloatDecl(b, "h", s.h)
+	b = appendFloatDecl(b, "side", s.side)
+	b = append(b, `vec2 h = vec2(side,h);
+vec3 q = abs(p);
+return max(q.z-h.y,max(q.x*0.866025+p.y*0.5,-p.y)-h.x*0.5);`...)
+	return b
+}
+
+func (s *tri) Bounds() (min, max Vec3) {
+	l := s.side
+	min = Vec3{X: -l, Y: -l, Z: -s.h}
+	return min, min.Abs()
+}

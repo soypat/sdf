@@ -58,7 +58,7 @@ func Sphere(radius float64) *sphere {
 	if radius <= 0 {
 		panic("radius <= 0")
 	}
-	d := r3.Vec{radius, radius, radius}
+	d := r3.Vec{X: radius, Y: radius, Z: radius}
 	s := sphere{
 		radius: radius,
 		bb:     r3.Box{Min: r3.Scale(-1, d), Max: d},

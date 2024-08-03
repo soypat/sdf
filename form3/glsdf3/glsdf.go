@@ -30,6 +30,13 @@ func (v Vec3) Scale(scale float32) Vec3 {
 	return Vec3{X: v.X * scale, Y: v.Y * scale, Z: v.Z * scale}
 }
 
+func maxv3(a, b Vec3) Vec3     { return Vec3{X: maxf(a.X, b.X), Y: maxf(a.Y, b.Y), Z: maxf(a.Z, b.Z)} }
+func minv3(a, b Vec3) Vec3     { return Vec3{X: minf(a.X, b.X), Y: minf(a.Y, b.Y), Z: minf(a.Z, b.Z)} }
+func mulelemv3(a, b Vec3) Vec3 { return Vec3{X: a.X * b.X, Y: a.Y * b.Y, Z: a.Z * b.Z} }
+func divelemv3(a, b Vec3) Vec3 { return Vec3{X: a.X / b.X, Y: a.Y / b.Y, Z: a.Z / b.Z} }
+func addv3(a, b Vec3) Vec3     { return Vec3{X: a.X + b.X, Y: a.Y + b.Y, Z: a.Z + b.Z} }
+func subv3(a, b Vec3) Vec3     { return Vec3{X: a.X - b.X, Y: a.Y - b.Y, Z: a.Z - b.Z} }
+
 type Flags uint64
 
 func minf(a, b float32) float32 {
@@ -120,6 +127,15 @@ func appendAllNodes(buf []Shader, root Shader) ([]Shader, error) {
 	return buf, nil
 }
 
+func appendVec3Decl(b []byte, name string, v Vec3) []byte {
+	b = append(b, "float "...)
+	b = append(b, name...)
+	b = append(b, "=vec3("...)
+	b = vecappend(b, v, ',', '-', '.')
+	b = append(b, ')', ';', '\n')
+	return b
+}
+
 func appendFloatDecl(b []byte, name string, v float32) []byte {
 	b = append(b, "float "...)
 	b = append(b, name...)
@@ -146,13 +162,19 @@ func appendMat4Decl(b []byte, name string, m44 [16]float32) []byte {
 func fappend(b []byte, v float32, neg, decimal byte) []byte {
 	start := len(b)
 	b = strconv.AppendFloat(b, float64(v), 'f', 6, 32)
-	if idx := bytes.IndexByte(b[start:], '.'); decimal != '.' && idx >= 0 {
+	idx := bytes.IndexByte(b[start:], '.')
+	if decimal != '.' && idx >= 0 {
 		b[start+idx] = decimal
 	}
 	if b[start] == '-' {
 		b[start] = neg
 	}
-	return b
+	// Finally trim zeroes.
+	end := len(b)
+	for i := len(b); idx >= 0 && i > idx+start && b[i] == '0'; i++ {
+		end--
+	}
+	return b[:end]
 }
 
 func vecappend(b []byte, v Vec3, sep, neg, decimal byte) []byte {
@@ -170,4 +192,47 @@ func vecappend(b []byte, v Vec3, sep, neg, decimal byte) []byte {
 
 func r3tovec(v r3.Vec) Vec3 {
 	return Vec3{X: float32(v.X), Y: float32(v.Y), Z: float32(v.Z)}
+}
+
+func b2i(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
+}
+
+type xyzBits uint8
+
+const (
+	xBit xyzBits = 1 << iota
+	yBit
+	zBit
+)
+
+func newXYZBits(x, y, z bool) xyzBits {
+	return xyzBits(b2i(x) | b2i(y)<<1 | b2i(z)<<2)
+}
+
+func (xyz xyzBits) AppendMapped(b []byte, Map [3]byte) []byte {
+	if xyz&xBit != 0 {
+		b = append(b, Map[0])
+	}
+	if xyz&yBit != 0 {
+		b = append(b, Map[1])
+	}
+	if xyz&zBit != 0 {
+		b = append(b, Map[2])
+	}
+	return b
+}
+
+func appendDistanceDecl(b []byte, s Shader, name, input string) []byte {
+	b = append(b, "float "...)
+	b = append(b, name...)
+	b = append(b, '=')
+	b = s.AppendShaderName(b)
+	b = append(b, '(')
+	b = append(b, input...)
+	b = append(b, ");\n"...)
+	return b
 }
