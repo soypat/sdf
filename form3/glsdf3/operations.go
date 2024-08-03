@@ -28,12 +28,12 @@ func (u *union) Bounds() (min, max Vec3) {
 	return min, max
 }
 
-func (s *union) ForEachChild(flags Flags, fn func(flags Flags, s Shader) error) error {
-	err := fn(flags, s.s1)
+func (s *union) ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error {
+	err := fn(flags, &s.s1)
 	if err != nil {
 		return err
 	}
-	return fn(flags, s.s2)
+	return fn(flags, &s.s2)
 }
 
 func (s *union) AppendShaderName(b []byte) []byte {
@@ -46,9 +46,9 @@ func (s *union) AppendShaderName(b []byte) []byte {
 
 func (s *union) AppendShaderBody(b []byte) []byte {
 	b = append(b, "return min("...)
-	b = s.s1.AppendShaderBody(b)
+	b = s.s1.AppendShaderName(b)
 	b = append(b, "(p),"...)
-	b = s.s2.AppendShaderBody(b)
+	b = s.s2.AppendShaderName(b)
 	b = append(b, "(p));"...)
 	return b
 }
@@ -69,12 +69,12 @@ func (u *diff) Bounds() (min, max Vec3) {
 	return u.s1.Bounds()
 }
 
-func (s *diff) ForEachChild(flags Flags, fn func(flags Flags, s Shader) error) error {
-	err := fn(flags, s.s1)
+func (s *diff) ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error {
+	err := fn(flags, &s.s1)
 	if err != nil {
 		return err
 	}
-	return fn(flags, s.s2)
+	return fn(flags, &s.s2)
 }
 
 func (s *diff) AppendShaderName(b []byte) []byte {
@@ -87,9 +87,9 @@ func (s *diff) AppendShaderName(b []byte) []byte {
 
 func (s *diff) AppendShaderBody(b []byte) []byte {
 	b = append(b, "return max(-"...)
-	b = s.s1.AppendShaderBody(b)
+	b = s.s1.AppendShaderName(b)
 	b = append(b, "(p),"...)
-	b = s.s2.AppendShaderBody(b)
+	b = s.s2.AppendShaderName(b)
 	b = append(b, "(p));"...)
 	return b
 }
@@ -114,12 +114,12 @@ func (u *intersect) Bounds() (min, max Vec3) {
 	return min, max
 }
 
-func (s *intersect) ForEachChild(flags Flags, fn func(flags Flags, s Shader) error) error {
-	err := fn(flags, s.s1)
+func (s *intersect) ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error {
+	err := fn(flags, &s.s1)
 	if err != nil {
 		return err
 	}
-	return fn(flags, s.s2)
+	return fn(flags, &s.s2)
 }
 
 func (s *intersect) AppendShaderName(b []byte) []byte {
@@ -132,9 +132,9 @@ func (s *intersect) AppendShaderName(b []byte) []byte {
 
 func (s *intersect) AppendShaderBody(b []byte) []byte {
 	b = append(b, "return max("...)
-	b = s.s1.AppendShaderBody(b)
+	b = s.s1.AppendShaderName(b)
 	b = append(b, "(p),"...)
-	b = s.s2.AppendShaderBody(b)
+	b = s.s2.AppendShaderName(b)
 	b = append(b, "(p));"...)
 	return b
 }
@@ -154,8 +154,8 @@ func (u *scale) Bounds() (min, max Vec3) {
 	return min1.Scale(u.scale), max1.Scale(u.scale)
 }
 
-func (s *scale) ForEachChild(flags Flags, fn func(flags Flags, s Shader) error) error {
-	return fn(flags, s.s)
+func (s *scale) ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error {
+	return fn(flags, &s.s)
 }
 
 func (s *scale) AppendShaderName(b []byte) []byte {
@@ -167,7 +167,7 @@ func (s *scale) AppendShaderName(b []byte) []byte {
 func (s *scale) AppendShaderBody(b []byte) []byte {
 	b = appendFloatDecl(b, "s", s.scale)
 	b = append(b, "return "...)
-	b = s.s.AppendShaderBody(b)
+	b = s.s.AppendShaderName(b)
 	b = append(b, "(p/s)*s;"...)
 	return b
 }
@@ -199,8 +199,8 @@ func (u *symmetry) Bounds() (min, max Vec3) {
 	return min1, max1
 }
 
-func (s *symmetry) ForEachChild(flags Flags, fn func(flags Flags, s Shader) error) error {
-	return fn(flags, s.s)
+func (s *symmetry) ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error {
+	return fn(flags, &s.s)
 }
 
 func (s *symmetry) AppendShaderName(b []byte) []byte {
@@ -217,7 +217,7 @@ func (s *symmetry) AppendShaderBody(b []byte) []byte {
 	b = append(b, "=abs(p."...)
 	b = s.xyz.AppendMapped(b, [3]byte{'x', 'y', 'z'})
 	b = append(b, ");\n return "...)
-	b = s.s.AppendShaderBody(b)
+	b = s.s.AppendShaderName(b)
 	b = append(b, "(p);"...)
 	return b
 }
@@ -242,8 +242,8 @@ func (u *rotate) Bounds() (min, max Vec3) {
 	return min, max
 }
 
-func (s *rotate) ForEachChild(flags Flags, fn func(flags Flags, s Shader) error) error {
-	return fn(flags, s.s)
+func (s *rotate) ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error {
+	return fn(flags, &s.s)
 }
 
 func (s *rotate) AppendShaderName(b []byte) []byte {
@@ -290,8 +290,8 @@ func (u *translate) Bounds() (min, max Vec3) {
 	return min, max
 }
 
-func (s *translate) ForEachChild(flags Flags, fn func(flags Flags, s Shader) error) error {
-	return fn(flags, s.s)
+func (s *translate) ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error {
+	return fn(flags, &s.s)
 }
 
 func (s *translate) AppendShaderName(b []byte) []byte {
@@ -329,8 +329,8 @@ func (u *round) Bounds() (min, max Vec3) {
 	return u.s.Bounds()
 }
 
-func (s *round) ForEachChild(flags Flags, fn func(flags Flags, s Shader) error) error {
-	return fn(flags, s.s)
+func (s *round) ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error {
+	return fn(flags, &s.s)
 }
 
 func (s *round) AppendShaderName(b []byte) []byte {
@@ -371,8 +371,8 @@ func (u *array) Bounds() (min, max Vec3) {
 	return u.d.Scale(-0.5), max
 }
 
-func (s *array) ForEachChild(flags Flags, fn func(flags Flags, s Shader) error) error {
-	return fn(flags, s.s)
+func (s *array) ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error {
+	return fn(flags, &s.s)
 }
 
 func (s *array) AppendShaderName(b []byte) []byte {
@@ -531,8 +531,8 @@ func (u *elongate) Bounds() (min, max Vec3) {
 	return min, max
 }
 
-func (s *elongate) ForEachChild(flags Flags, fn func(flags Flags, s Shader) error) error {
-	return fn(flags, s.s)
+func (s *elongate) ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error {
+	return fn(flags, &s.s)
 }
 
 func (s *elongate) AppendShaderName(b []byte) []byte {

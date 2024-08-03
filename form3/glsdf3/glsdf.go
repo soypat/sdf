@@ -15,7 +15,7 @@ type Shader interface {
 	Bounds() (min, max Vec3)
 	AppendShaderName(b []byte) []byte
 	AppendShaderBody(b []byte) []byte
-	ForEachChild(flags Flags, fn func(flags Flags, s Shader) error) error
+	ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error
 }
 
 type Vec3 struct {
@@ -117,8 +117,8 @@ func appendAllNodes(buf []Shader, root Shader) ([]Shader, error) {
 		newChildren := children[nextChild:]
 		for _, obj := range newChildren {
 			nextChild++
-			obj.ForEachChild(0, func(flags Flags, s Shader) error {
-				children = append(children, s)
+			obj.ForEachChild(0, func(flags Flags, s *Shader) error {
+				children = append(children, *s)
 				return nil
 			})
 		}
@@ -171,7 +171,7 @@ func fappend(b []byte, v float32, neg, decimal byte) []byte {
 	}
 	// Finally trim zeroes.
 	end := len(b)
-	for i := len(b); idx >= 0 && i > idx+start && b[i] == '0'; i++ {
+	for i := len(b) - 1; idx >= 0 && i > idx+start && b[i] == '0'; i-- {
 		end--
 	}
 	return b[:end]

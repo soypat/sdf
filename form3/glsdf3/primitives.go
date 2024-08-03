@@ -16,7 +16,7 @@ func NewSphere(r float32) (Shader, error) {
 	return &sphere{r: r}, nil
 }
 
-func (s *sphere) ForEachChild(flags Flags, fn func(flags Flags, s Shader) error) error { return nil }
+func (s *sphere) ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error { return nil }
 
 func (s *sphere) AppendShaderName(b []byte) []byte {
 	b = append(b, "sphere"...)
@@ -51,7 +51,7 @@ type box struct {
 	round float32
 }
 
-func (s *box) ForEachChild(flags Flags, fn func(flags Flags, s Shader) error) error { return nil }
+func (s *box) ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error { return nil }
 
 func (s *box) AppendShaderName(b []byte) []byte {
 	b = append(b, "box"...)
@@ -91,7 +91,7 @@ type cylinder struct {
 	round float32
 }
 
-func (s *cylinder) ForEachChild(flags Flags, fn func(flags Flags, s Shader) error) error { return nil }
+func (s *cylinder) ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error { return nil }
 
 func (s *cylinder) AppendShaderName(b []byte) []byte {
 	b = append(b, "cyl"...)
@@ -135,7 +135,7 @@ type hex struct {
 	side, h float32
 }
 
-func (s *hex) ForEachChild(flags Flags, fn func(flags Flags, s Shader) error) error { return nil }
+func (s *hex) ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error { return nil }
 
 func (s *hex) AppendShaderName(b []byte) []byte {
 	b = append(b, "hex"...)
@@ -175,7 +175,7 @@ type tri struct {
 	side, h float32
 }
 
-func (s *tri) ForEachChild(flags Flags, fn func(flags Flags, s Shader) error) error { return nil }
+func (s *tri) ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error { return nil }
 
 func (s *tri) AppendShaderName(b []byte) []byte {
 	b = append(b, "tri"...)
@@ -197,4 +197,42 @@ func (s *tri) Bounds() (min, max Vec3) {
 	l := s.side
 	min = Vec3{X: -l, Y: -l, Z: -s.h}
 	return min, min.Abs()
+}
+
+type torus struct {
+	rRing, rGreater float32
+}
+
+func NewTorus(ringRadius, greaterRadius float32) (Shader, error) {
+	if greaterRadius < 2*ringRadius {
+		return nil, errors.New("too large torus ring radius")
+	} else if greaterRadius <= 0 || ringRadius <= 0 {
+		return nil, errors.New("invalid torus parameter")
+	}
+	return &torus{rRing: ringRadius, rGreater: greaterRadius}, nil
+}
+
+func (s *torus) ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error { return nil }
+
+func (s *torus) AppendShaderName(b []byte) []byte {
+	b = append(b, "torus"...)
+	b = fappend(b, s.rRing, 'n', 'p')
+	b = fappend(b, s.rGreater, 'n', 'p')
+	return b
+}
+
+func (s *torus) AppendShaderBody(b []byte) []byte {
+	b = appendFloatDecl(b, "t1", s.rRing)
+	b = appendFloatDecl(b, "t2", s.rGreater)
+	b = append(b, `vec2 t = vec2(t1,t2);
+vec2 q = vec2(length(p.xz)-t.x,p.y);
+return length(q)-t.y;`...)
+	return b
+}
+
+func (s *torus) Bounds() (min, max Vec3) {
+	R := s.rRing + s.rGreater
+	min = Vec3{X: -R, Y: -R, Z: -s.rRing}
+	max = min.Abs()
+	return min, max
 }
