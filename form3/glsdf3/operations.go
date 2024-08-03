@@ -8,7 +8,7 @@ import (
 	"gonum.org/v1/gonum/spatial/r3"
 )
 
-// Union joins the shapes of two shaders into one.
+// Union joins the shapes of two SDFs into one. Is exact.
 func Union(s1, s2 Shader) Shader {
 	if s1 == nil || s2 == nil {
 		panic("nil object")
@@ -53,7 +53,7 @@ func (s *union) AppendShaderBody(b []byte) []byte {
 	return b
 }
 
-// Difference is the SDF difference of a-b.
+// Difference is the SDF difference of a-b. Does not produce a true SDF.
 func Difference(a, b Shader) Shader {
 	if a == nil || b == nil {
 		panic("nil argument to Difference")
@@ -94,7 +94,7 @@ func (s *diff) AppendShaderBody(b []byte) []byte {
 	return b
 }
 
-// Intersection is the SDF intersection of a ^ b.
+// Intersection is the SDF intersection of a ^ b. Does not produce an exact SDF.
 func Intersection(a, b Shader) Shader {
 	if a == nil || b == nil {
 		panic("nil argument to Difference")
@@ -136,6 +136,49 @@ func (s *intersect) AppendShaderBody(b []byte) []byte {
 	b = append(b, "(p),"...)
 	b = s.s2.AppendShaderName(b)
 	b = append(b, "(p));"...)
+	return b
+}
+
+// Xor is the mutually exclusive boolean operation and results in an exact SDF.
+func Xor(s1, s2 Shader) Shader {
+	if s1 == nil || s2 == nil {
+		panic("nil argument to Xor")
+	}
+	return &xor{s1: s1, s2: s2}
+}
+
+type xor struct {
+	s1, s2 Shader
+}
+
+func (u *xor) Bounds() (min, max Vec3) {
+	min1, max1 := u.s1.Bounds()
+	min2, max2 := u.s2.Bounds()
+	min = minv3(min1, min2)
+	max = maxv3(max1, max2)
+	return min, max
+}
+
+func (s *xor) ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error {
+	err := fn(flags, &s.s1)
+	if err != nil {
+		return err
+	}
+	return fn(flags, &s.s2)
+}
+
+func (s *xor) AppendShaderName(b []byte) []byte {
+	b = append(b, "xor_"...)
+	b = s.s1.AppendShaderName(b)
+	b = append(b, '_')
+	b = s.s2.AppendShaderName(b)
+	return b
+}
+
+func (s *xor) AppendShaderBody(b []byte) []byte {
+	b = appendDistanceDecl(b, s.s1, "d1", "(p)")
+	b = appendDistanceDecl(b, s.s2, "d2", "(p)")
+	b = append(b, "return max(min(d1,d2),-max(d1,d2));"...)
 	return b
 }
 
