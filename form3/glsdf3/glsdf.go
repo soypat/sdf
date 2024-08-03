@@ -23,24 +23,61 @@ type Vec3 struct {
 }
 
 func (v Vec3) Abs() Vec3 {
-	return Vec3{X: absf(v.X), Y: absf(v.Y), Z: absf(v.Z)}
+	return absv(v)
 }
 
 func (v Vec3) Scale(scale float32) Vec3 {
-	return Vec3{X: v.X * scale, Y: v.Y * scale, Z: v.Z * scale}
+	return scalev(v, scale)
 }
 
-func maxv3(a, b Vec3) Vec3     { return Vec3{X: maxf(a.X, b.X), Y: maxf(a.Y, b.Y), Z: maxf(a.Z, b.Z)} }
-func minv3(a, b Vec3) Vec3     { return Vec3{X: minf(a.X, b.X), Y: minf(a.Y, b.Y), Z: minf(a.Z, b.Z)} }
-func mulelemv3(a, b Vec3) Vec3 { return Vec3{X: a.X * b.X, Y: a.Y * b.Y, Z: a.Z * b.Z} }
-func divelemv3(a, b Vec3) Vec3 { return Vec3{X: a.X / b.X, Y: a.Y / b.Y, Z: a.Z / b.Z} }
-func addv3(a, b Vec3) Vec3     { return Vec3{X: a.X + b.X, Y: a.Y + b.Y, Z: a.Z + b.Z} }
-func subv3(a, b Vec3) Vec3     { return Vec3{X: a.X - b.X, Y: a.Y - b.Y, Z: a.Z - b.Z} }
+func scalev(v Vec3, scale float32) Vec3  { return Vec3{X: v.X * scale, Y: v.Y * scale, Z: v.Z * scale} }
+func absv(v Vec3) Vec3                   { return Vec3{X: absf(v.X), Y: absf(v.Y), Z: absf(v.Z)} }
+func maxv3(a, b Vec3) Vec3               { return Vec3{X: maxf(a.X, b.X), Y: maxf(a.Y, b.Y), Z: maxf(a.Z, b.Z)} }
+func minv3(a, b Vec3) Vec3               { return Vec3{X: minf(a.X, b.X), Y: minf(a.Y, b.Y), Z: minf(a.Z, b.Z)} }
+func mulelemv3(a, b Vec3) Vec3           { return Vec3{X: a.X * b.X, Y: a.Y * b.Y, Z: a.Z * b.Z} }
+func divelemv3(a, b Vec3) Vec3           { return Vec3{X: a.X / b.X, Y: a.Y / b.Y, Z: a.Z / b.Z} }
+func addv3(a, b Vec3) Vec3               { return Vec3{X: a.X + b.X, Y: a.Y + b.Y, Z: a.Z + b.Z} }
+func addscalarv3(a Vec3, f float32) Vec3 { return Vec3{X: a.X + f, Y: a.Y + f, Z: a.Z + f} }
+func subv3(a, b Vec3) Vec3               { return Vec3{X: a.X - b.X, Y: a.Y - b.Y, Z: a.Z - b.Z} }
+func roundv(v Vec3) Vec3                 { return Vec3{X: roundf(v.X), Y: roundf(v.Y), Z: roundf(v.Z)} }
+func signv(v Vec3) Vec3                  { return Vec3{X: signf(v.X), Y: signf(v.Y), Z: signf(v.Z)} }
+func clampv(v, Min, Max Vec3) Vec3 {
+	return Vec3{X: clampf(v.X, Min.X, Max.X), Y: clampf(v.Y, Min.Y, Max.Y), Z: clampf(v.Z, Min.Z, Max.Z)}
+}
+func (v Vec3) norm() float32 { return float32(r3.Norm(v.r3())) }
+func (v Vec3) r3() r3.Vec    { return r3.Vec{X: float64(v.X), Y: float64(v.Y), Z: float64(v.Z)} }
 
 type Flags uint64
 
 func minf(a, b float32) float32 {
 	return float32(math.Min(float64(a), float64(b)))
+}
+func hypotf(a, b float32) float32 {
+	return float32(math.Hypot(float64(a), float64(b)))
+}
+
+func signf(a float32) float32 {
+	if a == 0 {
+		return 0
+	}
+	return float32(math.Copysign(1, float64(a)))
+}
+
+func clampf(v, Min, Max float32) float32 {
+	if v < Min {
+		return Min
+	} else if v > Max {
+		return Max
+	}
+	return v
+}
+
+func roundf(v float32) float32 {
+	return float32(math.Round(float64(v)))
+}
+
+func mixf(x, y, a float32) float32 {
+	return x*(1-a) + y*a
 }
 
 func maxf(a, b float32) float32 {
@@ -117,10 +154,13 @@ func appendAllNodes(buf []Shader, root Shader) ([]Shader, error) {
 		newChildren := children[nextChild:]
 		for _, obj := range newChildren {
 			nextChild++
-			obj.ForEachChild(0, func(flags Flags, s *Shader) error {
+			err := obj.ForEachChild(0, func(flags Flags, s *Shader) error {
 				children = append(children, *s)
 				return nil
 			})
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 	buf = append(buf, children...)

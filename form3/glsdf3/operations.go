@@ -449,7 +449,7 @@ for( int i=0; i<2; i++ )
 	vec3 rid = id + vec3(i,j,k)*o;
 	// limited repetition
 	rid = clamp(rid, minlim, n);
-	vec2 r = p - s*rid;
+	vec3 r = p - s*rid;
 	d = min( d, %s(r) );
 }
 return d;`, s.d.X, s.d.Y, s.d.Z,
