@@ -222,7 +222,7 @@ func (s *symmetry) AppendShaderBody(b []byte) []byte {
 	return b
 }
 
-// Rotate is the rotation of radians angle around vector v.
+// Rotate is the rotation of radians angle around an axis vector.
 func Rotate(s Shader, radians float32, axis r3.Vec) Shader {
 	if axis == (r3.Vec{}) {
 		panic("null vector")
@@ -273,7 +273,7 @@ func (r *rotate) AppendShaderBody(b []byte) []byte {
 	return b
 }
 
-// Translate moves the shader s by a vector
+// Translate moves the SDF s in the given direction.
 func Translate(s Shader, dirX, dirY, dirZ float32) Shader {
 	return &translate{s: s, p: Vec3{X: dirX, Y: dirY, Z: dirZ}}
 }
@@ -548,5 +548,40 @@ func (s *elongate) AppendShaderBody(b []byte) []byte {
 	b = append(b, "vec3 q = abs(p)-h;"...)
 	b = appendDistanceDecl(b, s.s, "d", "max(q,0.0)")
 	b = append(b, "return d + min(max(q.x,max(q.y,q.z)),0.0);"...)
+	return b
+}
+
+// Shell carves the interior of the SDF leaving only the exterior shell of the part.
+func Shell(s Shader, thickness float32) Shader {
+	return &shell{s: s, thick: thickness}
+}
+
+type shell struct {
+	s     Shader
+	thick float32
+}
+
+func (u *shell) Bounds() (min, max Vec3) {
+	return u.s.Bounds()
+}
+
+func (s *shell) ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error {
+	return fn(flags, &s.s)
+}
+
+func (s *shell) AppendShaderName(b []byte) []byte {
+	b = append(b, "shell"...)
+	b = fappend(b, s.thick, 'n', 'p')
+	b = append(b, '_')
+	b = s.s.AppendShaderName(b)
+	return b
+}
+
+func (s *shell) AppendShaderBody(b []byte) []byte {
+	b = append(b, "return abs("...)
+	b = s.s.AppendShaderName(b)
+	b = append(b, "(p))-"...)
+	b = fappend(b, s.thick, '-', '.')
+	b = append(b, ';')
 	return b
 }
