@@ -33,10 +33,11 @@ func (s *sphere) AppendShaderBody(b []byte) []byte {
 	return b
 }
 
-func (s *sphere) Bounds() (min, max ms3.Vec) {
-	min = ms3.Vec{X: -s.r, Y: -s.r, Z: -s.r}
-	max = ms3.Vec{X: s.r, Y: s.r, Z: s.r}
-	return min, max
+func (s *sphere) Bounds() ms3.Box {
+	return ms3.Box{
+		Min: ms3.Vec{X: -s.r, Y: -s.r, Z: -s.r},
+		Max: ms3.Vec{X: s.r, Y: s.r, Z: s.r},
+	}
 }
 
 func NewBox(x, y, z, round float32) (Shader, error) {
@@ -72,10 +73,11 @@ return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0)-r;`...)
 	return b
 }
 
-func (s *box) Bounds() (min, max ms3.Vec) {
-	min = ms3.Vec{X: -s.dims.X / 2, Y: -s.dims.Y / 2, Z: -s.dims.Z / 2}
-	max = ms3.AbsElem(min)
-	return min, max
+func (s *box) Bounds() ms3.Box {
+	return ms3.Box{
+		Min: ms3.Scale(-0.5, s.dims),
+		Max: ms3.Scale(0.5, s.dims),
+	}
 }
 
 func NewCylinder(r, h, rounding float32) (Shader, error) {
@@ -122,10 +124,11 @@ return min(max(d.x,d.y),0.0) + length(max(d,0.0)) - rb;`...)
 	return b
 }
 
-func (s *cylinder) Bounds() (min, max ms3.Vec) {
-	min = ms3.Vec{X: -s.r, Y: -s.r, Z: -s.h / 2}
-	max = ms3.AbsElem(min)
-	return min, max
+func (s *cylinder) Bounds() ms3.Box {
+	return ms3.Box{
+		Min: ms3.Vec{X: -s.r, Y: -s.r, Z: -s.h / 2},
+		Max: ms3.Vec{X: s.r, Y: s.r, Z: s.h / 2},
+	}
 }
 
 func NewHexagonalPrism(side, h float32) (Shader, error) {
@@ -161,10 +164,12 @@ return min(max(d.x,d.y),0.0) + length(max(d,0.0));`...)
 	return b
 }
 
-func (s *hex) Bounds() (min, max ms3.Vec) {
+func (s *hex) Bounds() ms3.Box {
 	l := s.side * 2
-	min = ms3.Vec{X: -l, Y: -l, Z: -s.h}
-	return min, ms3.AbsElem(min)
+	return ms3.Box{
+		Min: ms3.Vec{X: -l, Y: -l, Z: -s.h},
+		Max: ms3.Vec{X: l, Y: l, Z: s.h},
+	}
 }
 
 func NewTriangularPrism(side, h float32) (Shader, error) {
@@ -196,10 +201,12 @@ return max(q.z-h.y,max(q.x*0.866025+p.y*0.5,-p.y)-h.x*0.5);`...)
 	return b
 }
 
-func (s *tri) Bounds() (min, max ms3.Vec) {
+func (s *tri) Bounds() ms3.Box {
 	l := s.side
-	min = ms3.Vec{X: -l, Y: -l, Z: -s.h}
-	return min, ms3.AbsElem(min)
+	return ms3.Box{
+		Min: ms3.Vec{X: -l, Y: -l, Z: -s.h},
+		Max: ms3.Vec{X: l, Y: l, Z: s.h},
+	}
 }
 
 type torus struct {
@@ -233,9 +240,10 @@ return length(q)-t.y;`...)
 	return b
 }
 
-func (s *torus) Bounds() (min, max ms3.Vec) {
+func (s *torus) Bounds() ms3.Box {
 	R := s.rRing + s.rGreater
-	min = ms3.Vec{X: -R, Y: -R, Z: -s.rRing}
-	max = ms3.AbsElem(min)
-	return min, max
+	return ms3.Box{
+		Min: ms3.Vec{X: -R, Y: -R, Z: -s.rRing},
+		Max: ms3.Vec{X: R, Y: R, Z: s.rRing},
+	}
 }

@@ -60,8 +60,8 @@ func TestPrimitivesCPUvsGPU(t *testing.T) {
 	scratch := make([]byte, 1024)
 	scratchNodes := make([]Shader, 16)
 	for _, primitive := range PremadePrimitives {
-		boundmin, boundmax := primitive.Bounds()
-		pos := meshgrid(boundmin, boundmax, nx, ny, nz)
+		bounds := primitive.Bounds()
+		pos := meshgrid(bounds, nx, ny, nz)
 		distCPU := make([]float32, len(pos))
 		distGPU := make([]float32, len(pos))
 		sdf := assertEvaluator(primitive)
@@ -147,8 +147,8 @@ func getFnName(fnPtr any) string {
 	return runtime.FuncForPC(funcValue.Pointer()).Name()
 }
 
-func meshgrid(boundmin, boundmax ms3.Vec, nx, ny, nz int) []ms3.Vec {
-	size := ms3.Sub(boundmax, boundmin)
+func meshgrid(bounds ms3.Box, nx, ny, nz int) []ms3.Vec {
+	size := bounds.Size()
 	nxyz := ms3.Vec{X: float32(nx), Y: float32(ny), Z: float32(nz)}
 	dxyz := ms3.DivElem(size, nxyz)
 	positions := make([]ms3.Vec, nx*ny*nz)

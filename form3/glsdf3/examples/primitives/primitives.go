@@ -56,8 +56,8 @@ func main() {
 	scratch := make([]byte, 1024)
 	scratchNodes := make([]glsdf3.Shader, 16)
 	for _, primitive := range PremadePrimitives {
-		boundmin, boundmax := primitive.Bounds()
-		pos := meshgrid(boundmin, boundmax, nx, ny, nz)
+		bounds := primitive.Bounds()
+		pos := meshgrid(bounds, nx, ny, nz)
 		distCPU := make([]float32, len(pos))
 		distGPU := make([]float32, len(pos))
 		sdf := assertEvaluator(primitive)
@@ -150,10 +150,9 @@ func getFnName(fnPtr any) string {
 	return runtime.FuncForPC(funcValue.Pointer()).Name()
 }
 
-func meshgrid(boundmin, boundmax ms3.Vec, nx, ny, nz int) []ms3.Vec {
-	size := ms3.Sub(boundmax, boundmin)
+func meshgrid(bounds ms3.Box, nx, ny, nz int) []ms3.Vec {
 	nxyz := ms3.Vec{X: float32(nx), Y: float32(ny), Z: float32(nz)}
-	dxyz := ms3.DivElem(size, nxyz)
+	dxyz := ms3.DivElem(bounds.Size(), nxyz)
 	positions := make([]ms3.Vec, nx*ny*nz)
 	for i := 0; i < nx; i++ {
 		ioff := i * ny * nz

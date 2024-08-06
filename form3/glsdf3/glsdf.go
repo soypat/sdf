@@ -13,7 +13,7 @@ import (
 
 // Shader can create SDF shader source code for an arbitrary shape.
 type Shader interface {
-	Bounds() (min, max ms3.Vec)
+	Bounds() ms3.Box
 	AppendShaderName(b []byte) []byte
 	AppendShaderBody(b []byte) []byte
 	ForEachChild(userData any, fn func(userData any, s *Shader) error) error

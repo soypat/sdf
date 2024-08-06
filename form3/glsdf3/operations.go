@@ -21,12 +21,8 @@ type union struct {
 	s1, s2 Shader
 }
 
-func (u *union) Bounds() (min, max ms3.Vec) {
-	min1, max1 := u.s1.Bounds()
-	min2, max2 := u.s2.Bounds()
-	min = ms3.MinElem(min1, min2)
-	max = ms3.MaxElem(max1, max2)
-	return min, max
+func (u *union) Bounds() ms3.Box {
+	return u.s1.Bounds().Union(u.s2.Bounds())
 }
 
 func (s *union) ForEachChild(userData any, fn func(userData any, s *Shader) error) error {
@@ -66,7 +62,7 @@ type diff struct {
 	s1, s2 Shader // Performs s1-s2.
 }
 
-func (u *diff) Bounds() (min, max ms3.Vec) {
+func (u *diff) Bounds() ms3.Box {
 	return u.s1.Bounds()
 }
 
@@ -107,12 +103,8 @@ type intersect struct {
 	s1, s2 Shader // Performs s1 ^ s2.
 }
 
-func (u *intersect) Bounds() (min, max ms3.Vec) {
-	min1, max1 := u.s1.Bounds()
-	min2, max2 := u.s2.Bounds()
-	min = ms3.MaxElem(min1, min2)
-	max = ms3.MinElem(max1, max2)
-	return min, max
+func (u *intersect) Bounds() ms3.Box {
+	return u.s1.Bounds().Intersect(u.s2.Bounds())
 }
 
 func (s *intersect) ForEachChild(userData any, fn func(userData any, s *Shader) error) error {
@@ -152,12 +144,8 @@ type xor struct {
 	s1, s2 Shader
 }
 
-func (u *xor) Bounds() (min, max ms3.Vec) {
-	min1, max1 := u.s1.Bounds()
-	min2, max2 := u.s2.Bounds()
-	min = ms3.MinElem(min1, min2)
-	max = ms3.MaxElem(max1, max2)
-	return min, max
+func (u *xor) Bounds() ms3.Box {
+	return u.s1.Bounds().Union(u.s2.Bounds())
 }
 
 func (s *xor) ForEachChild(userData any, fn func(userData any, s *Shader) error) error {
@@ -193,9 +181,9 @@ type scale struct {
 	scale float32
 }
 
-func (u *scale) Bounds() (min, max ms3.Vec) {
-	min1, max1 := u.s.Bounds()
-	return ms3.Scale(u.scale, min1), ms3.Scale(u.scale, max1)
+func (u *scale) Bounds() ms3.Box {
+	b := u.s.Bounds()
+	return b.Scale(ms3.Vec{u.scale, u.scale, u.scale})
 }
 
 func (s *scale) ForEachChild(userData any, fn func(userData any, s *Shader) error) error {
@@ -229,18 +217,18 @@ type symmetry struct {
 	xyz xyzBits
 }
 
-func (u *symmetry) Bounds() (min, max ms3.Vec) {
-	min1, max1 := u.s.Bounds()
+func (u *symmetry) Bounds() ms3.Box {
+	box := u.s.Bounds()
 	if u.xyz&xBit != 0 {
-		min1.X = minf(min1.X, -max1.X)
+		box.Min.X = minf(box.Min.X, -box.Max.X)
 	}
 	if u.xyz&yBit != 0 {
-		min1.Y = minf(min1.Y, -max1.Y)
+		box.Min.Y = minf(box.Min.Y, -box.Max.Y)
 	}
 	if u.xyz&zBit != 0 {
-		min1.Z = minf(min1.Z, -max1.Z)
+		box.Min.Z = minf(box.Min.Z, -box.Max.Z)
 	}
-	return min1, max1
+	return box
 }
 
 func (s *symmetry) ForEachChild(userData any, fn func(userData any, s *Shader) error) error {
@@ -281,9 +269,9 @@ type rotate struct {
 	q float32
 }
 
-func (u *rotate) Bounds() (min, max ms3.Vec) {
-	min, max = u.s.Bounds() // TODO
-	return min, max
+func (u *rotate) Bounds() ms3.Box {
+	box := u.s.Bounds() // TODO
+	return box
 }
 
 func (s *rotate) ForEachChild(userData any, fn func(userData any, s *Shader) error) error {
@@ -327,11 +315,8 @@ type translate struct {
 	p ms3.Vec
 }
 
-func (u *translate) Bounds() (min, max ms3.Vec) {
-	min, max = u.s.Bounds()
-	min = ms3.Add(min, u.p)
-	max = ms3.Add(max, u.p)
-	return min, max
+func (u *translate) Bounds() ms3.Box {
+	return u.s.Bounds().Add(u.p)
 }
 
 func (s *translate) ForEachChild(userData any, fn func(userData any, s *Shader) error) error {
@@ -369,7 +354,7 @@ type round struct {
 	rad float32
 }
 
-func (u *round) Bounds() (min, max ms3.Vec) {
+func (u *round) Bounds() ms3.Box {
 	return u.s.Bounds()
 }
 
@@ -410,10 +395,11 @@ type array struct {
 	nx, ny, nz int
 }
 
-func (u *array) Bounds() (min, max ms3.Vec) {
-
-	max = ms3.MulElem(u.nvec3(), ms3.Scale(0.5, u.d))
-	return ms3.Scale(0.5, u.d), max
+func (u *array) Bounds() ms3.Box {
+	return ms3.Box{
+		Min: ms3.Scale(0.5, u.d),
+		Max: ms3.MulElem(u.nvec3(), ms3.Scale(0.5, u.d)),
+	}
 }
 
 func (s *array) ForEachChild(userData any, fn func(userData any, s *Shader) error) error {
@@ -569,11 +555,11 @@ type elongate struct {
 	h ms3.Vec
 }
 
-func (u *elongate) Bounds() (min, max ms3.Vec) {
-	min, max = u.s.Bounds()
-	min = ms3.MinElem(min, ms3.Add(min, u.h))
-	max = ms3.MaxElem(max, ms3.Add(max, u.h))
-	return min, max
+func (u *elongate) Bounds() ms3.Box {
+	box := u.s.Bounds()
+	box.Min = ms3.MinElem(box.Min, ms3.Add(box.Min, u.h))
+	box.Max = ms3.MaxElem(box.Max, ms3.Add(box.Max, u.h))
+	return box
 }
 
 func (s *elongate) ForEachChild(userData any, fn func(userData any, s *Shader) error) error {
@@ -606,7 +592,7 @@ type shell struct {
 	thick float32
 }
 
-func (u *shell) Bounds() (min, max ms3.Vec) {
+func (u *shell) Bounds() ms3.Box {
 	return u.s.Bounds()
 }
 

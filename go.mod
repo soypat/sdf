@@ -8,7 +8,7 @@ require (
 	github.com/fogleman/fauxgl v0.0.0-20200818143847-27cddc103802
 	github.com/go-gl/gl v0.0.0-20211210172815-726fda9656d6
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
-	github.com/soypat/glgl v0.0.0-20240805030102-e90c03f0471a
+	github.com/soypat/glgl v0.0.0-20240806142848-a9957064165b
 	gonum.org/v1/gonum v0.11.1-0.20220625074215-67f3e1dbfccc
 	gonum.org/v1/plot v0.11.0
 )

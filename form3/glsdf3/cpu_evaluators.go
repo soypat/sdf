@@ -18,7 +18,7 @@ func (b *box) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	d := b.dims
 	r := b.round
 	for i, p := range pos {
-		q := ms3.AddScalar(ms3.Sub(ms3.AbsElem(p), d), r)
+		q := ms3.AddScalar(r, ms3.Sub(ms3.AbsElem(p), d))
 		dist[i] = ms3.Norm(ms3.MaxElem(q, ms3.Vec{})) + minf(maxf(q.X, maxf(q.Y, q.Z)), 0.0) - r
 	}
 	return nil
