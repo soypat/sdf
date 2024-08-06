@@ -154,7 +154,7 @@ func (u *smoothDiff) Evaluate(pos []ms3.Vec, dist []float32, userData any) error
 	D1, D2 := distS1S2[0], distS1S2[1]
 	for i := range dist {
 		d1, d2 := D1[i], D2[i]
-		h := clampf(0.5+0.5*(d2-d1)/k, 0, 1)
+		h := clampf(0.5-0.5*(d2+d1)/k, 0, 1)
 		dist[i] = mixf(d2, -d1, h) + k*h*(1-h)
 	}
 	return nil
@@ -170,7 +170,7 @@ func (u *smoothIntersect) Evaluate(pos []ms3.Vec, dist []float32, userData any) 
 	D1, D2 := distS1S2[0], distS1S2[1]
 	for i := range dist {
 		d1, d2 := D1[i], D2[i]
-		h := clampf(0.5+0.5*(d2-d1)/k, 0, 1)
+		h := clampf(0.5-0.5*(d2-d1)/k, 0, 1)
 		dist[i] = mixf(d2, d1, h) + k*h*(1-h)
 	}
 	return nil

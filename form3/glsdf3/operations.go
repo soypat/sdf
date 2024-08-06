@@ -183,7 +183,7 @@ type scale struct {
 
 func (u *scale) Bounds() ms3.Box {
 	b := u.s.Bounds()
-	return b.Scale(ms3.Vec{u.scale, u.scale, u.scale})
+	return b.Scale(ms3.Vec{X: u.scale, Y: u.scale, Z: u.scale})
 }
 
 func (s *scale) ForEachChild(userData any, fn func(userData any, s *Shader) error) error {

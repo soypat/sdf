@@ -34,7 +34,13 @@ func signf(a float32) float32 {
 }
 
 func clampf(v, Min, Max float32) float32 {
-	return ms3.Clamp(v, Min, Max)
+	// return ms3.Clamp(v, Min, Max)
+	if v < Min {
+		return Min
+	} else if v > Max {
+		return Max
+	}
+	return v
 }
 
 func roundf(v float32) float32 {
