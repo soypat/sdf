@@ -3,10 +3,9 @@ package glsdf3
 import (
 	"errors"
 	"fmt"
-	"math"
 
+	"github.com/chewxy/math32"
 	"github.com/soypat/glgl/math/ms3"
-	"gonum.org/v1/gonum/spatial/r3"
 )
 
 // Union joins the shapes of two SDFs into one. Is exact.
@@ -254,55 +253,54 @@ func (s *symmetry) AppendShaderBody(b []byte) []byte {
 	return b
 }
 
-// Rotate is the rotation of radians angle around an axis vector.
-func Rotate(s Shader, radians float32, axis r3.Vec) Shader {
-	if axis == (r3.Vec{}) {
-		panic("null vector")
+// Transform applies a 4x4 matrix transformation to the argument shader by
+// inverting the argument matrix.
+func Transform(s Shader, m ms3.Mat4) (Shader, error) {
+	det := m.Determinant()
+	if math32.Abs(det) < 1e-8 {
+		return nil, errors.New("singular Mat4")
 	}
-	axis = r3.Unit(axis)
-	return &rotate{s: s, p: r3tovec(axis), q: radians}
+	return &transform{s: s, invT: m.Inverse()}, nil
 }
 
-type rotate struct {
-	s Shader
-	p ms3.Vec
-	q float32
+type transform struct {
+	s    Shader
+	invT ms3.Mat4
 }
 
-func (u *rotate) Bounds() ms3.Box {
-	box := u.s.Bounds() // TODO
-	return box
+func (u *transform) Bounds() ms3.Box {
+	return u.invT.MulBox(u.s.Bounds())
 }
 
-func (s *rotate) ForEachChild(userData any, fn func(userData any, s *Shader) error) error {
+func (s *transform) ForEachChild(userData any, fn func(userData any, s *Shader) error) error {
 	return fn(userData, &s.s)
 }
 
-func (s *rotate) AppendShaderName(b []byte) []byte {
-	b = append(b, "rotate"...)
-	b = vecappend(b, s.p, 0, 'n', 'p')
-	b = fappend(b, s.q, 'n', 'p')
+func (s *transform) AppendShaderName(b []byte) []byte {
+	b = append(b, "transform"...)
+	// Hash floats so that name is not too long.
+	values := s.invT.Array()
+	b = fappend(b, hashf(values[:]), 'n', 'd')
 	b = append(b, '_')
 	b = s.s.AppendShaderName(b)
 	return b
 }
 
-func (r *rotate) AppendShaderBody(b []byte) []byte {
-	v := r.p
-	s64, c64 := math.Sincos(float64(r.q))
-	s, c := float32(s64), float32(c64)
-	m := 1 - c
-	mat44 := [16]float32{
-		m*v.X*v.X + c, m*v.X*v.Y - v.Z*s, m*v.Z*v.X + v.Y*s, 0,
-		m*v.X*v.Y + v.Z*s, m*v.Y*v.Y + c, m*v.Y*v.Z - v.X*s, 0,
-		m*v.Z*v.X - v.Y*s, m*v.Y*v.Z + v.X*s, m*v.Z*v.Z + c, 0,
-		0, 0, 0, 1,
-	}
-	b = appendMat4Decl(b, "rot", mat44)
+func (r *transform) AppendShaderBody(b []byte) []byte {
+	b = appendMat4Decl(b, "invT", r.invT)
 	b = append(b, "return "...)
 	b = r.s.AppendShaderName(b)
-	b = append(b, "(invert(rot) * p);"...)
+	b = append(b, "(((invT) * vec4(p,0.0)).xyz);"...)
 	return b
+}
+
+// Rotate is the rotation of radians angle around an axis vector.
+func Rotate(s Shader, radians float32, axis ms3.Vec) (Shader, error) {
+	if axis == (ms3.Vec{}) {
+		return nil, errors.New("null vector")
+	}
+	T := ms3.RotationMat4(radians, axis)
+	return Transform(s, T)
 }
 
 // Translate moves the SDF s in the given direction.
@@ -436,9 +434,10 @@ for( int i=0; i<2; i++ )
 {
 	vec3 rid = id + vec3(i,j,k)*o;
 	// limited repetition
-	rid = clamp(rid, minlim, n);
-	vec3 r = p - s*rid;
-	d = min( d, %s(r) );
+	// rid = clamp(rid, minlim, n);
+	// vec3 r = p - s*rid;
+	d = min(d, rid.x);
+	// d = min( d, %s(r) );
 }
 return d;`, s.d.X, s.d.Y, s.d.Z,
 		s.nx-1, s.ny-1, s.nz-1,
@@ -476,7 +475,7 @@ func (s *smoothUnion) AppendShaderBody(b []byte) []byte {
 	b = appendDistanceDecl(b, s.s2, "d2", "p")
 	b = appendFloatDecl(b, "k", s.k)
 	b = append(b, `float h = clamp( 0.5 + 0.5*(d2-d1)/k, 0.0, 1.0 );
-    return mix( d2, d1, h ) - k*h*(1.0-h);`...)
+return mix( d2, d1, h ) - k*h*(1.0-h);`...)
 	return b
 }
 
@@ -615,4 +614,17 @@ func (s *shell) AppendShaderBody(b []byte) []byte {
 	b = fappend(b, s.thick, '-', '.')
 	b = append(b, ';')
 	return b
+}
+
+func hashf(values []float32) float32 {
+	const prime = 31.0
+	var hashA float32 = 0.0
+	var hashB float32 = 1.0
+	for _, num := range values {
+		hashA += num
+		hashB *= (prime + num)
+		hashA = float32(int(hashA*1000000)%1000000) / 1000000 // Keep within [0.0, 1.0)
+		hashB = float32(int(hashB*1000000)%1000000) / 1000000
+	}
+	return float32(int((hashA+hashB)*1000000)%1000000) / 1000000
 }

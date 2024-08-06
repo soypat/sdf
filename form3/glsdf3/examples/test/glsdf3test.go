@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"reflect"
 	"runtime"
@@ -47,6 +48,13 @@ var SmoothBinaryOps = []func(a, b glsdf3.Shader, k float32) glsdf3.Shader{
 	glsdf3.SmoothUnion,
 	glsdf3.SmoothDifference,
 	glsdf3.SmoothIntersect,
+}
+
+var OtherUnaryRandomizedOps = []func(a glsdf3.Shader, rng *rand.Rand) glsdf3.Shader{
+	randomRotation,
+	randomShell,
+	randomArray,
+	randomElongate,
 }
 
 func test_all() error {
@@ -124,6 +132,30 @@ func test_all() error {
 			return err
 		}
 	}
+	rng := rand.New(rand.NewSource(1))
+	for _, op := range OtherUnaryRandomizedOps {
+		log.Printf("begin evaluating %s\n", getFnName(op))
+		for i := 0; i < 10; i++ {
+			obj := op(PremadePrimitives[rng.Intn(len(PremadePrimitives))], rng)
+			bounds := obj.Bounds()
+			pos := meshgrid(bounds, nx, ny, nz)
+			distCPU := make([]float32, len(pos))
+			distGPU := make([]float32, len(pos))
+			err = evaluateCPU(obj, pos, distCPU, vp)
+			if err != nil {
+				return err
+			}
+			err = evaluateGPU(obj, pos, distGPU)
+			if err != nil {
+				return err
+			}
+			err = cmpDist(pos, distCPU, distGPU)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -273,4 +305,43 @@ func cmpDist(pos []ms3.Vec, dcpu, dgpu []float32) error {
 		}
 	}
 	return mismatchErr
+}
+
+func randomRotation(a glsdf3.Shader, rng *rand.Rand) glsdf3.Shader {
+	var axis ms3.Vec
+	for ms3.Norm(axis) < 1e-2 {
+		axis = ms3.Vec{X: rng.Float32(), Y: rng.Float32(), Z: rng.Float32()}
+	}
+	const maxAngle = 3
+	a, err := glsdf3.Rotate(a, 2*maxAngle*(rng.Float32()-0.5), axis)
+	if err != nil {
+		panic(err)
+	}
+	return a
+}
+
+func randomShell(a glsdf3.Shader, rng *rand.Rand) glsdf3.Shader {
+	thickness := rng.Float32()
+	if thickness <= 1e-8 {
+		thickness = rng.Float32()
+	}
+	return glsdf3.Shell(a, thickness)
+}
+
+func randomArray(a glsdf3.Shader, rng *rand.Rand) glsdf3.Shader {
+	const minDim = 0.1
+	const maxRepeat = 8
+	nx, ny, nz := rng.Intn(maxRepeat)+1, rng.Intn(maxRepeat)+1, rng.Intn(maxRepeat)+1
+	dx, dy, dz := rng.Float32()+minDim, rng.Float32()+minDim, rng.Float32()+minDim
+	s, err := glsdf3.Array(a, dx, dy, dz, nx, ny, nz)
+	if err != nil {
+		panic(err)
+	}
+	return s
+}
+
+func randomElongate(a glsdf3.Shader, rng *rand.Rand) glsdf3.Shader {
+	const minDim = 1.0
+	dx, dy, dz := rng.Float32()+minDim, rng.Float32()+minDim, rng.Float32()+minDim
+	return glsdf3.Elongate(a, dx, dy, dz)
 }

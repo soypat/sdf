@@ -238,22 +238,28 @@ func (a *array) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	s := a.d
 	n := a.nvec3()
 	minlim := ms3.Vec{}
+	_ = n
+	_ = minlim
 	sdf := assertEvaluator(a.s)
 	for i := range dist {
 		dist[i] = 1e20
 	}
 	// We invert loops with respect to shader here to avoid needing 8 distance and 8 position buffers, instead we need 1 of each with this loop shape.
+	var ijk ms3.Vec
 	for k := float32(0.); k < 2; k++ {
+		ijk.Z = k
 		for j := float32(0.); j < 2; j++ {
+			ijk.Y = j
 			for i := float32(0.); i < 2; i++ {
-				ijk := ms3.Vec{X: i, Y: j, Z: k}
+				ijk.X = i
 				// We acquire the transformed position for each direction.
 				for ip, p := range pos {
 					id := ms3.RoundElem(ms3.DivElem(p, s))
 					o := ms3.SignElem(ms3.Sub(p, ms3.MulElem(s, id)))
 					rid := ms3.Add(id, ms3.MulElem(ijk, o))
-					rid = ms3.ClampElem(rid, minlim, n)
-					transformed[ip] = ms3.Sub(p, ms3.MulElem(s, rid))
+					transformed[ip] = rid
+					// rid = ms3.ClampElem(rid, minlim, n)
+					// transformed[ip] = ms3.Sub(p, ms3.MulElem(s, rid))
 				}
 				// And calculate the distance for each direction.
 				err := sdf.Evaluate(transformed, auxdist, userData)
@@ -262,7 +268,8 @@ func (a *array) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 				}
 				// And we reduce the distance with minimum rule.
 				for i, d := range dist {
-					dist[i] = minf(d, auxdist[i])
+					// dist[i] = minf(d, auxdist[i])
+					dist[i] = minf(d, transformed[i].X)
 				}
 			}
 		}
@@ -332,6 +339,21 @@ func (t *translate) Evaluate(pos []ms3.Vec, dist []float32, userData any) error 
 	T := t.p
 	for i, p := range pos {
 		transformed[i] = ms3.Sub(p, T)
+	}
+	sdf := assertEvaluator(t.s)
+	return sdf.Evaluate(transformed, dist, userData)
+}
+
+func (t *transform) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
+	vp, ok := userData.(*VecPool)
+	if !ok {
+		return fmt.Errorf("want userData type vecPool, got %T", userData)
+	}
+	transformed := vp.acquirev3(len(pos))
+	defer vp.releasev3(transformed)
+	Tinv := t.invT
+	for i, p := range pos {
+		transformed[i] = Tinv.MulPosition(p)
 	}
 	sdf := assertEvaluator(t.s)
 	return sdf.Evaluate(transformed, dist, userData)

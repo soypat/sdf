@@ -156,14 +156,19 @@ func appendFloatDecl(b []byte, name string, v float32) []byte {
 	return b
 }
 
-func appendMat4Decl(b []byte, name string, m44 [16]float32) []byte {
+func appendMat4Decl(b []byte, name string, m44 ms3.Mat4) []byte {
+	arr := m44.Array()
 	b = append(b, "mat4 "...)
 	b = append(b, name...)
 	b = append(b, "=mat4("...)
-	for i, v := range m44 {
-		b = fappend(b, v, '-', '.')
-		if i != 15 {
-			b = append(b, ',')
+	for i := 0; i < 4; i++ {
+		for j := 0; j < 4; j++ {
+			v := arr[j*4+i] // Column major access, as per OpenGL standard.
+			b = fappend(b, v, '-', '.')
+			last := i == 3 && j == 3
+			if !last {
+				b = append(b, ',')
+			}
 		}
 	}
 	b = append(b, ");\n"...)
