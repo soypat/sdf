@@ -19,10 +19,19 @@ type Renderer interface {
 
 type octree struct {
 	s          SDF3
+	origin     ms3.Vec
+	levels     int
 	resolution float32
 	cubes      []cube
-	cubefill   int
-	unwritten  TriangleBuffer
+	// idxDecomp indexes the first cube
+	// that has not been decomposed with octree() method
+	// within cubes field to generate child cubes which are
+	// then added to cubes slice.
+	idxDecomposed int
+	//
+	posbuf    []ms3.Vec
+	distbuf   []float32
+	unwritten TriangleBuffer
 }
 
 type ivec struct {
@@ -36,13 +45,19 @@ func (a ivec) AddScalar(f int) ivec { return ivec{x: a.x + f, y: a.y + f, z: a.z
 func (a ivec) ScaleMul(f int) ivec  { return ivec{x: a.x * f, y: a.y * f, z: a.z * f} }
 func (a ivec) ScaleDiv(f int) ivec  { return ivec{x: a.x / f, y: a.y / f, z: a.z / f} }
 func (a ivec) Sub(b ivec) ivec      { return ivec{x: a.x - b.x, y: a.y - b.y, z: a.z - b.z} }
+func (a ivec) Vec() ms3.Vec         { return ms3.Vec{X: float32(a.x), Y: float32(a.y), Z: float32(a.z)} }
 
 type cube struct {
 	ivec
 	lvl int
 }
 
-func NewOctreeRenderer(s SDF3, cubeResolution float32) (Renderer, error) {
+func NewOctreeRenderer(s SDF3, cubeResolution float32, evalBufferSize int) (Renderer, error) {
+	if trees <= 0 {
+		return nil, errors.New("bad octree argument")
+	} else if cubeResolution <= 0 {
+		return nil, errors.New("invalid renderer cube resolution")
+	}
 	// We want to test the smallest cube (side == resolution) for emptiness
 	// so the level = 0 cube is at half resolution.
 	resolution := 0.5 * cubeResolution
@@ -55,21 +70,22 @@ func NewOctreeRenderer(s SDF3, cubeResolution float32) (Renderer, error) {
 	// Recalculate resolution ensuring minimum cubeResolution met.
 	resolution = longAxis / cells
 
-	divisions := ms3.Scale(1/resolution, bb.Size())
-	maxCubes := int(divisions.X) * int(divisions.Y) * int(divisions.Z)
-
 	// how many cube levels for the octree?
 	levels := int(math32.Ceil(math32.Log2(longAxis/resolution))) + 1
 	if levels <= 0 {
 		return nil, errors.New("negative or zero level calculation")
 	}
 
-	cubes := make([]cube, 1, 1+maxCubes/64)
-	cubes[0] = cube{lvl: levels - 1} // Start cube.
+	startCubes := make([]cube, 1, (levels+1)*8)
+	startCubes[0] = cube{lvl: levels - 1} // Start cube.
 	return &octree{
 		resolution: resolution,
-		cubes:      cubes,
+		cubes:      startCubes,
 		unwritten:  TriangleBuffer{buf: make([]ms3.Triangle, 0, 1024)},
+		origin:     bb.Min,
+		levels:     levels,
+		posbuf:     make([]ms3.Vec, 0, evalBufferSize),
+		distbuf:    make([]float32, evalBufferSize),
 	}, nil
 }
 
@@ -84,7 +100,62 @@ func (oc *octree) ReadTriangles(dst []ms3.Triangle) (n int, err error) {
 	if len(oc.cubes) == 0 && uwEmpty {
 		return n, io.EOF // Done rendering model.
 	}
+	oc.fillCubes()
+	err = oc.s.Evaluate(oc.posbuf, oc.distbuf[:len(oc.posbuf)], nil)
+	if err != nil {
+		return 0, err
+	}
+	n += oc.marchCubes(dst)
+	return n, nil
+}
 
+// fillCubes fills the cubes buffer with new unprocessed cubes.
+func (oc *octree) fillCubes() {
+	origin, res := oc.origin, oc.resolution
+	notDecomposed := oc.cubes[oc.idxDecomposed:]
+	for _, cube := range notDecomposed {
+		if cap(oc.cubes)-len(oc.cubes) < 8 {
+			println("unreachable, i think")
+			break // No more space for cube buffering.
+		}
+		subCubes := cube.octree()
+		if subCubes[0].lvl == 1 {
+			if cap(oc.posbuf)-len(oc.posbuf) < 8 {
+				break // No space for position buffering, done.
+			}
+			corners := cube.corners(origin, res)
+			oc.posbuf = append(oc.posbuf, corners[:]...)
+		} else {
+			oc.cubes = append(oc.cubes, subCubes[:]...)
+		}
+		oc.idxDecomposed++
+	}
+}
+
+func (oc *octree) marchCubes(dst []ms3.Triangle) int {
+	n := 0
+	lim := len(oc.distbuf) - 8
+	var p [8]ms3.Vec
+	var d [8]float32
+	for i := 0; i <= lim && len(dst)-n > marchingCubesMaxTriangles; i += 8 {
+		copy(p[:], oc.posbuf[i:i+8])
+		copy(d[:], oc.distbuf[i:i+8])
+		n += mcToTriangles(dst[n:], p, d, 0)
+	}
+	return n
+}
+
+func (c cube) corners(origin ms3.Vec, resolution float32) [8]ms3.Vec {
+	return [8]ms3.Vec{
+		ms3.Add(origin, ms3.Scale(resolution, c.ivec.Add(ivec{0, 0, 0}).Vec())),
+		ms3.Add(origin, ms3.Scale(resolution, c.ivec.Add(ivec{2, 0, 0}).Vec())),
+		ms3.Add(origin, ms3.Scale(resolution, c.ivec.Add(ivec{2, 2, 0}).Vec())),
+		ms3.Add(origin, ms3.Scale(resolution, c.ivec.Add(ivec{0, 2, 0}).Vec())),
+		ms3.Add(origin, ms3.Scale(resolution, c.ivec.Add(ivec{0, 0, 2}).Vec())),
+		ms3.Add(origin, ms3.Scale(resolution, c.ivec.Add(ivec{2, 0, 2}).Vec())),
+		ms3.Add(origin, ms3.Scale(resolution, c.ivec.Add(ivec{2, 2, 2}).Vec())),
+		ms3.Add(origin, ms3.Scale(resolution, c.ivec.Add(ivec{0, 2, 2}).Vec())),
+	}
 }
 
 func (c cube) octree() [8]cube {
