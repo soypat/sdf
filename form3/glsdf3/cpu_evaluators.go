@@ -1,38 +1,40 @@
-package glsdf
+package glsdf3
 
-import "fmt"
+import (
+	"fmt"
 
-type any = interface{}
+	"github.com/soypat/glgl/math/ms3"
+)
 
-func (u *sphere) Evaluate(pos []Vec3, dist []float32, userData any) error {
+func (u *sphere) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	r := u.r
 	for i, p := range pos {
-		dist[i] = p.norm() - r
+		dist[i] = ms3.Norm(p) - r
 	}
 	return nil
 }
 
-func (b *box) Evaluate(pos []Vec3, dist []float32, userData any) error {
+func (b *box) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	d := b.dims
 	r := b.round
 	for i, p := range pos {
-		q := addscalarv3(subv3(p.Abs(), d), r)
-		dist[i] = maxv3(q, Vec3{}).norm() + minf(maxf(q.X, maxf(q.Y, q.Z)), 0.0) - r
+		q := ms3.AddScalar(ms3.Sub(ms3.AbsElem(p), d), r)
+		dist[i] = ms3.Norm(ms3.MaxElem(q, ms3.Vec{})) + minf(maxf(q.X, maxf(q.Y, q.Z)), 0.0) - r
 	}
 	return nil
 }
 
-func (t *torus) Evaluate(pos []Vec3, dist []float32, userData any) error {
+func (t *torus) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	t1 := t.rRing
 	t2 := t.rGreater
 	for i, p := range pos {
-		q1 := hypotf(p.X, p.Y) - t1
+		q1 := hypotf(p.X, p.Z) - t1
 		dist[i] = hypotf(q1, p.Y) - t2
 	}
 	return nil
 }
 
-func (c *cylinder) Evaluate(pos []Vec3, dist []float32, userData any) error {
+func (c *cylinder) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	h := c.h
 	ra := c.r
 	rb := c.round
@@ -44,13 +46,13 @@ func (c *cylinder) Evaluate(pos []Vec3, dist []float32, userData any) error {
 	return nil
 }
 
-func (h *hex) Evaluate(pos []Vec3, dist []float32, userData any) error {
+func (h *hex) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	const k1, k2, k3 = -0.8660254, 0.5, 0.57735
 	h1 := h.side
 	h2 := h.h
 	clm := k3 * h1
 	for i, p := range pos {
-		p = p.Abs()
+		p = ms3.AbsElem(p)
 		pm := minf(k1*p.X+k2*p.Y, 0)
 		p.X -= 2 * k1 * pm
 		p.Y -= 2 * k2 * pm
@@ -61,19 +63,19 @@ func (h *hex) Evaluate(pos []Vec3, dist []float32, userData any) error {
 	return nil
 }
 
-func (t *tri) Evaluate(pos []Vec3, dist []float32, userData any) error {
+func (t *tri) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	h1 := t.side
 	h2 := t.h
 	h1d2 := h1 / 2
 	for i, p := range pos {
-		q := p.Abs()
+		q := ms3.AbsElem(p)
 		m1 := maxf(q.X*0.866025+p.Y*0.5, -p.Y)
 		dist[i] = maxf(q.Z-h2, m1-h1d2)
 	}
 	return nil
 }
 
-func (u *union) Evaluate(pos []Vec3, dist []float32, userData any) error {
+func (u *union) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	distS1S2, finalizer, err := evaluateShaders(pos, userData, u.s1, u.s2)
 	if err != nil {
 		return err
@@ -86,7 +88,7 @@ func (u *union) Evaluate(pos []Vec3, dist []float32, userData any) error {
 	return nil
 }
 
-func (u *intersect) Evaluate(pos []Vec3, dist []float32, userData any) error {
+func (u *intersect) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	distS1S2, finalizer, err := evaluateShaders(pos, userData, u.s1, u.s2)
 	if err != nil {
 		return err
@@ -99,7 +101,7 @@ func (u *intersect) Evaluate(pos []Vec3, dist []float32, userData any) error {
 	return nil
 }
 
-func (u *diff) Evaluate(pos []Vec3, dist []float32, userData any) error {
+func (u *diff) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	distS1S2, finalizer, err := evaluateShaders(pos, userData, u.s1, u.s2)
 	if err != nil {
 		return err
@@ -112,7 +114,7 @@ func (u *diff) Evaluate(pos []Vec3, dist []float32, userData any) error {
 	return nil
 }
 
-func (u *xor) Evaluate(pos []Vec3, dist []float32, userData any) error {
+func (u *xor) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	distS1S2, finalizer, err := evaluateShaders(pos, userData, u.s1, u.s2)
 	if err != nil {
 		return err
@@ -126,7 +128,7 @@ func (u *xor) Evaluate(pos []Vec3, dist []float32, userData any) error {
 	return nil
 }
 
-func (u *smoothUnion) Evaluate(pos []Vec3, dist []float32, userData any) error {
+func (u *smoothUnion) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	distS1S2, finalizer, err := evaluateShaders(pos, userData, u.s1, u.s2)
 	if err != nil {
 		return err
@@ -142,7 +144,7 @@ func (u *smoothUnion) Evaluate(pos []Vec3, dist []float32, userData any) error {
 	return nil
 }
 
-func (u *smoothDiff) Evaluate(pos []Vec3, dist []float32, userData any) error {
+func (u *smoothDiff) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	distS1S2, finalizer, err := evaluateShaders(pos, userData, u.s1, u.s2)
 	if err != nil {
 		return err
@@ -158,7 +160,7 @@ func (u *smoothDiff) Evaluate(pos []Vec3, dist []float32, userData any) error {
 	return nil
 }
 
-func (u *smoothIntersect) Evaluate(pos []Vec3, dist []float32, userData any) error {
+func (u *smoothIntersect) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	distS1S2, finalizer, err := evaluateShaders(pos, userData, u.s1, u.s2)
 	if err != nil {
 		return err
@@ -174,7 +176,7 @@ func (u *smoothIntersect) Evaluate(pos []Vec3, dist []float32, userData any) err
 	return nil
 }
 
-func (s *scale) Evaluate(pos []Vec3, dist []float32, userData any) error {
+func (s *scale) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	vp, ok := userData.(*VecPool)
 	if !ok {
 		return fmt.Errorf("want userData type vecPool, got %T", userData)
@@ -184,7 +186,7 @@ func (s *scale) Evaluate(pos []Vec3, dist []float32, userData any) error {
 	factor := s.scale
 	factorInv := 1. / s.scale
 	for i, p := range pos {
-		scaled[i] = p.Scale(factorInv)
+		scaled[i] = ms3.Scale(factorInv, p)
 	}
 	sdf1 := assertEvaluator(s.s)
 	err := sdf1.Evaluate(scaled, dist, userData)
@@ -197,7 +199,7 @@ func (s *scale) Evaluate(pos []Vec3, dist []float32, userData any) error {
 	return nil
 }
 
-func (s *symmetry) Evaluate(pos []Vec3, dist []float32, userData any) error {
+func (s *symmetry) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	vp, ok := userData.(*VecPool)
 	if !ok {
 		return fmt.Errorf("want userData type vecPool, got %T", userData)
@@ -224,7 +226,7 @@ func (s *symmetry) Evaluate(pos []Vec3, dist []float32, userData any) error {
 	return nil
 }
 
-func (a *array) Evaluate(pos []Vec3, dist []float32, userData any) error {
+func (a *array) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	vp, ok := userData.(*VecPool)
 	if !ok {
 		return fmt.Errorf("want userData type vecPool, got %T", userData)
@@ -235,7 +237,7 @@ func (a *array) Evaluate(pos []Vec3, dist []float32, userData any) error {
 	defer vp.releasef32(auxdist)
 	s := a.d
 	n := a.nvec3()
-	minlim := Vec3{}
+	minlim := ms3.Vec{}
 	sdf := assertEvaluator(a.s)
 	for i := range dist {
 		dist[i] = 1e20
@@ -244,15 +246,14 @@ func (a *array) Evaluate(pos []Vec3, dist []float32, userData any) error {
 	for k := float32(0.); k < 2; k++ {
 		for j := float32(0.); j < 2; j++ {
 			for i := float32(0.); i < 2; i++ {
-				ijk := Vec3{X: i, Y: j, Z: k}
+				ijk := ms3.Vec{X: i, Y: j, Z: k}
 				// We acquire the transformed position for each direction.
 				for ip, p := range pos {
-					id := roundv(divelemv3(p, s))
-					o := signv(subv3(p, mulelemv3(s, id)))
-
-					rid := addv3(id, mulelemv3(ijk, o))
-					rid = clampv(rid, minlim, n)
-					transformed[ip] = subv3(p, mulelemv3(s, rid))
+					id := ms3.RoundElem(ms3.DivElem(p, s))
+					o := ms3.SignElem(ms3.Sub(p, ms3.MulElem(s, id)))
+					rid := ms3.Add(id, ms3.MulElem(ijk, o))
+					rid = ms3.ClampElem(rid, minlim, n)
+					transformed[ip] = ms3.Sub(p, ms3.MulElem(s, rid))
 				}
 				// And calculate the distance for each direction.
 				err := sdf.Evaluate(transformed, auxdist, userData)
@@ -269,7 +270,7 @@ func (a *array) Evaluate(pos []Vec3, dist []float32, userData any) error {
 	return nil
 }
 
-func (e *elongate) Evaluate(pos []Vec3, dist []float32, userData any) error {
+func (e *elongate) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	sdf := assertEvaluator(e.s)
 	vp, ok := userData.(*VecPool)
 	if !ok {
@@ -281,9 +282,9 @@ func (e *elongate) Evaluate(pos []Vec3, dist []float32, userData any) error {
 	defer vp.releasef32(aux)
 	h := e.h
 	for i, p := range pos {
-		q := subv3(absv(p), h)
+		q := ms3.Sub(ms3.AbsElem(p), h)
 		aux[i] = minf(maxf(q.X, maxf(q.Y, q.Z)), 0)
-		transformed[i] = maxv3(q, Vec3{})
+		transformed[i] = ms3.MaxElem(q, ms3.Vec{})
 	}
 	err := sdf.Evaluate(pos, dist, userData)
 	if err != nil {
@@ -295,7 +296,7 @@ func (e *elongate) Evaluate(pos []Vec3, dist []float32, userData any) error {
 	return nil
 }
 
-func (sh *shell) Evaluate(pos []Vec3, dist []float32, userData any) error {
+func (sh *shell) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	sdf := assertEvaluator(sh.s)
 	err := sdf.Evaluate(pos, dist, userData)
 	if err != nil {
@@ -308,7 +309,7 @@ func (sh *shell) Evaluate(pos []Vec3, dist []float32, userData any) error {
 	return nil
 }
 
-func (r *round) Evaluate(pos []Vec3, dist []float32, userData any) error {
+func (r *round) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	sdf := assertEvaluator(r.s)
 	err := sdf.Evaluate(pos, dist, userData)
 	if err != nil {
@@ -321,7 +322,7 @@ func (r *round) Evaluate(pos []Vec3, dist []float32, userData any) error {
 	return nil
 }
 
-func (t *translate) Evaluate(pos []Vec3, dist []float32, userData any) error {
+func (t *translate) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	vp, ok := userData.(*VecPool)
 	if !ok {
 		return fmt.Errorf("want userData type vecPool, got %T", userData)
@@ -330,7 +331,7 @@ func (t *translate) Evaluate(pos []Vec3, dist []float32, userData any) error {
 	defer vp.releasev3(transformed)
 	T := t.p
 	for i, p := range pos {
-		transformed[i] = subv3(p, T)
+		transformed[i] = ms3.Sub(p, T)
 	}
 	sdf := assertEvaluator(t.s)
 	return sdf.Evaluate(transformed, dist, userData)
@@ -339,7 +340,7 @@ func (t *translate) Evaluate(pos []Vec3, dist []float32, userData any) error {
 // evaluateShaders is an auxiliary function to evaluate shaders in parallel required for situations where
 // the argument distance buffer cannot contain all of the data required for a distance calculation such
 // with operations on SDFs i.e: union and scale (binary operation and a positional transform operation).
-func evaluateShaders(pos []Vec3, userData any, shaders ...Shader) (distances [][]float32, finalizer func(), err error) {
+func evaluateShaders(pos []ms3.Vec, userData any, shaders ...Shader) (distances [][]float32, finalizer func(), err error) {
 	vp, ok := userData.(*VecPool)
 	if !ok {
 		return nil, nil, fmt.Errorf("want userData type vecPool, got %T", userData)
@@ -366,7 +367,7 @@ func evaluateShaders(pos []Vec3, userData any, shaders ...Shader) (distances [][
 // evaluating SDFs on the CPU while reducing garbage generation.
 // It also aids in calculation of memory usage.
 type VecPool struct {
-	_instancesV [][]Vec3
+	_instancesV [][]ms3.Vec
 	_acquiredV  []bool
 	_instancesF [][]float32
 	_acquiredF  []bool
@@ -399,21 +400,21 @@ func (vp *VecPool) releasef32(released []float32) {
 	panic("release of nonexistent resource")
 }
 
-func (vp *VecPool) acquirev3(minLength int) []Vec3 {
+func (vp *VecPool) acquirev3(minLength int) []ms3.Vec {
 	for i, locked := range vp._acquiredV {
 		if !locked && len(vp._instancesV[i]) > minLength {
 			vp._acquiredV[i] = true
 			return vp._instancesV[i]
 		}
 	}
-	newSlice := make([]Vec3, minLength)
+	newSlice := make([]ms3.Vec, minLength)
 	newSlice = newSlice[:cap(newSlice)]
 	vp._instancesV = append(vp._instancesV, newSlice)
 	vp._acquiredV = append(vp._acquiredV, true)
 	return newSlice
 }
 
-func (vp *VecPool) releasev3(released []Vec3) {
+func (vp *VecPool) releasev3(released []ms3.Vec) {
 	for i, instance := range vp._instancesV {
 		if &instance[0] == &released[0] {
 			if !vp._acquiredV[i] {
@@ -426,7 +427,7 @@ func (vp *VecPool) releasev3(released []Vec3) {
 	panic("release of nonexistent resource")
 }
 
-func (vp *VecPool) assertAllReleased() error {
+func (vp *VecPool) AssertAllReleased() error {
 	for _, locked := range vp._acquiredF {
 		if locked {
 			return fmt.Errorf("locked float32 resource found in vecPool.assertAllReleased, memory leak?")
@@ -441,10 +442,10 @@ func (vp *VecPool) assertAllReleased() error {
 }
 
 func assertEvaluator(s Shader) interface {
-	Evaluate(pos []Vec3, dist []float32, userData any) error
+	Evaluate(pos []ms3.Vec, dist []float32, userData any) error
 } {
 	evaluator, ok := s.(interface {
-		Evaluate(pos []Vec3, dist []float32, userData any) error
+		Evaluate(pos []ms3.Vec, dist []float32, userData any) error
 	})
 	if !ok {
 		panic(fmt.Sprintf("%T does not implement evaluator", s))

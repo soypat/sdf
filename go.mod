@@ -1,6 +1,6 @@
 module github.com/soypat/sdf
 
-go 1.17
+go 1.18
 
 require (
 	github.com/chewxy/math32 v1.10.1
@@ -8,7 +8,7 @@ require (
 	github.com/fogleman/fauxgl v0.0.0-20200818143847-27cddc103802
 	github.com/go-gl/gl v0.0.0-20211210172815-726fda9656d6
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
-	github.com/soypat/glgl v0.0.0-20240727212338-00ef53124943
+	github.com/soypat/glgl v0.0.0-20240805030102-e90c03f0471a
 	gonum.org/v1/gonum v0.11.1-0.20220625074215-67f3e1dbfccc
 	gonum.org/v1/plot v0.11.0
 )

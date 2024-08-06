@@ -1,79 +1,44 @@
-package glsdf
+package glsdf3
 
 import (
 	"bytes"
 	"fmt"
 	"io"
-	"math"
 	"strconv"
 
+	"github.com/chewxy/math32"
+	"github.com/soypat/glgl/math/ms3"
 	"gonum.org/v1/gonum/spatial/r3"
 )
 
 // Shader can create SDF shader source code for an arbitrary shape.
 type Shader interface {
-	Bounds() (min, max Vec3)
+	Bounds() (min, max ms3.Vec)
 	AppendShaderName(b []byte) []byte
 	AppendShaderBody(b []byte) []byte
-	ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error
+	ForEachChild(userData any, fn func(userData any, s *Shader) error) error
 }
-
-type Vec3 struct {
-	X, Y, Z float32
-}
-
-func (v Vec3) Abs() Vec3 {
-	return absv(v)
-}
-
-func (v Vec3) Scale(scale float32) Vec3 {
-	return scalev(v, scale)
-}
-
-func scalev(v Vec3, scale float32) Vec3  { return Vec3{X: v.X * scale, Y: v.Y * scale, Z: v.Z * scale} }
-func absv(v Vec3) Vec3                   { return Vec3{X: absf(v.X), Y: absf(v.Y), Z: absf(v.Z)} }
-func maxv3(a, b Vec3) Vec3               { return Vec3{X: maxf(a.X, b.X), Y: maxf(a.Y, b.Y), Z: maxf(a.Z, b.Z)} }
-func minv3(a, b Vec3) Vec3               { return Vec3{X: minf(a.X, b.X), Y: minf(a.Y, b.Y), Z: minf(a.Z, b.Z)} }
-func mulelemv3(a, b Vec3) Vec3           { return Vec3{X: a.X * b.X, Y: a.Y * b.Y, Z: a.Z * b.Z} }
-func divelemv3(a, b Vec3) Vec3           { return Vec3{X: a.X / b.X, Y: a.Y / b.Y, Z: a.Z / b.Z} }
-func addv3(a, b Vec3) Vec3               { return Vec3{X: a.X + b.X, Y: a.Y + b.Y, Z: a.Z + b.Z} }
-func addscalarv3(a Vec3, f float32) Vec3 { return Vec3{X: a.X + f, Y: a.Y + f, Z: a.Z + f} }
-func subv3(a, b Vec3) Vec3               { return Vec3{X: a.X - b.X, Y: a.Y - b.Y, Z: a.Z - b.Z} }
-func roundv(v Vec3) Vec3                 { return Vec3{X: roundf(v.X), Y: roundf(v.Y), Z: roundf(v.Z)} }
-func signv(v Vec3) Vec3                  { return Vec3{X: signf(v.X), Y: signf(v.Y), Z: signf(v.Z)} }
-func clampv(v, Min, Max Vec3) Vec3 {
-	return Vec3{X: clampf(v.X, Min.X, Max.X), Y: clampf(v.Y, Min.Y, Max.Y), Z: clampf(v.Z, Min.Z, Max.Z)}
-}
-func (v Vec3) norm() float32 { return float32(r3.Norm(v.r3())) }
-func (v Vec3) r3() r3.Vec    { return r3.Vec{X: float64(v.X), Y: float64(v.Y), Z: float64(v.Z)} }
-
-type Flags uint64
 
 func minf(a, b float32) float32 {
-	return float32(math.Min(float64(a), float64(b)))
+	return math32.Min(a, b)
 }
 func hypotf(a, b float32) float32 {
-	return float32(math.Hypot(float64(a), float64(b)))
+	return math32.Hypot(a, b)
 }
 
 func signf(a float32) float32 {
 	if a == 0 {
 		return 0
 	}
-	return float32(math.Copysign(1, float64(a)))
+	return math32.Copysign(1, a)
 }
 
 func clampf(v, Min, Max float32) float32 {
-	if v < Min {
-		return Min
-	} else if v > Max {
-		return Max
-	}
-	return v
+	return ms3.Clamp(v, Min, Max)
 }
 
 func roundf(v float32) float32 {
-	return float32(math.Round(float64(v)))
+	return math32.Round(v)
 }
 
 func mixf(x, y, a float32) float32 {
@@ -81,14 +46,14 @@ func mixf(x, y, a float32) float32 {
 }
 
 func maxf(a, b float32) float32 {
-	return float32(math.Max(float64(a), float64(b)))
+	return math32.Max(a, b)
 }
 
 func absf(a float32) float32 {
-	return float32(math.Abs(float64(a)))
+	return math32.Abs(a)
 }
 
-func writeProgram(w io.Writer, obj Shader, scratch []byte, scratchNodes []Shader) (int, error) {
+func WriteProgram(w io.Writer, obj Shader, scratch []byte, scratchNodes []Shader) (int, error) {
 	scratch = scratch[:0]
 	scratch = obj.AppendShaderName(scratch)
 	topname := string(scratch)
@@ -154,7 +119,7 @@ func appendAllNodes(buf []Shader, root Shader) ([]Shader, error) {
 		newChildren := children[nextChild:]
 		for _, obj := range newChildren {
 			nextChild++
-			err := obj.ForEachChild(0, func(flags Flags, s *Shader) error {
+			err := obj.ForEachChild(0, func(userData any, s *Shader) error {
 				children = append(children, *s)
 				return nil
 			})
@@ -167,7 +132,7 @@ func appendAllNodes(buf []Shader, root Shader) ([]Shader, error) {
 	return buf, nil
 }
 
-func appendVec3Decl(b []byte, name string, v Vec3) []byte {
+func appendVec3Decl(b []byte, name string, v ms3.Vec) []byte {
 	b = append(b, "float "...)
 	b = append(b, name...)
 	b = append(b, "=vec3("...)
@@ -217,7 +182,7 @@ func fappend(b []byte, v float32, neg, decimal byte) []byte {
 	return b[:end]
 }
 
-func vecappend(b []byte, v Vec3, sep, neg, decimal byte) []byte {
+func vecappend(b []byte, v ms3.Vec, sep, neg, decimal byte) []byte {
 	b = fappend(b, v.X, neg, decimal)
 	if sep != 0 {
 		b = append(b, sep)
@@ -230,8 +195,8 @@ func vecappend(b []byte, v Vec3, sep, neg, decimal byte) []byte {
 	return b
 }
 
-func r3tovec(v r3.Vec) Vec3 {
-	return Vec3{X: float32(v.X), Y: float32(v.Y), Z: float32(v.Z)}
+func r3tovec(v r3.Vec) ms3.Vec {
+	return ms3.Vec{X: float32(v.X), Y: float32(v.Y), Z: float32(v.Z)}
 }
 
 func b2i(b bool) int {

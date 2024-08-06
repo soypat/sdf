@@ -69,6 +69,8 @@ github.com/ruudk/golang-pdf417 v0.0.0-20181029194003-1af4ab5afa58/go.mod h1:6lfF
 github.com/ruudk/golang-pdf417 v0.0.0-20201230142125-a7e3863a1245/go.mod h1:pQAZKsJ8yyVxGRWYNEm9oFB8ieLgKFnamEyDmSA0BRk=
 github.com/soypat/glgl v0.0.0-20240727212338-00ef53124943 h1:B4/75m7lgRGAMWVaVP5Q4rGYHOM8htPvTMOUxqyDCTA=
 github.com/soypat/glgl v0.0.0-20240727212338-00ef53124943/go.mod h1:jcTX7fb8Y1WYrBfHyqZtzZyXzEQaOVp/z+ngMn9IQuk=
+github.com/soypat/glgl v0.0.0-20240805030102-e90c03f0471a h1:8mmrPoYQx7DVkfqLYxkTvFupljwXw90iNMTlFsohHmc=
+github.com/soypat/glgl v0.0.0-20240805030102-e90c03f0471a/go.mod h1:jcTX7fb8Y1WYrBfHyqZtzZyXzEQaOVp/z+ngMn9IQuk=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
 github.com/stretchr/testify v1.7.0 h1:nwc3DEeHmmLAfoZucVR881uASk0Mfjw8xYJ99tb5CcY=

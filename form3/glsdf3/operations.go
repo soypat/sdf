@@ -1,10 +1,11 @@
-package glsdf
+package glsdf3
 
 import (
 	"errors"
 	"fmt"
 	"math"
 
+	"github.com/soypat/glgl/math/ms3"
 	"gonum.org/v1/gonum/spatial/r3"
 )
 
@@ -20,20 +21,20 @@ type union struct {
 	s1, s2 Shader
 }
 
-func (u *union) Bounds() (min, max Vec3) {
+func (u *union) Bounds() (min, max ms3.Vec) {
 	min1, max1 := u.s1.Bounds()
 	min2, max2 := u.s2.Bounds()
-	min = minv3(min1, min2)
-	max = maxv3(max1, max2)
+	min = ms3.MinElem(min1, min2)
+	max = ms3.MaxElem(max1, max2)
 	return min, max
 }
 
-func (s *union) ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error {
-	err := fn(flags, &s.s1)
+func (s *union) ForEachChild(userData any, fn func(userData any, s *Shader) error) error {
+	err := fn(userData, &s.s1)
 	if err != nil {
 		return err
 	}
-	return fn(flags, &s.s2)
+	return fn(userData, &s.s2)
 }
 
 func (s *union) AppendShaderName(b []byte) []byte {
@@ -65,16 +66,16 @@ type diff struct {
 	s1, s2 Shader // Performs s1-s2.
 }
 
-func (u *diff) Bounds() (min, max Vec3) {
+func (u *diff) Bounds() (min, max ms3.Vec) {
 	return u.s1.Bounds()
 }
 
-func (s *diff) ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error {
-	err := fn(flags, &s.s1)
+func (s *diff) ForEachChild(userData any, fn func(userData any, s *Shader) error) error {
+	err := fn(userData, &s.s1)
 	if err != nil {
 		return err
 	}
-	return fn(flags, &s.s2)
+	return fn(userData, &s.s2)
 }
 
 func (s *diff) AppendShaderName(b []byte) []byte {
@@ -106,20 +107,20 @@ type intersect struct {
 	s1, s2 Shader // Performs s1 ^ s2.
 }
 
-func (u *intersect) Bounds() (min, max Vec3) {
+func (u *intersect) Bounds() (min, max ms3.Vec) {
 	min1, max1 := u.s1.Bounds()
 	min2, max2 := u.s2.Bounds()
-	min = maxv3(min1, min2)
-	max = minv3(max1, max2)
+	min = ms3.MaxElem(min1, min2)
+	max = ms3.MinElem(max1, max2)
 	return min, max
 }
 
-func (s *intersect) ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error {
-	err := fn(flags, &s.s1)
+func (s *intersect) ForEachChild(userData any, fn func(userData any, s *Shader) error) error {
+	err := fn(userData, &s.s1)
 	if err != nil {
 		return err
 	}
-	return fn(flags, &s.s2)
+	return fn(userData, &s.s2)
 }
 
 func (s *intersect) AppendShaderName(b []byte) []byte {
@@ -151,20 +152,20 @@ type xor struct {
 	s1, s2 Shader
 }
 
-func (u *xor) Bounds() (min, max Vec3) {
+func (u *xor) Bounds() (min, max ms3.Vec) {
 	min1, max1 := u.s1.Bounds()
 	min2, max2 := u.s2.Bounds()
-	min = minv3(min1, min2)
-	max = maxv3(max1, max2)
+	min = ms3.MinElem(min1, min2)
+	max = ms3.MaxElem(max1, max2)
 	return min, max
 }
 
-func (s *xor) ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error {
-	err := fn(flags, &s.s1)
+func (s *xor) ForEachChild(userData any, fn func(userData any, s *Shader) error) error {
+	err := fn(userData, &s.s1)
 	if err != nil {
 		return err
 	}
-	return fn(flags, &s.s2)
+	return fn(userData, &s.s2)
 }
 
 func (s *xor) AppendShaderName(b []byte) []byte {
@@ -192,13 +193,13 @@ type scale struct {
 	scale float32
 }
 
-func (u *scale) Bounds() (min, max Vec3) {
+func (u *scale) Bounds() (min, max ms3.Vec) {
 	min1, max1 := u.s.Bounds()
-	return min1.Scale(u.scale), max1.Scale(u.scale)
+	return ms3.Scale(u.scale, min1), ms3.Scale(u.scale, max1)
 }
 
-func (s *scale) ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error {
-	return fn(flags, &s.s)
+func (s *scale) ForEachChild(userData any, fn func(userData any, s *Shader) error) error {
+	return fn(userData, &s.s)
 }
 
 func (s *scale) AppendShaderName(b []byte) []byte {
@@ -228,7 +229,7 @@ type symmetry struct {
 	xyz xyzBits
 }
 
-func (u *symmetry) Bounds() (min, max Vec3) {
+func (u *symmetry) Bounds() (min, max ms3.Vec) {
 	min1, max1 := u.s.Bounds()
 	if u.xyz&xBit != 0 {
 		min1.X = minf(min1.X, -max1.X)
@@ -242,8 +243,8 @@ func (u *symmetry) Bounds() (min, max Vec3) {
 	return min1, max1
 }
 
-func (s *symmetry) ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error {
-	return fn(flags, &s.s)
+func (s *symmetry) ForEachChild(userData any, fn func(userData any, s *Shader) error) error {
+	return fn(userData, &s.s)
 }
 
 func (s *symmetry) AppendShaderName(b []byte) []byte {
@@ -276,17 +277,17 @@ func Rotate(s Shader, radians float32, axis r3.Vec) Shader {
 
 type rotate struct {
 	s Shader
-	p Vec3
+	p ms3.Vec
 	q float32
 }
 
-func (u *rotate) Bounds() (min, max Vec3) {
+func (u *rotate) Bounds() (min, max ms3.Vec) {
 	min, max = u.s.Bounds() // TODO
 	return min, max
 }
 
-func (s *rotate) ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error {
-	return fn(flags, &s.s)
+func (s *rotate) ForEachChild(userData any, fn func(userData any, s *Shader) error) error {
+	return fn(userData, &s.s)
 }
 
 func (s *rotate) AppendShaderName(b []byte) []byte {
@@ -318,23 +319,23 @@ func (r *rotate) AppendShaderBody(b []byte) []byte {
 
 // Translate moves the SDF s in the given direction.
 func Translate(s Shader, dirX, dirY, dirZ float32) Shader {
-	return &translate{s: s, p: Vec3{X: dirX, Y: dirY, Z: dirZ}}
+	return &translate{s: s, p: ms3.Vec{X: dirX, Y: dirY, Z: dirZ}}
 }
 
 type translate struct {
 	s Shader
-	p Vec3
+	p ms3.Vec
 }
 
-func (u *translate) Bounds() (min, max Vec3) {
+func (u *translate) Bounds() (min, max ms3.Vec) {
 	min, max = u.s.Bounds()
-	min = addv3(min, u.p)
-	max = addv3(max, u.p)
+	min = ms3.Add(min, u.p)
+	max = ms3.Add(max, u.p)
 	return min, max
 }
 
-func (s *translate) ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error {
-	return fn(flags, &s.s)
+func (s *translate) ForEachChild(userData any, fn func(userData any, s *Shader) error) error {
+	return fn(userData, &s.s)
 }
 
 func (s *translate) AppendShaderName(b []byte) []byte {
@@ -368,12 +369,12 @@ type round struct {
 	rad float32
 }
 
-func (u *round) Bounds() (min, max Vec3) {
+func (u *round) Bounds() (min, max ms3.Vec) {
 	return u.s.Bounds()
 }
 
-func (s *round) ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error {
-	return fn(flags, &s.s)
+func (s *round) ForEachChild(userData any, fn func(userData any, s *Shader) error) error {
+	return fn(userData, &s.s)
 }
 
 func (s *round) AppendShaderName(b []byte) []byte {
@@ -400,22 +401,23 @@ func Array(s Shader, spacingX, spacingY, spacingZ float32, nx, ny, nz int) (Shad
 	} else if spacingX <= 0 || spacingY <= 0 || spacingZ <= 0 {
 		return nil, errors.New("invalid array spacing")
 	}
-	return &array{s: s, d: Vec3{X: spacingX, Y: spacingY, Z: spacingZ}, nx: nx, ny: ny, nz: nz}, nil
+	return &array{s: s, d: ms3.Vec{X: spacingX, Y: spacingY, Z: spacingZ}, nx: nx, ny: ny, nz: nz}, nil
 }
 
 type array struct {
 	s          Shader
-	d          Vec3
+	d          ms3.Vec
 	nx, ny, nz int
 }
 
-func (u *array) Bounds() (min, max Vec3) {
-	max = mulelemv3(u.nvec3(), u.d.Scale(0.5))
-	return u.d.Scale(-0.5), max
+func (u *array) Bounds() (min, max ms3.Vec) {
+
+	max = ms3.MulElem(u.nvec3(), ms3.Scale(0.5, u.d))
+	return ms3.Scale(0.5, u.d), max
 }
 
-func (s *array) ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error {
-	return fn(flags, &s.s)
+func (s *array) ForEachChild(userData any, fn func(userData any, s *Shader) error) error {
+	return fn(userData, &s.s)
 }
 
 func (s *array) AppendShaderName(b []byte) []byte {
@@ -427,7 +429,7 @@ func (s *array) AppendShaderName(b []byte) []byte {
 	return b
 }
 
-func (s *array) nvec3() Vec3 { return Vec3{X: float32(s.nx), Y: float32(s.ny), Z: float32(s.nz)} }
+func (s *array) nvec3() ms3.Vec { return ms3.Vec{X: float32(s.nx), Y: float32(s.ny), Z: float32(s.nz)} }
 
 func (s *array) AppendShaderBody(b []byte) []byte {
 	sdf := string(s.s.AppendShaderName(nil))
@@ -559,23 +561,23 @@ return mix( d2, d1, h ) + k*h*(1.0-h);`...)
 // Elongate "stretches" the SDF in a direction by splitting it on the origin in
 // the plane perpendicular to the argument direction.
 func Elongate(s Shader, dirX, dirY, dirZ float32) Shader {
-	return &elongate{s: s, h: Vec3{X: dirX, Y: dirY, Z: dirZ}}
+	return &elongate{s: s, h: ms3.Vec{X: dirX, Y: dirY, Z: dirZ}}
 }
 
 type elongate struct {
 	s Shader
-	h Vec3
+	h ms3.Vec
 }
 
-func (u *elongate) Bounds() (min, max Vec3) {
+func (u *elongate) Bounds() (min, max ms3.Vec) {
 	min, max = u.s.Bounds()
-	min = minv3(min, addv3(min, u.h))
-	max = maxv3(max, addv3(max, u.h))
+	min = ms3.MinElem(min, ms3.Add(min, u.h))
+	max = ms3.MaxElem(max, ms3.Add(max, u.h))
 	return min, max
 }
 
-func (s *elongate) ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error {
-	return fn(flags, &s.s)
+func (s *elongate) ForEachChild(userData any, fn func(userData any, s *Shader) error) error {
+	return fn(userData, &s.s)
 }
 
 func (s *elongate) AppendShaderName(b []byte) []byte {
@@ -604,12 +606,12 @@ type shell struct {
 	thick float32
 }
 
-func (u *shell) Bounds() (min, max Vec3) {
+func (u *shell) Bounds() (min, max ms3.Vec) {
 	return u.s.Bounds()
 }
 
-func (s *shell) ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error {
-	return fn(flags, &s.s)
+func (s *shell) ForEachChild(userData any, fn func(userData any, s *Shader) error) error {
+	return fn(userData, &s.s)
 }
 
 func (s *shell) AppendShaderName(b []byte) []byte {

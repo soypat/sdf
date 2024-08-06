@@ -1,7 +1,9 @@
-package glsdf
+package glsdf3
 
 import (
 	"errors"
+
+	"github.com/soypat/glgl/math/ms3"
 )
 
 type sphere struct {
@@ -16,7 +18,7 @@ func NewSphere(r float32) (Shader, error) {
 	return &sphere{r: r}, nil
 }
 
-func (s *sphere) ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error { return nil }
+func (s *sphere) ForEachChild(userData any, fn func(userData any, s *Shader) error) error { return nil }
 
 func (s *sphere) AppendShaderName(b []byte) []byte {
 	b = append(b, "sphere"...)
@@ -31,9 +33,9 @@ func (s *sphere) AppendShaderBody(b []byte) []byte {
 	return b
 }
 
-func (s *sphere) Bounds() (min, max Vec3) {
-	min = Vec3{X: -s.r, Y: -s.r, Z: -s.r}
-	max = Vec3{X: s.r, Y: s.r, Z: s.r}
+func (s *sphere) Bounds() (min, max ms3.Vec) {
+	min = ms3.Vec{X: -s.r, Y: -s.r, Z: -s.r}
+	max = ms3.Vec{X: s.r, Y: s.r, Z: s.r}
 	return min, max
 }
 
@@ -43,15 +45,15 @@ func NewBox(x, y, z, round float32) (Shader, error) {
 	} else if x <= 0 || y <= 0 || z <= 0 {
 		return nil, errors.New("zero or negative box dimension")
 	}
-	return &box{dims: Vec3{X: x, Y: y, Z: z}, round: round}, nil
+	return &box{dims: ms3.Vec{X: x, Y: y, Z: z}, round: round}, nil
 }
 
 type box struct {
-	dims  Vec3
+	dims  ms3.Vec
 	round float32
 }
 
-func (s *box) ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error { return nil }
+func (s *box) ForEachChild(userData any, fn func(userData any, s *Shader) error) error { return nil }
 
 func (s *box) AppendShaderName(b []byte) []byte {
 	b = append(b, "box"...)
@@ -65,14 +67,14 @@ func (s *box) AppendShaderBody(b []byte) []byte {
 	b = fappend(b, s.round, '-', '.')
 	b = append(b, ";\nvec3 q = abs(p)-vec3("...)
 	b = vecappend(b, s.dims, ',', '-', '.')
-	b = append(b, ")+r;"...)
-	b = append(b, ");\nreturn length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0)-r;"...)
+	b = append(b, `)+r;
+return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0)-r;`...)
 	return b
 }
 
-func (s *box) Bounds() (min, max Vec3) {
-	min = Vec3{X: -s.dims.X / 2, Y: -s.dims.Y / 2, Z: -s.dims.Z / 2}
-	max = min.Abs()
+func (s *box) Bounds() (min, max ms3.Vec) {
+	min = ms3.Vec{X: -s.dims.X / 2, Y: -s.dims.Y / 2, Z: -s.dims.Z / 2}
+	max = ms3.AbsElem(min)
 	return min, max
 }
 
@@ -91,7 +93,9 @@ type cylinder struct {
 	round float32
 }
 
-func (s *cylinder) ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error { return nil }
+func (s *cylinder) ForEachChild(userData any, fn func(userData any, s *Shader) error) error {
+	return nil
+}
 
 func (s *cylinder) AppendShaderName(b []byte) []byte {
 	b = append(b, "cyl"...)
@@ -118,9 +122,9 @@ return min(max(d.x,d.y),0.0) + length(max(d,0.0)) - rb;`...)
 	return b
 }
 
-func (s *cylinder) Bounds() (min, max Vec3) {
-	min = Vec3{X: -s.r, Y: -s.r, Z: -s.h / 2}
-	max = min.Abs()
+func (s *cylinder) Bounds() (min, max ms3.Vec) {
+	min = ms3.Vec{X: -s.r, Y: -s.r, Z: -s.h / 2}
+	max = ms3.AbsElem(min)
 	return min, max
 }
 
@@ -135,7 +139,7 @@ type hex struct {
 	side, h float32
 }
 
-func (s *hex) ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error { return nil }
+func (s *hex) ForEachChild(userData any, fn func(userData any, s *Shader) error) error { return nil }
 
 func (s *hex) AppendShaderName(b []byte) []byte {
 	b = append(b, "hex"...)
@@ -145,23 +149,22 @@ func (s *hex) AppendShaderName(b []byte) []byte {
 }
 
 func (s *hex) AppendShaderBody(b []byte) []byte {
-	b = appendFloatDecl(b, "h", s.h)
+	b = appendFloatDecl(b, "_h", s.h)
 	b = appendFloatDecl(b, "side", s.side)
-	b = append(b, `vec2 h = vec2(side,h);
+	b = append(b, `vec2 h = vec2(side, _h);
 const vec3 k = vec3(-0.8660254, 0.5, 0.57735);
 p = abs(p);
 p.xy -= 2.0*min(dot(k.xy, p.xy), 0.0)*k.xy;
-vec2 d = vec2(
-	length(p.xy-vec2(clamp(p.x,-k.z*h.x,k.z*h.x), h.x))*sign(p.y-h.x),
-	p.z-h.y );
+vec2 aux = p.xy-vec2(clamp(p.x,-k.z*h.x,k.z*h.x), h.x);
+vec2 d = vec2( length(aux)*sign(p.y-h.x), p.z-h.y );
 return min(max(d.x,d.y),0.0) + length(max(d,0.0));`...)
 	return b
 }
 
-func (s *hex) Bounds() (min, max Vec3) {
+func (s *hex) Bounds() (min, max ms3.Vec) {
 	l := s.side * 2
-	min = Vec3{X: -l, Y: -l, Z: -s.h}
-	return min, min.Abs()
+	min = ms3.Vec{X: -l, Y: -l, Z: -s.h}
+	return min, ms3.AbsElem(min)
 }
 
 func NewTriangularPrism(side, h float32) (Shader, error) {
@@ -175,7 +178,7 @@ type tri struct {
 	side, h float32
 }
 
-func (s *tri) ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error { return nil }
+func (s *tri) ForEachChild(userData any, fn func(userData any, s *Shader) error) error { return nil }
 
 func (s *tri) AppendShaderName(b []byte) []byte {
 	b = append(b, "tri"...)
@@ -185,18 +188,18 @@ func (s *tri) AppendShaderName(b []byte) []byte {
 }
 
 func (s *tri) AppendShaderBody(b []byte) []byte {
-	b = appendFloatDecl(b, "h", s.h)
+	b = appendFloatDecl(b, "_h", s.h)
 	b = appendFloatDecl(b, "side", s.side)
-	b = append(b, `vec2 h = vec2(side,h);
+	b = append(b, `vec2 h = vec2(side,_h);
 vec3 q = abs(p);
 return max(q.z-h.y,max(q.x*0.866025+p.y*0.5,-p.y)-h.x*0.5);`...)
 	return b
 }
 
-func (s *tri) Bounds() (min, max Vec3) {
+func (s *tri) Bounds() (min, max ms3.Vec) {
 	l := s.side
-	min = Vec3{X: -l, Y: -l, Z: -s.h}
-	return min, min.Abs()
+	min = ms3.Vec{X: -l, Y: -l, Z: -s.h}
+	return min, ms3.AbsElem(min)
 }
 
 type torus struct {
@@ -212,7 +215,7 @@ func NewTorus(ringRadius, greaterRadius float32) (Shader, error) {
 	return &torus{rRing: ringRadius, rGreater: greaterRadius}, nil
 }
 
-func (s *torus) ForEachChild(flags Flags, fn func(flags Flags, s *Shader) error) error { return nil }
+func (s *torus) ForEachChild(userData any, fn func(userData any, s *Shader) error) error { return nil }
 
 func (s *torus) AppendShaderName(b []byte) []byte {
 	b = append(b, "torus"...)
@@ -224,15 +227,15 @@ func (s *torus) AppendShaderName(b []byte) []byte {
 func (s *torus) AppendShaderBody(b []byte) []byte {
 	b = appendFloatDecl(b, "t1", s.rRing)
 	b = appendFloatDecl(b, "t2", s.rGreater)
-	b = append(b, `vec2 t = vec2(t1,t2);
+	b = append(b, `vec2 t = vec2(t1, t2);
 vec2 q = vec2(length(p.xz)-t.x,p.y);
 return length(q)-t.y;`...)
 	return b
 }
 
-func (s *torus) Bounds() (min, max Vec3) {
+func (s *torus) Bounds() (min, max ms3.Vec) {
 	R := s.rRing + s.rGreater
-	min = Vec3{X: -R, Y: -R, Z: -s.rRing}
-	max = min.Abs()
+	min = ms3.Vec{X: -R, Y: -R, Z: -s.rRing}
+	max = ms3.AbsElem(min)
 	return min, max
 }

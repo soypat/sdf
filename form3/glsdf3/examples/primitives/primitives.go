@@ -1,23 +1,46 @@
-package glsdf3
+package main
 
 import (
 	"bytes"
+	"fmt"
 	"log"
-	"os"
 	"reflect"
 	"runtime"
-	"testing"
 
+	"github.com/chewxy/math32"
 	"github.com/go-gl/gl/all-core/gl"
 	"github.com/soypat/glgl/math/ms3"
 	"github.com/soypat/glgl/v4.6-core/glgl"
+	"github.com/soypat/sdf/form3/glsdf3"
 )
 
 func init() {
 	runtime.LockOSThread() // For GL.
 }
 
-func TestMain(m *testing.M) {
+var PremadePrimitives = []glsdf3.Shader{
+	mustShader(glsdf3.NewSphere(1)),
+	mustShader(glsdf3.NewBox(1, 1.2, 2.2, 0.3)),
+	mustShader(glsdf3.NewCylinder(1, 3, .3)),
+	mustShader(glsdf3.NewHexagonalPrism(1, 2)),
+	mustShader(glsdf3.NewTorus(.5, 3)),
+	mustShader(glsdf3.NewTriangularPrism(1, 3)),
+}
+
+var BinaryOps = []func(a, b glsdf3.Shader) glsdf3.Shader{
+	glsdf3.Difference,
+	glsdf3.Intersection,
+	glsdf3.Union,
+	glsdf3.Xor,
+}
+
+var SmoothBinaryOps = []func(a, b glsdf3.Shader, k float32) glsdf3.Shader{
+	glsdf3.SmoothDifference,
+	glsdf3.SmoothIntersect,
+	glsdf3.SmoothUnion,
+}
+
+func main() {
 	_, terminate, err := glgl.InitWithCurrentWindow33(glgl.WindowConfig{
 		Title:   "compute",
 		Version: [2]int{4, 6},
@@ -28,64 +51,38 @@ func TestMain(m *testing.M) {
 		log.Fatal(err)
 	}
 	defer terminate()
-	code := m.Run()
-	terminate()
-	os.Exit(code)
-}
 
-var PremadePrimitives = []Shader{
-	mustShader(NewSphere(1)),
-	mustShader(NewBox(1, 1.2, 2.2, 0.3)),
-	mustShader(NewCylinder(1, 3, .3)),
-	mustShader(NewHexagonalPrism(1, 2)),
-	mustShader(NewTorus(.5, 3)),
-	mustShader(NewTriangularPrism(1, 3)),
-}
-
-var BinaryOps = []func(a, b Shader) Shader{
-	Difference,
-	Intersection,
-	Union,
-	Xor,
-}
-
-var SmoothBinaryOps = []func(a, b Shader, k float32) Shader{
-	SmoothDifference,
-	SmoothIntersect,
-	SmoothUnion,
-}
-
-func TestPrimitivesCPUvsGPU(t *testing.T) {
 	const nx, ny, nz = 10, 10, 10
 	scratch := make([]byte, 1024)
-	scratchNodes := make([]Shader, 16)
+	scratchNodes := make([]glsdf3.Shader, 16)
 	for _, primitive := range PremadePrimitives {
 		boundmin, boundmax := primitive.Bounds()
 		pos := meshgrid(boundmin, boundmax, nx, ny, nz)
 		distCPU := make([]float32, len(pos))
 		distGPU := make([]float32, len(pos))
 		sdf := assertEvaluator(primitive)
-		vp := &VecPool{}
+		log.Printf("begin evaluating %T\n", primitive)
+		vp := &glsdf3.VecPool{}
 		err := sdf.Evaluate(pos, distCPU, vp)
 		if err != nil {
-			t.Fatal(err)
+			log.Fatal(err)
 		}
 		err = vp.AssertAllReleased()
 		if err != nil {
-			t.Fatal(err)
+			log.Fatal(err)
 		}
 		var source bytes.Buffer
-		_, err = WriteProgram(&source, primitive, scratch, scratchNodes)
+		_, err = glsdf3.WriteProgram(&source, primitive, scratch, scratchNodes)
 		if err != nil {
-			t.Fatal(err)
+			log.Fatal(err)
 		}
 		combinedSource, err := glgl.ParseCombined(&source)
 		if err != nil {
-			t.Fatal(err)
+			log.Fatal(err)
 		}
 		glprog, err := glgl.CompileProgram(combinedSource)
 		if err != nil {
-			t.Fatal(err)
+			log.Fatal(string(combinedSource.Compute), err)
 		}
 		glprog.Bind()
 
@@ -103,7 +100,7 @@ func TestPrimitivesCPUvsGPU(t *testing.T) {
 		}
 		_, err = glgl.NewTextureFromImage(posCfg, pos)
 		if err != nil {
-			t.Fatal(err)
+			log.Fatal(err)
 		}
 		distCfg := glgl.TextureImgConfig{
 			Type:           glgl.Texture2D,
@@ -117,24 +114,30 @@ func TestPrimitivesCPUvsGPU(t *testing.T) {
 			InternalFormat: gl.R32F,
 			ImageUnit:      1,
 		}
+
 		distTex, err := glgl.NewTextureFromImage(distCfg, distGPU)
 		if err != nil {
-			t.Fatal(err)
+			log.Fatal(err)
 		}
 		err = glprog.RunCompute(len(distGPU), 1, 1)
 		if err != nil {
-			t.Fatal(err)
+			log.Fatal(err)
 		}
 		err = glgl.GetImage(distGPU, distTex, distCfg)
 		if err != nil {
-			t.Fatal(err)
+			log.Fatal(err)
 		}
+		mismatches := 0
 		const tol = 1e-4
 		for i, dg := range distGPU {
 			dc := distCPU[i]
-			diff := absf(dg - dc)
+			diff := math32.Abs(dg - dc)
 			if diff > tol {
-				t.Errorf("pos=%+v cpu=%f, gpu=%f (diff=%f)", pos[i], dc, dg, diff)
+				mismatches++
+				log.Printf("pos=%+v cpu=%f, gpu=%f (diff=%f)\n", pos[i], dc, dg, diff)
+				if mismatches > 8 {
+					return
+				}
 			}
 		}
 	}
@@ -168,31 +171,21 @@ func meshgrid(boundmin, boundmax ms3.Vec, nx, ny, nz int) []ms3.Vec {
 	return positions
 }
 
-func TestSimplePart(t *testing.T) {
-	tri, err := NewTriangularPrism(1, 2)
-	if err != nil {
-		t.Fatal(err)
-	}
-	hex, err := NewHexagonalPrism(1.5, 3)
-	if err != nil {
-		t.Fatal(err)
-	}
-	hex = Translate(hex, 0, 0, 2)
-	obj := Union(tri, hex)
-
-	var program bytes.Buffer
-	var scratch [512]byte
-	var scratchNodes [16]Shader
-	_, err = WriteProgram(&program, obj, scratch[:], scratchNodes[:])
-	if err != nil {
-		t.Error(err)
-	}
-	// t.Error(program.String())
-}
-
-func mustShader(s Shader, err error) Shader {
+func mustShader(s glsdf3.Shader, err error) glsdf3.Shader {
 	if err != nil || s == nil {
 		panic(err.Error())
 	}
 	return s
+}
+
+func assertEvaluator(s glsdf3.Shader) interface {
+	Evaluate(pos []ms3.Vec, dist []float32, userData any) error
+} {
+	evaluator, ok := s.(interface {
+		Evaluate(pos []ms3.Vec, dist []float32, userData any) error
+	})
+	if !ok {
+		panic(fmt.Sprintf("%T does not implement evaluator", s))
+	}
+	return evaluator
 }
