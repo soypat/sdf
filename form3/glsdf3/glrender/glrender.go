@@ -2,7 +2,6 @@ package glrender
 
 import (
 	"errors"
-	"fmt"
 	"io"
 
 	"github.com/chewxy/math32"
@@ -71,13 +70,11 @@ func NewOctreeRenderer(s SDF3, cubeResolution float32, evalBufferSize int) (Rend
 	log2 := math32.Log2(longAxis / cubeResolution)
 	levels := int(math32.Ceil(log2))
 	if levels <= 1 {
-		return nil, errors.New("bad levels calculation")
+		return nil, errors.New("resolution not fine enough for marching cubes")
 	}
 
 	startCubes := make([]icube, 1, levels*8)
 	startCubes[0] = icube{lvl: levels} // Start cube.
-	startbox := startCubes[0].box(bb.Min, startCubes[0].size(cubeResolution))
-	fmt.Println(startbox)
 	return &octree{
 		s:          s,
 		resolution: cubeResolution,
@@ -143,10 +140,14 @@ func (oc *octree) marchCubes(dst []ms3.Triangle, limit int) int {
 	var p [8]ms3.Vec
 	var d [8]float32
 	i := 0
+	cubeDiag := 2 * sqrt3 * oc.resolution
 	for i < limit && len(dst)-n > marchingCubesMaxTriangles {
-		copy(p[:], oc.posbuf[i:i+8])
-		copy(d[:], oc.distbuf[i:i+8])
-		n += mcToTriangles(dst[n:], p, d, 0)
+		if true || math32.Abs(oc.distbuf[i]) <= cubeDiag {
+			// Cube may have triangles.
+			copy(p[:], oc.posbuf[i:i+8])
+			copy(d[:], oc.distbuf[i:i+8])
+			n += mcToTriangles(dst[n:], p, d, 0)
+		}
 		i += 8
 	}
 
@@ -186,7 +187,7 @@ func (c icube) corners(origin ms3.Vec, size float32) [8]ms3.Vec {
 
 func (c icube) octree() [8]icube {
 	lvl := c.lvl - 1
-	s := 1 << c.lvl
+	s := 1 << lvl
 	return [8]icube{
 		{ivec: c.Add(ivec{0, 0, 0}), lvl: lvl},
 		{ivec: c.Add(ivec{s, 0, 0}), lvl: lvl},
@@ -204,7 +205,7 @@ func (c icube) octree() [8]icube {
 func RenderAll(r Renderer) ([]ms3.Triangle, error) {
 	var err error
 	var nt int
-	result := make([]ms3.Triangle, 0, 512)
+	result := make([]ms3.Triangle, 0, 1024)
 	buf := make([]ms3.Triangle, 1024)
 	for {
 		nt, err = r.ReadTriangles(buf)

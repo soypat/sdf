@@ -9,6 +9,7 @@ import (
 	"os"
 	"reflect"
 	"runtime"
+	"time"
 
 	"github.com/chewxy/math32"
 	"github.com/go-gl/gl/all-core/gl"
@@ -167,19 +168,46 @@ func test_sdf_gpu_cpu() error {
 }
 
 func test_stl_generation() error {
-	const r = 0.5 / 1.01
+	const r = 1.0 // 1.01
+	const filename = "sphere.stl"
+	const bufsize = 256 // 32768 // Sweet spot around 32k.
 	s, _ := glsdf3.NewSphere(r)
 	obj := sdfcpu{s: s}
-	renderer, err := glrender.NewOctreeRenderer(obj, 1.02*r/2, 4096)
+	renderer, err := glrender.NewOctreeRenderer(obj, r/16, bufsize)
 	if err != nil {
 		return err
 	}
+	renderStart := time.Now()
 	triangles, err := glrender.RenderAll(renderer)
+	elapsed := time.Since(renderStart)
 	if err != nil {
 		return err
 	}
-	fp, _ := os.Create("sphere.stl")
-	_, err = glrender.WriteSTL(fp, triangles)
+	fp, _ := os.Create(filename)
+	_, err = glrender.WriteBinarySTL(fp, triangles)
+	if err != nil {
+		return err
+	}
+	fp.Close()
+	fp, err = os.Open(filename)
+	if err != nil {
+		return err
+	}
+	defer fp.Close()
+	outTriangles, err := glrender.ReadBinarySTL(fp)
+	if err != nil {
+		return err
+	}
+	if len(outTriangles) != len(triangles) {
+		return fmt.Errorf("wrote %d triangles, read back %d", len(triangles), len(outTriangles))
+	}
+	for i, got := range outTriangles {
+		want := triangles[i]
+		if got != want {
+			return fmt.Errorf("triangle %d: got %+v, want %+v", i, got, want)
+		}
+	}
+	log.Printf("wrote+read %d triangles (rendered in %s)", len(triangles), elapsed.String())
 	return err
 }
 
