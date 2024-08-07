@@ -142,7 +142,7 @@ func (oc *octree) marchCubes(dst []ms3.Triangle, limit int) int {
 	i := 0
 	cubeDiag := 2 * sqrt3 * oc.resolution
 	for i < limit && len(dst)-n > marchingCubesMaxTriangles {
-		if true || math32.Abs(oc.distbuf[i]) <= cubeDiag {
+		if math32.Abs(oc.distbuf[i]) <= cubeDiag {
 			// Cube may have triangles.
 			copy(p[:], oc.posbuf[i:i+8])
 			copy(d[:], oc.distbuf[i:i+8])
