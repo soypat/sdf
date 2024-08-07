@@ -76,7 +76,7 @@ func NewOctreeRenderer(s SDF3, cubeResolution float32, evalBufferSize int) (Rend
 
 	startCubes := make([]icube, 1, levels*8)
 	startCubes[0] = icube{lvl: levels} // Start cube.
-	startbox := startCubes[0].box(bb.Min, cubeResolution)
+	startbox := startCubes[0].box(bb.Min, startCubes[0].size(cubeResolution))
 	fmt.Println(startbox)
 	return &octree{
 		s:          s,
@@ -99,7 +99,7 @@ func (oc *octree) ReadTriangles(dst []ms3.Triangle) (n int, err error) {
 		}
 		oc.processCubesDFS()
 		// Limit evaluation to what is needed by this call to ReadTriangles.
-		posLimit := min(8*(len(dst)-n), len(oc.posbuf))
+		posLimit := min(8*(len(dst)-n), aligndown(len(oc.posbuf), 8))
 		err = oc.s.Evaluate(oc.posbuf[:posLimit], oc.distbuf[:posLimit], nil)
 		if err != nil {
 			return 0, err
@@ -122,8 +122,8 @@ func (oc *octree) processCubesDFS() {
 			if cap(oc.posbuf)-len(oc.posbuf) < 8*8 {
 				break // No space for position buffering.
 			}
-			for _, subCubes := range subCubes {
-				corners := subCubes.corners(origin, res)
+			for _, scube := range subCubes {
+				corners := scube.corners(origin, res)
 				oc.posbuf = append(oc.posbuf, corners[:]...)
 			}
 			oc.cubes = oc.cubes[:lastIdx] // Trim cube used.
@@ -150,33 +150,37 @@ func (oc *octree) marchCubes(dst []ms3.Triangle, limit int) int {
 		i += 8
 	}
 
-	remaining := len(oc.posbuf) - i
 	if i > 0 {
 		// Discard used positional and distance data.
-		copy(oc.posbuf, oc.posbuf[i:])
-		oc.posbuf = oc.posbuf[:remaining]
+		k := copy(oc.posbuf, oc.posbuf[i:])
+		oc.posbuf = oc.posbuf[:k]
 	}
 	return n
 }
 
-func (c icube) box(origin ms3.Vec, resolution float32) ms3.Box {
-	max := ms3.Scale(resolution, c.ivec.Add(ivec{2, 2, 2}).Vec())
+func (c icube) size(baseRes float32) float32 {
+	dim := 1 << (c.lvl - 1)
+	return float32(dim) * baseRes
+}
+
+func (c icube) box(origin ms3.Vec, size float32) ms3.Box {
 	return ms3.Box{
-		Min: ms3.Add(origin, ms3.Scale(resolution, c.ivec.Vec())),
-		Max: max,
+		Min: ms3.Add(origin, ms3.Scale(size, c.ivec.Vec())),
+		Max: ms3.Add(origin, ms3.Scale(size, c.ivec.Add(ivec{2, 2, 2}).Vec())),
 	}
 }
 
-func (c icube) corners(origin ms3.Vec, resolution float32) [8]ms3.Vec {
+// corners returns the cube corners.
+func (c icube) corners(origin ms3.Vec, size float32) [8]ms3.Vec {
 	return [8]ms3.Vec{
-		ms3.Add(origin, ms3.Scale(resolution, c.ivec.Add(ivec{0, 0, 0}).Vec())),
-		ms3.Add(origin, ms3.Scale(resolution, c.ivec.Add(ivec{2, 0, 0}).Vec())),
-		ms3.Add(origin, ms3.Scale(resolution, c.ivec.Add(ivec{2, 2, 0}).Vec())),
-		ms3.Add(origin, ms3.Scale(resolution, c.ivec.Add(ivec{0, 2, 0}).Vec())),
-		ms3.Add(origin, ms3.Scale(resolution, c.ivec.Add(ivec{0, 0, 2}).Vec())),
-		ms3.Add(origin, ms3.Scale(resolution, c.ivec.Add(ivec{2, 0, 2}).Vec())),
-		ms3.Add(origin, ms3.Scale(resolution, c.ivec.Add(ivec{2, 2, 2}).Vec())),
-		ms3.Add(origin, ms3.Scale(resolution, c.ivec.Add(ivec{0, 2, 2}).Vec())),
+		ms3.Add(origin, ms3.Scale(size, c.ivec.Add(ivec{0, 0, 0}).Vec())),
+		ms3.Add(origin, ms3.Scale(size, c.ivec.Add(ivec{2, 0, 0}).Vec())),
+		ms3.Add(origin, ms3.Scale(size, c.ivec.Add(ivec{2, 2, 0}).Vec())),
+		ms3.Add(origin, ms3.Scale(size, c.ivec.Add(ivec{0, 2, 0}).Vec())),
+		ms3.Add(origin, ms3.Scale(size, c.ivec.Add(ivec{0, 0, 2}).Vec())),
+		ms3.Add(origin, ms3.Scale(size, c.ivec.Add(ivec{2, 0, 2}).Vec())),
+		ms3.Add(origin, ms3.Scale(size, c.ivec.Add(ivec{2, 2, 2}).Vec())),
+		ms3.Add(origin, ms3.Scale(size, c.ivec.Add(ivec{0, 2, 2}).Vec())),
 	}
 }
 
@@ -204,10 +208,10 @@ func RenderAll(r Renderer) ([]ms3.Triangle, error) {
 	buf := make([]ms3.Triangle, 1024)
 	for {
 		nt, err = r.ReadTriangles(buf)
+		result = append(result, buf[:nt]...)
 		if err != nil {
 			break
 		}
-		result = append(result, buf[:nt]...)
 	}
 	if err == io.EOF {
 		return result, nil
@@ -220,4 +224,8 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func aligndown(v, alignto int) int {
+	return v &^ (alignto - 1)
 }
