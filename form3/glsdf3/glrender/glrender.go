@@ -2,6 +2,7 @@ package glrender
 
 import (
 	"errors"
+	"fmt"
 	"io"
 
 	"github.com/chewxy/math32"
@@ -22,16 +23,13 @@ type octree struct {
 	origin     ms3.Vec
 	levels     int
 	resolution float32
-	cubes      []cube
-	// idxDecomp indexes the first cube
-	// that has not been decomposed with octree() method
-	// within cubes field to generate child cubes which are
-	// then added to cubes slice.
-	idxDecomposed int
-	//
-	posbuf    []ms3.Vec
-	distbuf   []float32
-	unwritten TriangleBuffer
+	cubes      []icube
+	// Below are the buffers for storing positional input to SDF and resulting distances.
+
+	// posbuf's length accumulates positions to be evaluated.
+	posbuf []ms3.Vec
+	// distbuf is set to the calculated distances for posbuf.
+	distbuf []float32
 }
 
 type ivec struct {
@@ -47,41 +45,43 @@ func (a ivec) ScaleDiv(f int) ivec  { return ivec{x: a.x / f, y: a.y / f, z: a.z
 func (a ivec) Sub(b ivec) ivec      { return ivec{x: a.x - b.x, y: a.y - b.y, z: a.z - b.z} }
 func (a ivec) Vec() ms3.Vec         { return ms3.Vec{X: float32(a.x), Y: float32(a.y), Z: float32(a.z)} }
 
-type cube struct {
+type icube struct {
 	ivec
 	lvl int
 }
 
+const sqrt3 = 1.73205080757
+
 func NewOctreeRenderer(s SDF3, cubeResolution float32, evalBufferSize int) (Renderer, error) {
-	if trees <= 0 {
-		return nil, errors.New("bad octree argument")
+	if evalBufferSize <= 8 {
+		return nil, errors.New("bad octree eval buffer size")
 	} else if cubeResolution <= 0 {
 		return nil, errors.New("invalid renderer cube resolution")
 	}
-	// We want to test the smallest cube (side == resolution) for emptiness
-	// so the level = 0 cube is at half resolution.
-	resolution := 0.5 * cubeResolution
 
 	// Scale the bounding box about the center to make sure the boundaries
 	// aren't on the object surface.
 	bb := s.Bounds().ScaleCentered(ms3.Vec{X: 1.01, Y: 1.01, Z: 1.01})
 	longAxis := bb.Size().Max()
-	cells := math32.Ceil(longAxis / resolution)
+	// cells := math32.Ceil(longAxis / resolution)
 	// Recalculate resolution ensuring minimum cubeResolution met.
-	resolution = longAxis / cells
+	// resolution = longAxis / cells
 
 	// how many cube levels for the octree?
-	levels := int(math32.Ceil(math32.Log2(longAxis/resolution))) + 1
-	if levels <= 0 {
-		return nil, errors.New("negative or zero level calculation")
+	log2 := math32.Log2(longAxis / cubeResolution)
+	levels := int(math32.Ceil(log2))
+	if levels <= 1 {
+		return nil, errors.New("bad levels calculation")
 	}
 
-	startCubes := make([]cube, 1, (levels+1)*8)
-	startCubes[0] = cube{lvl: levels - 1} // Start cube.
+	startCubes := make([]icube, 1, levels*8)
+	startCubes[0] = icube{lvl: levels} // Start cube.
+	startbox := startCubes[0].box(bb.Min, cubeResolution)
+	fmt.Println(startbox)
 	return &octree{
-		resolution: resolution,
+		s:          s,
+		resolution: cubeResolution,
 		cubes:      startCubes,
-		unwritten:  TriangleBuffer{buf: make([]ms3.Triangle, 0, 1024)},
 		origin:     bb.Min,
 		levels:     levels,
 		posbuf:     make([]ms3.Vec, 0, evalBufferSize),
@@ -90,62 +90,84 @@ func NewOctreeRenderer(s SDF3, cubeResolution float32, evalBufferSize int) (Rend
 }
 
 func (oc *octree) ReadTriangles(dst []ms3.Triangle) (n int, err error) {
-	uwEmpty := oc.unwritten.Len() == 0
-	if !uwEmpty {
-		n = oc.unwritten.Read(dst)
-		if n == len(dst) {
-			return n, nil
+	if len(dst) < 5 {
+		return 0, io.ErrShortBuffer
+	}
+	for len(dst)-n > 5 {
+		if len(oc.cubes) == 0 {
+			return n, io.EOF // Done rendering model.
 		}
+		oc.processCubesDFS()
+		// Limit evaluation to what is needed by this call to ReadTriangles.
+		posLimit := min(8*(len(dst)-n), len(oc.posbuf))
+		err = oc.s.Evaluate(oc.posbuf[:posLimit], oc.distbuf[:posLimit], nil)
+		if err != nil {
+			return 0, err
+		}
+		n += oc.marchCubes(dst[n:], posLimit)
 	}
-	if len(oc.cubes) == 0 && uwEmpty {
-		return n, io.EOF // Done rendering model.
-	}
-	oc.fillCubes()
-	err = oc.s.Evaluate(oc.posbuf, oc.distbuf[:len(oc.posbuf)], nil)
-	if err != nil {
-		return 0, err
-	}
-	n += oc.marchCubes(dst)
 	return n, nil
 }
 
-// fillCubes fills the cubes buffer with new unprocessed cubes.
-func (oc *octree) fillCubes() {
+// processCubesDFS decomposes cubes in the buffer into more cubes. Base-level cubes
+// are decomposed into corners in position buffer for marching cubes algorithm. It uses Depth First Search.
+func (oc *octree) processCubesDFS() {
 	origin, res := oc.origin, oc.resolution
-	notDecomposed := oc.cubes[oc.idxDecomposed:]
-	for _, cube := range notDecomposed {
-		if cap(oc.cubes)-len(oc.cubes) < 8 {
-			println("unreachable, i think")
-			break // No more space for cube buffering.
-		}
+	for len(oc.cubes) > 0 {
+		lastIdx := len(oc.cubes) - 1
+		cube := oc.cubes[lastIdx]
 		subCubes := cube.octree()
 		if subCubes[0].lvl == 1 {
-			if cap(oc.posbuf)-len(oc.posbuf) < 8 {
-				break // No space for position buffering, done.
+			// Is base-level cube.
+			if cap(oc.posbuf)-len(oc.posbuf) < 8*8 {
+				break // No space for position buffering.
 			}
-			corners := cube.corners(origin, res)
-			oc.posbuf = append(oc.posbuf, corners[:]...)
+			for _, subCubes := range subCubes {
+				corners := subCubes.corners(origin, res)
+				oc.posbuf = append(oc.posbuf, corners[:]...)
+			}
+			oc.cubes = oc.cubes[:lastIdx] // Trim cube used.
 		} else {
-			oc.cubes = append(oc.cubes, subCubes[:]...)
+			// Is cube with sub-cubes.
+			if cap(oc.cubes)-len(oc.cubes) < 8 {
+				break // No more space for cube buffering.
+			}
+			// We trim off the last cube which we just processed in append.
+			oc.cubes = append(oc.cubes[:lastIdx], subCubes[:]...)
 		}
-		oc.idxDecomposed++
 	}
 }
 
-func (oc *octree) marchCubes(dst []ms3.Triangle) int {
+func (oc *octree) marchCubes(dst []ms3.Triangle, limit int) int {
 	n := 0
-	lim := len(oc.distbuf) - 8
 	var p [8]ms3.Vec
 	var d [8]float32
-	for i := 0; i <= lim && len(dst)-n > marchingCubesMaxTriangles; i += 8 {
+	i := 0
+	for i < limit && len(dst)-n > marchingCubesMaxTriangles {
 		copy(p[:], oc.posbuf[i:i+8])
 		copy(d[:], oc.distbuf[i:i+8])
 		n += mcToTriangles(dst[n:], p, d, 0)
+		i += 8
+	}
+
+	remaining := len(oc.posbuf) - i
+	if i > 0 {
+		// Discard used positional and distance data.
+		copy(oc.posbuf, oc.posbuf[i:])
+		oc.posbuf = oc.posbuf[:remaining]
 	}
 	return n
 }
 
-func (c cube) corners(origin ms3.Vec, resolution float32) [8]ms3.Vec {
+func (c icube) box(origin ms3.Vec, resolution float32) ms3.Box {
+	max := ms3.Scale(resolution, c.ivec.Add(ivec{2, 2, 2}).Vec())
+	return ms3.Box{
+		Min: ms3.Add(origin, ms3.Scale(resolution, c.ivec.Vec())),
+		Max: max,
+	}
+}
+
+func (c icube) corners(origin ms3.Vec, resolution float32) [8]ms3.Vec {
 	return [8]ms3.Vec{
 		ms3.Add(origin, ms3.Scale(resolution, c.ivec.Add(ivec{0, 0, 0}).Vec())),
 		ms3.Add(origin, ms3.Scale(resolution, c.ivec.Add(ivec{2, 0, 0}).Vec())),
@@ -158,10 +180,10 @@ func (c cube) corners(origin ms3.Vec, resolution float32) [8]ms3.Vec {
 	}
 }
 
-func (c cube) octree() [8]cube {
+func (c icube) octree() [8]icube {
 	lvl := c.lvl - 1
 	s := 1 << c.lvl
-	return [8]cube{
+	return [8]icube{
 		{ivec: c.Add(ivec{0, 0, 0}), lvl: lvl},
 		{ivec: c.Add(ivec{s, 0, 0}), lvl: lvl},
 		{ivec: c.Add(ivec{s, s, 0}), lvl: lvl},
@@ -193,21 +215,9 @@ func RenderAll(r Renderer) ([]ms3.Triangle, error) {
 	return result, err
 }
 
-type TriangleBuffer struct {
-	buf []ms3.Triangle
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
-
-// Read reads from this buffer.
-func (b *TriangleBuffer) Read(t []ms3.Triangle) int {
-	n := copy(t, b.buf)
-	b.buf = b.buf[n:]
-	return n
-}
-
-// Write appends triangles to this buffer.
-func (b *TriangleBuffer) Write(t []ms3.Triangle) int {
-	b.buf = append(b.buf, t...)
-	return len(t)
-}
-
-func (b *TriangleBuffer) Len() int { return len(b.buf) }

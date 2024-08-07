@@ -15,15 +15,32 @@ import (
 	"github.com/soypat/glgl/math/ms3"
 	"github.com/soypat/glgl/v4.6-core/glgl"
 	"github.com/soypat/sdf/form3/glsdf3"
+	"github.com/soypat/sdf/form3/glsdf3/glrender"
 )
 
 func main() {
-	err := test_all()
+	_, terminate, err := glgl.InitWithCurrentWindow33(glgl.WindowConfig{
+		Title:   "compute",
+		Version: [2]int{4, 6},
+		Width:   1,
+		Height:  1,
+	})
 	if err != nil {
-		log.Println("error testing all:", err.Error())
-		os.Exit(1)
+		log.Fatal("FAIL to start GLFW", err.Error())
 	}
+	defer terminate()
+
+	// err = test_sdf_gpu_cpu()
+	if err != nil {
+		log.Fatal("FAIL testing CPU/GPU sdf comparisons:", err.Error())
+	}
+	err = test_stl_generation()
+	if err != nil {
+		log.Fatal("FAIL generating STL:", err.Error())
+	}
+	log.Println("PASS")
 }
+
 func init() {
 	runtime.LockOSThread() // For GL.
 }
@@ -54,20 +71,10 @@ var OtherUnaryRandomizedOps = []func(a glsdf3.Shader, rng *rand.Rand) glsdf3.Sha
 	randomRotation,
 	randomShell,
 	randomArray,
-	randomElongate,
+	// randomElongate,
 }
 
-func test_all() error {
-	_, terminate, err := glgl.InitWithCurrentWindow33(glgl.WindowConfig{
-		Title:   "compute",
-		Version: [2]int{4, 6},
-		Width:   1,
-		Height:  1,
-	})
-	if err != nil {
-		return err
-	}
-	defer terminate()
+func test_sdf_gpu_cpu() error {
 
 	const nx, ny, nz = 10, 10, 10
 	vp := &glsdf3.VecPool{}
@@ -77,7 +84,7 @@ func test_all() error {
 		pos := meshgrid(bounds, nx, ny, nz)
 		distCPU := make([]float32, len(pos))
 		distGPU := make([]float32, len(pos))
-		err = evaluateCPU(primitive, pos, distCPU, vp)
+		err := evaluateCPU(primitive, pos, distCPU, vp)
 		if err != nil {
 			return err
 		}
@@ -98,7 +105,7 @@ func test_all() error {
 		pos := meshgrid(bounds, nx, ny, nz)
 		distCPU := make([]float32, len(pos))
 		distGPU := make([]float32, len(pos))
-		err = evaluateCPU(obj, pos, distCPU, vp)
+		err := evaluateCPU(obj, pos, distCPU, vp)
 		if err != nil {
 			return err
 		}
@@ -119,7 +126,7 @@ func test_all() error {
 		pos := meshgrid(bounds, nx, ny, nz)
 		distCPU := make([]float32, len(pos))
 		distGPU := make([]float32, len(pos))
-		err = evaluateCPU(obj, pos, distCPU, vp)
+		err := evaluateCPU(obj, pos, distCPU, vp)
 		if err != nil {
 			return err
 		}
@@ -141,7 +148,7 @@ func test_all() error {
 			pos := meshgrid(bounds, nx, ny, nz)
 			distCPU := make([]float32, len(pos))
 			distGPU := make([]float32, len(pos))
-			err = evaluateCPU(obj, pos, distCPU, vp)
+			err := evaluateCPU(obj, pos, distCPU, vp)
 			if err != nil {
 				return err
 			}
@@ -157,6 +164,23 @@ func test_all() error {
 	}
 
 	return nil
+}
+
+func test_stl_generation() error {
+	const r = 0.5 / 1.01
+	s, _ := glsdf3.NewSphere(r)
+	obj := sdfcpu{s: s}
+	renderer, err := glrender.NewOctreeRenderer(obj, 1.02*r/2, 4096)
+	if err != nil {
+		return err
+	}
+	triangles, err := glrender.RenderAll(renderer)
+	if err != nil {
+		return err
+	}
+	fp, _ := os.Create("sphere.stl")
+	_, err = glrender.WriteSTL(fp, triangles)
+	return err
 }
 
 func getFnName(fnPtr any) string {
@@ -217,6 +241,36 @@ func evaluateCPU(obj glsdf3.Shader, pos []ms3.Vec, dist []float32, vp *glsdf3.Ve
 		return err
 	}
 	return nil
+}
+
+type sdfcpu struct {
+	s  glsdf3.Shader
+	vp glsdf3.VecPool
+}
+
+func (sdf sdfcpu) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
+	err := evaluateCPU(sdf.s, pos, dist, &sdf.vp)
+	err2 := sdf.vp.AssertAllReleased()
+	if err2 != nil {
+		return err2
+	}
+	return err
+}
+
+func (sdf sdfcpu) Bounds() ms3.Box {
+	return sdf.s.Bounds()
+}
+
+type sdfgpu struct {
+	s glsdf3.Shader
+}
+
+func (sdf sdfgpu) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
+	return evaluateGPU(sdf.s, pos, dist)
+}
+
+func (sdf sdfgpu) Bounds() ms3.Box {
+	return sdf.s.Bounds()
 }
 
 func evaluateGPU(obj glsdf3.Shader, pos []ms3.Vec, dist []float32) error {

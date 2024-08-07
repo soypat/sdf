@@ -23,14 +23,15 @@ func mcToTriangles(dst []ms3.Triangle, p [8]ms3.Vec, v [8]float32, x float32) (n
 		}
 	}
 	// do we have any triangles to create?
-	if mcEdgeTable[index] == 0 {
-		return 0
+	edges := mcEdgeTable[index]
+	if edges == 0 {
+		return 0 // No triangles to create.
 	}
 	// work out the interpolated points on the edges
 	var points [12]ms3.Vec
 	for i := 0; i < 12; i++ {
 		bit := 1 << uint(i)
-		if mcEdgeTable[index]&bit != 0 {
+		if edges&bit != 0 {
 			a := mcPairTable[i][0]
 			b := mcPairTable[i][1]
 			points[i] = mcInterpolate(p[a], p[b], v[a], v[b], x)
