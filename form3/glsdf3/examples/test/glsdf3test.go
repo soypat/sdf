@@ -57,11 +57,11 @@ func init() {
 var PremadePrimitives = []glsdf3.Shader{
 	mustShader(glsdf3.NewSphere(1)),
 	mustShader(glsdf3.NewBox(1, 1.2, 2.2, 0.3)),
-	mustShader(glsdf3.NewCylinder(1, 3, .3)),
 	mustShader(glsdf3.NewHexagonalPrism(1, 2)),
 	mustShader(glsdf3.NewTorus(3, .5)),
 	mustShader(glsdf3.NewTriangularPrism(1, 3)),
 	mustShader(glsdf3.NewBoxFrame(1, 1.2, 2.2, .2)),
+	mustShader(glsdf3.NewCylinder(1, 3, .3)),
 }
 
 var BinaryOps = []func(a, b glsdf3.Shader) glsdf3.Shader{
@@ -81,6 +81,10 @@ var OtherUnaryRandomizedOps = []func(a glsdf3.Shader, rng *rand.Rand) glsdf3.Sha
 	randomRotation,
 	randomShell,
 	randomElongate,
+	randomRound,
+	randomScale,
+	randomSymmetry,
+	randomTranslate,
 	// randomArray, // round() differs from go's math.Round()
 }
 
@@ -152,7 +156,8 @@ func test_sdf_gpu_cpu() error {
 	for _, op := range OtherUnaryRandomizedOps {
 		log.Printf("begin evaluating %s\n", getFnName(op))
 		for i := 0; i < 10; i++ {
-			obj := op(PremadePrimitives[rng.Intn(len(PremadePrimitives))], rng)
+			primitive := PremadePrimitives[rng.Intn(len(PremadePrimitives))]
+			obj := op(primitive, rng)
 			bounds := obj.Bounds()
 			pos := meshgrid(bounds, nx, ny, nz)
 			distCPU := make([]float32, len(pos))
@@ -167,7 +172,7 @@ func test_sdf_gpu_cpu() error {
 			}
 			err = cmpDist(pos, distCPU, distGPU)
 			if err != nil {
-				return err
+				return fmt.Errorf("%s for %s%d(%s):%+v", err, getBaseTypename(obj), i, getBaseTypename(primitive), obj)
 			}
 		}
 	}
@@ -218,7 +223,7 @@ func test_stl_generation() error {
 	const diam = 2 * r
 	const filename = "sphere.stl"
 	// A larger Octree Positional buffer and a smaller RenderAll triangle buffer cause bug.
-	const bufsize = 1 << 15
+	const bufsize = 1 << 12
 	obj, _ := glsdf3.NewSphere(r)
 	sdf := sdfgpu{s: obj}
 	renderer, err := glrender.NewOctreeRenderer(sdf, r/64, bufsize)
@@ -260,13 +265,14 @@ func test_stl_generation() error {
 }
 
 func getFnName(fnPtr any) string {
-	funcValue := reflect.ValueOf(fnPtr)
-	return runtime.FuncForPC(funcValue.Pointer()).Name()
+	name := runtime.FuncForPC(reflect.ValueOf(fnPtr).Pointer()).Name()
+	idx := strings.LastIndexByte(name, '.')
+	return name[idx+1:]
 }
 
 func getBaseTypename(a any) string {
 	s := fmt.Sprintf("%T", a)
-	pointIdx := strings.IndexByte(s, '.')
+	pointIdx := strings.LastIndexByte(s, '.')
 	return s[pointIdx+1:]
 }
 
@@ -478,4 +484,32 @@ func randomElongate(a glsdf3.Shader, rng *rand.Rand) glsdf3.Shader {
 	const minDim = 1.0
 	dx, dy, dz := rng.Float32()+minDim, rng.Float32()+minDim, rng.Float32()+minDim
 	return glsdf3.Elongate(a, dx, dy, dz)
+}
+
+func randomRound(a glsdf3.Shader, rng *rand.Rand) glsdf3.Shader {
+	bb := a.Bounds().Size()
+	minround := bb.Min() / 64
+	maxround := bb.Min() / 2
+	round := minround + (rng.Float32() * (maxround - minround))
+	return glsdf3.Round(a, round)
+}
+
+func randomTranslate(a glsdf3.Shader, rng *rand.Rand) glsdf3.Shader {
+	p := ms3.Vec{X: rng.Float32(), Y: rng.Float32(), Z: rng.Float32()}
+	p = ms3.Scale((rng.Float32())*10, p)
+	return glsdf3.Translate(a, p.X, p.Y, p.Z)
+}
+
+func randomSymmetry(a glsdf3.Shader, rng *rand.Rand) glsdf3.Shader {
+	q := rng.Uint32()
+	x := q&(1<<0) != 0
+	y := q&(1<<1) != 0
+	z := q&(1<<2) != 0
+	return glsdf3.Symmetry(a, x, y, z)
+}
+
+func randomScale(a glsdf3.Shader, rng *rand.Rand) glsdf3.Shader {
+	const minScale, maxScale = 0.01, 100.
+	scale := minScale + rng.Float32()*(maxScale-minScale)
+	return glsdf3.Scale(a, scale)
 }
