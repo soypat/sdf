@@ -81,12 +81,13 @@ func (s *box) Bounds() ms3.Box {
 }
 
 func NewCylinder(r, h, rounding float32) (Shader, error) {
-	if rounding < 0 || rounding > r || rounding > h/2 {
+	if rounding < 0 || rounding >= r || rounding > h/2 {
 		return nil, errors.New("invalid cylinder rounding")
 	}
 	if r <= 0 || h <= 0 {
 		return nil, errors.New("zero or negative cylinder dimension")
 	}
+	h -= rounding // Correct height for rounding effect.
 	return &cylinder{r: r, h: h, round: rounding}, nil
 }
 
@@ -108,18 +109,15 @@ func (s *cylinder) AppendShaderName(b []byte) []byte {
 }
 
 func (s *cylinder) AppendShaderBody(b []byte) []byte {
+	b = appendFloatDecl(b, "r", s.r)
+	b = appendFloatDecl(b, "h", s.h)
 	if s.round == 0 {
-		b = append(b, "vec2 d = abs(vec2(length(p.xz),p.y)) - vec2("...)
-		b = fappend(b, s.r, '-', '.')
-		b = append(b, ',')
-		b = fappend(b, s.h, '-', '.')
-		b = append(b, ");\nreturn min(max(d.x,d.y),0.0) + length(max(d,0.0));"...)
+		b = append(b, `vec2 d = abs(vec2(length(p.xz),p.y)) - vec2(r,h);
+return min(max(d.x,d.y),0.0) + length(max(d,0.0));`...)
 	} else {
-		b = appendFloatDecl(b, "ra", s.r)
-		b = appendFloatDecl(b, "rb", s.round)
-		b = appendFloatDecl(b, "h", s.h)
-		b = append(b, `vec2 d = vec2( length(p.xz)-2.0*ra+rb, abs(p.y) - h );
-return min(max(d.x,d.y),0.0) + length(max(d,0.0)) - rb;`...)
+		b = appendFloatDecl(b, "rd", s.round)
+		b = append(b, `vec2 d = vec2( length(p.xz)-r+rd, abs(p.y) - h );
+return min(max(d.x,d.y),0.0) + length(max(d,0.0)) - rd;`...)
 	}
 	return b
 }

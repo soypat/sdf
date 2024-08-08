@@ -181,8 +181,11 @@ func test_visualizer_generation() error {
 	const diam = 2 * r
 	const filename = "sphere.glsl"
 	// A larger Octree Positional buffer and a smaller RenderAll triangle buffer cause bug.
-	s, _ := glsdf3.NewSphere(r)
-	s, err := glsdf3.Array(s, diam, diam, diam, reps, reps, reps)
+	s, err := glsdf3.NewCylinder(r, r/2, 0)
+	if err != nil {
+		return err
+	}
+	s, err = glsdf3.Array(s, diam, diam, diam, reps, reps, reps)
 	if err != nil {
 		return err
 	}
