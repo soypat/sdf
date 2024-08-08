@@ -330,15 +330,10 @@ func (s *translate) AppendShaderName(b []byte) []byte {
 }
 
 func (s *translate) AppendShaderBody(b []byte) []byte {
+	b = appendVec3Decl(b, "t", s.p)
 	b = append(b, "return "...)
 	b = s.s.AppendShaderName(b)
-	b = append(b, "(p-vec3("...)
-	b = fappend(b, s.p.X, '-', '.')
-	b = append(b, ',')
-	b = fappend(b, s.p.Y, '-', '.')
-	b = append(b, ',')
-	b = fappend(b, s.p.Z, '-', '.')
-	b = append(b, "));"...)
+	b = append(b, "(p-t);"...)
 	return b
 }
 
@@ -394,10 +389,13 @@ type array struct {
 }
 
 func (u *array) Bounds() ms3.Box {
-	return ms3.Box{
-		Min: ms3.Scale(0.5, u.d),
-		Max: ms3.MulElem(u.nvec3(), ms3.Scale(0.5, u.d)),
-	}
+	size := ms3.MulElem(u.nvec3(), u.d)
+	bb := ms3.Box{Max: size}
+	halfd := ms3.Scale(0.5, u.d)
+	halfSize := ms3.Scale(-0.5, size)
+	offset := ms3.Add(halfSize, halfd)
+	bb = bb.Add(offset)
+	return bb
 }
 
 func (s *array) ForEachChild(userData any, fn func(userData any, s *Shader) error) error {
@@ -434,10 +432,9 @@ for( int i=0; i<2; i++ )
 {
 	vec3 rid = id + vec3(i,j,k)*o;
 	// limited repetition
-	// rid = clamp(rid, minlim, n);
-	// vec3 r = p - s*rid;
-	d = min(d, rid.x);
-	// d = min( d, %s(r) );
+	rid = clamp(rid, minlim, n);
+	vec3 r = p - s*rid;
+	d = min( d, %s(r) );
 }
 return d;`, s.d.X, s.d.Y, s.d.Z,
 		s.nx-1, s.ny-1, s.nz-1,
@@ -623,8 +620,12 @@ func hashf(values []float32) float32 {
 	for _, num := range values {
 		hashA += num
 		hashB *= (prime + num)
-		hashA = float32(int(hashA*1000000)%1000000) / 1000000 // Keep within [0.0, 1.0)
-		hashB = float32(int(hashB*1000000)%1000000) / 1000000
+		hashA = hashfint(hashA)
+		hashB = hashfint(hashB)
 	}
-	return float32(int((hashA+hashB)*1000000)%1000000) / 1000000
+	return hashfint(hashA + hashB)
+}
+
+func hashfint(f float32) float32 {
+	return float32(int(f*1000000)%1000000) / 1000000 // Keep within [0.0, 1.0)
 }

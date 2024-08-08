@@ -3,6 +3,7 @@ package glsdf3
 import (
 	"fmt"
 
+	"github.com/chewxy/math32"
 	"github.com/soypat/glgl/math/ms3"
 )
 
@@ -20,6 +21,28 @@ func (b *box) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	for i, p := range pos {
 		q := ms3.AddScalar(r, ms3.Sub(ms3.AbsElem(p), d))
 		dist[i] = ms3.Norm(ms3.MaxElem(q, ms3.Vec{})) + minf(maxf(q.X, maxf(q.Y, q.Z)), 0.0) - r
+	}
+	return nil
+}
+
+func (t *boxframe) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
+	b := t.dims
+	e := t.e
+	var z3 ms3.Vec
+	for i, p := range pos {
+		p = ms3.Sub(ms3.AbsElem(p), b)
+		q := ms3.AddScalar(-e, ms3.AbsElem(ms3.AddScalar(e, p)))
+
+		s1 := math32.Min(0, math32.Max(p.X, math32.Max(q.Y, q.Z)))
+		n1 := ms3.Norm(ms3.AddScalar(s1, ms3.MaxElem(ms3.Vec{X: p.X, Y: q.Y, Z: q.Z}, z3)))
+
+		s2 := math32.Min(0, math32.Max(q.X, math32.Max(p.Y, q.Z)))
+		n2 := ms3.Norm(ms3.AddScalar(s2, ms3.MaxElem(ms3.Vec{X: q.X, Y: p.Y, Z: q.Z}, z3)))
+
+		s3 := math32.Min(0, math32.Max(q.X, math32.Max(q.Y, p.Z)))
+		n3 := ms3.Norm(ms3.AddScalar(s3, ms3.MaxElem(ms3.Vec{X: q.X, Y: q.Y, Z: p.Z}, z3)))
+
+		dist[i] = math32.Min(n1, math32.Min(n2, n3))
 	}
 	return nil
 }

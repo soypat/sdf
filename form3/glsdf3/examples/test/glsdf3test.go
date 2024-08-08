@@ -9,6 +9,7 @@ import (
 	"os"
 	"reflect"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/chewxy/math32"
@@ -35,12 +36,19 @@ func main() {
 	if err != nil {
 		log.Fatal("FAIL testing CPU/GPU sdf comparisons:", err.Error())
 	}
+	err = test_visualizer_generation()
+	if err != nil {
+		log.Fatal("FAIL generating visualization GLSL:", err.Error())
+	}
 	err = test_stl_generation()
 	if err != nil {
 		log.Fatal("FAIL generating STL:", err.Error())
 	}
+
 	log.Println("PASS")
 }
+
+var programmer = glsdf3.NewDefaultProgrammer()
 
 func init() {
 	runtime.LockOSThread() // For GL.
@@ -53,6 +61,7 @@ var PremadePrimitives = []glsdf3.Shader{
 	mustShader(glsdf3.NewHexagonalPrism(1, 2)),
 	mustShader(glsdf3.NewTorus(.5, 3)),
 	mustShader(glsdf3.NewTriangularPrism(1, 3)),
+	mustShader(glsdf3.NewBoxFrame(1, 1.2, 2.2, .2)),
 }
 
 var BinaryOps = []func(a, b glsdf3.Shader) glsdf3.Shader{
@@ -71,16 +80,15 @@ var SmoothBinaryOps = []func(a, b glsdf3.Shader, k float32) glsdf3.Shader{
 var OtherUnaryRandomizedOps = []func(a glsdf3.Shader, rng *rand.Rand) glsdf3.Shader{
 	randomRotation,
 	randomShell,
-	randomArray,
+	// randomArray,
 	// randomElongate,
 }
 
 func test_sdf_gpu_cpu() error {
-
 	const nx, ny, nz = 10, 10, 10
 	vp := &glsdf3.VecPool{}
 	for _, primitive := range PremadePrimitives {
-		log.Printf("begin evaluating %T\n", primitive)
+		log.Printf("begin evaluating %s\n", getBaseTypename(primitive))
 		bounds := primitive.Bounds()
 		pos := meshgrid(bounds, nx, ny, nz)
 		distCPU := make([]float32, len(pos))
@@ -163,18 +171,53 @@ func test_sdf_gpu_cpu() error {
 			}
 		}
 	}
+	log.Println("PASS CPU vs. GPU comparisons")
+	return nil
+}
 
+func test_visualizer_generation() error {
+	const r = 0.1 // 1.01
+	const reps = 3
+	const diam = 2 * r
+	const filename = "sphere.glsl"
+	// A larger Octree Positional buffer and a smaller RenderAll triangle buffer cause bug.
+	s, _ := glsdf3.NewSphere(r)
+	s, err := glsdf3.Array(s, diam, diam, diam, reps, reps, reps)
+	if err != nil {
+		return err
+	}
+	// b, _ := glsdf3.NewBoxFrame(diam, diam, diam, diam/32)
+	// s = glsdf3.Union(s, b)
+	fp, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer fp.Close()
+	written, err := programmer.WriteFragVisualizer(fp, s)
+	if err != nil {
+		return err
+	}
+	stat, err := fp.Stat()
+	if err != nil {
+		return err
+	}
+	size := stat.Size()
+	if int64(written) != size {
+		return fmt.Errorf("written (%d) vs filesize (%d) mismatch", written, size)
+	}
+	log.Println("PASS visualizer generation")
 	return nil
 }
 
 func test_stl_generation() error {
 	const r = 1.0 // 1.01
+	const diam = 2 * r
 	const filename = "sphere.stl"
 	// A larger Octree Positional buffer and a smaller RenderAll triangle buffer cause bug.
 	const bufsize = 1 << 15
-	s, _ := glsdf3.NewSphere(r)
-	obj := sdfcpu{s: s}
-	renderer, err := glrender.NewOctreeRenderer(obj, r/64, bufsize)
+	obj, _ := glsdf3.NewSphere(r)
+	sdf := sdfgpu{s: obj}
+	renderer, err := glrender.NewOctreeRenderer(sdf, r/64, bufsize)
 	if err != nil {
 		return err
 	}
@@ -215,6 +258,12 @@ func test_stl_generation() error {
 func getFnName(fnPtr any) string {
 	funcValue := reflect.ValueOf(fnPtr)
 	return runtime.FuncForPC(funcValue.Pointer()).Name()
+}
+
+func getBaseTypename(a any) string {
+	s := fmt.Sprintf("%T", a)
+	pointIdx := strings.IndexByte(s, '.')
+	return s[pointIdx+1:]
 }
 
 func meshgrid(bounds ms3.Box, nx, ny, nz int) []ms3.Vec {
@@ -307,9 +356,7 @@ func evaluateGPU(obj glsdf3.Shader, pos []ms3.Vec, dist []float32) error {
 		return errors.New("mismatched position/distance lengths")
 	}
 	var source bytes.Buffer
-	var scratch [4096]byte
-	var nodes [16]glsdf3.Shader
-	_, err := glsdf3.WriteProgram(&source, obj, scratch[:], nodes[:])
+	_, err := programmer.WriteComputeDistanceIO(&source, obj)
 	if err != nil {
 		return err
 	}

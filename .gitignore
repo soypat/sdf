@@ -16,3 +16,5 @@ local
 
 # Don't exclude example images
 !examples/fig/*.png
+
+*.glsl

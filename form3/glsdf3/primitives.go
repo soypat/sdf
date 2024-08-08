@@ -247,3 +247,46 @@ func (s *torus) Bounds() ms3.Box {
 		Max: ms3.Vec{X: R, Y: R, Z: s.rRing},
 	}
 }
+
+func NewBoxFrame(dimX, dimY, dimZ, e float32) (Shader, error) {
+	if dimX <= 0 || dimY <= 0 || dimZ <= 0 || e <= 0 {
+		return nil, errors.New("negative or zero BoxFrame dimension")
+	}
+	d := ms3.Scale(0.5, ms3.Vec{X: dimX, Y: dimY, Z: dimZ})
+	return &boxframe{dims: d, e: e}, nil
+}
+
+type boxframe struct {
+	dims ms3.Vec
+	e    float32
+}
+
+func (s *boxframe) ForEachChild(userData any, fn func(userData any, s *Shader) error) error {
+	return nil
+}
+
+func (s *boxframe) AppendShaderName(b []byte) []byte {
+	b = append(b, "boxframe"...)
+	b = vecappend(b, s.dims, 'i', 'n', 'p')
+	b = fappend(b, s.e, 'n', 'p')
+	return b
+}
+
+func (s *boxframe) AppendShaderBody(b []byte) []byte {
+	b = appendFloatDecl(b, "e", s.e)
+	b = appendVec3Decl(b, "b", s.dims)
+	b = append(b, `p = abs(p)-b;
+vec3 q = abs(p+e)-e;
+return min(min(
+      length(max(vec3(p.x,q.y,q.z),0.0))+min(max(p.x,max(q.y,q.z)),0.0),
+      length(max(vec3(q.x,p.y,q.z),0.0))+min(max(q.x,max(p.y,q.z)),0.0)),
+      length(max(vec3(q.x,q.y,p.z),0.0))+min(max(q.x,max(q.y,p.z)),0.0));`...)
+	return b
+}
+
+func (s *boxframe) Bounds() ms3.Box {
+	return ms3.Box{
+		Min: ms3.Scale(-0.5, s.dims),
+		Max: ms3.Scale(0.5, s.dims),
+	}
+}
