@@ -59,7 +59,7 @@ var PremadePrimitives = []glsdf3.Shader{
 	mustShader(glsdf3.NewBox(1, 1.2, 2.2, 0.3)),
 	mustShader(glsdf3.NewCylinder(1, 3, .3)),
 	mustShader(glsdf3.NewHexagonalPrism(1, 2)),
-	mustShader(glsdf3.NewTorus(.5, 3)),
+	mustShader(glsdf3.NewTorus(3, .5)),
 	mustShader(glsdf3.NewTriangularPrism(1, 3)),
 	mustShader(glsdf3.NewBoxFrame(1, 1.2, 2.2, .2)),
 }
@@ -181,7 +181,7 @@ func test_visualizer_generation() error {
 	const diam = 2 * r
 	const filename = "sphere.glsl"
 	// A larger Octree Positional buffer and a smaller RenderAll triangle buffer cause bug.
-	s, err := glsdf3.NewCylinder(r, r/2, 0)
+	s, err := glsdf3.NewTorus(r, r/2)
 	if err != nil {
 		return err
 	}

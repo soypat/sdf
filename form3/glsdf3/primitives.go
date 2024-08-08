@@ -87,7 +87,6 @@ func NewCylinder(r, h, rounding float32) (Shader, error) {
 	if r <= 0 || h <= 0 {
 		return nil, errors.New("zero or negative cylinder dimension")
 	}
-	h -= rounding // Correct height for rounding effect.
 	return &cylinder{r: r, h: h, round: rounding}, nil
 }
 
@@ -110,7 +109,7 @@ func (s *cylinder) AppendShaderName(b []byte) []byte {
 
 func (s *cylinder) AppendShaderBody(b []byte) []byte {
 	b = appendFloatDecl(b, "r", s.r)
-	b = appendFloatDecl(b, "h", s.h)
+	b = appendFloatDecl(b, "h", s.h-s.round) // Correct height for rounding effect.
 	if s.round == 0 {
 		b = append(b, `vec2 d = abs(vec2(length(p.xz),p.y)) - vec2(r,h);
 return min(max(d.x,d.y),0.0) + length(max(d,0.0));`...)
@@ -152,7 +151,8 @@ func (s *hex) AppendShaderName(b []byte) []byte {
 func (s *hex) AppendShaderBody(b []byte) []byte {
 	b = appendFloatDecl(b, "_h", s.h)
 	b = appendFloatDecl(b, "side", s.side)
-	b = append(b, `vec2 h = vec2(side, _h);
+	b = append(b, `p = p.xzy;
+vec2 h = vec2(side, _h);
 const vec3 k = vec3(-0.8660254, 0.5, 0.57735);
 p = abs(p);
 p.xy -= 2.0*min(dot(k.xy, p.xy), 0.0)*k.xy;
@@ -193,7 +193,8 @@ func (s *tri) AppendShaderName(b []byte) []byte {
 func (s *tri) AppendShaderBody(b []byte) []byte {
 	b = appendFloatDecl(b, "_h", s.h)
 	b = appendFloatDecl(b, "side", s.side)
-	b = append(b, `vec2 h = vec2(side,_h);
+	b = append(b, `p = p.xzy;
+vec2 h = vec2(side,_h);
 vec3 q = abs(p);
 return max(q.z-h.y,max(q.x*0.866025+p.y*0.5,-p.y)-h.x*0.5);`...)
 	return b
@@ -211,7 +212,7 @@ type torus struct {
 	rRing, rGreater float32
 }
 
-func NewTorus(ringRadius, greaterRadius float32) (Shader, error) {
+func NewTorus(greaterRadius, ringRadius float32) (Shader, error) {
 	if greaterRadius < 2*ringRadius {
 		return nil, errors.New("too large torus ring radius")
 	} else if greaterRadius <= 0 || ringRadius <= 0 {
@@ -230,8 +231,8 @@ func (s *torus) AppendShaderName(b []byte) []byte {
 }
 
 func (s *torus) AppendShaderBody(b []byte) []byte {
-	b = appendFloatDecl(b, "t1", s.rRing)
-	b = appendFloatDecl(b, "t2", s.rGreater)
+	b = appendFloatDecl(b, "t1", s.rGreater-s.rRing) // Counteract rounding effect.
+	b = appendFloatDecl(b, "t2", s.rRing)
 	b = append(b, `vec2 t = vec2(t1, t2);
 vec2 q = vec2(length(p.xz)-t.x,p.y);
 return length(q)-t.y;`...)
