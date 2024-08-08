@@ -441,7 +441,7 @@ type bufPool[T any] struct {
 	_acquired []bool
 }
 
-func (bp bufPool[T]) acquire(minLength int) []T {
+func (bp *bufPool[T]) acquire(minLength int) []T {
 	for i, locked := range bp._acquired {
 		if !locked && len(bp._ins[i]) > minLength {
 			bp._acquired[i] = true
@@ -455,7 +455,7 @@ func (bp bufPool[T]) acquire(minLength int) []T {
 	return newSlice
 }
 
-func (bp bufPool[T]) release(buf []T) error {
+func (bp *bufPool[T]) release(buf []T) error {
 	for i, instance := range bp._ins {
 		if &instance[0] == &buf[0] {
 			if !bp._acquired[i] {
@@ -468,7 +468,7 @@ func (bp bufPool[T]) release(buf []T) error {
 	return errors.New("release of nonexistent resource")
 }
 
-func (bp bufPool[T]) assertAllReleased() error {
+func (bp *bufPool[T]) assertAllReleased() error {
 	for _, locked := range bp._acquired {
 		if locked {
 			return fmt.Errorf("locked %T resource found in bufPool.assertAllReleased, memory leak?", *new(T))
