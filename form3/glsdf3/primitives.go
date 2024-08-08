@@ -64,11 +64,9 @@ func (s *box) AppendShaderName(b []byte) []byte {
 }
 
 func (s *box) AppendShaderBody(b []byte) []byte {
-	b = append(b, "float r = "...)
-	b = fappend(b, s.round, '-', '.')
-	b = append(b, ";\nvec3 q = abs(p)-vec3("...)
-	b = vecappend(b, s.dims, ',', '-', '.')
-	b = append(b, `)+r;
+	b = appendFloatDecl(b, "r", s.round)
+	b = appendVec3Decl(b, "d", s.dims)
+	b = append(b, `vec3 q = abs(p)-d+r;
 return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0)-r;`...)
 	return b
 }
@@ -151,8 +149,7 @@ func (s *hex) AppendShaderName(b []byte) []byte {
 func (s *hex) AppendShaderBody(b []byte) []byte {
 	b = appendFloatDecl(b, "_h", s.h)
 	b = appendFloatDecl(b, "side", s.side)
-	b = append(b, `p = p.xzy;
-vec2 h = vec2(side, _h);
+	b = append(b, `vec2 h = vec2(side, _h);
 const vec3 k = vec3(-0.8660254, 0.5, 0.57735);
 p = abs(p);
 p.xy -= 2.0*min(dot(k.xy, p.xy), 0.0)*k.xy;
@@ -193,8 +190,7 @@ func (s *tri) AppendShaderName(b []byte) []byte {
 func (s *tri) AppendShaderBody(b []byte) []byte {
 	b = appendFloatDecl(b, "_h", s.h)
 	b = appendFloatDecl(b, "side", s.side)
-	b = append(b, `p = p.xzy;
-vec2 h = vec2(side,_h);
+	b = append(b, `vec2 h = vec2(side,_h);
 vec3 q = abs(p);
 return max(q.z-h.y,max(q.x*0.866025+p.y*0.5,-p.y)-h.x*0.5);`...)
 	return b
@@ -233,7 +229,8 @@ func (s *torus) AppendShaderName(b []byte) []byte {
 func (s *torus) AppendShaderBody(b []byte) []byte {
 	b = appendFloatDecl(b, "t1", s.rGreater-s.rRing) // Counteract rounding effect.
 	b = appendFloatDecl(b, "t2", s.rRing)
-	b = append(b, `vec2 t = vec2(t1, t2);
+	b = append(b, `p = p.xzy;
+vec2 t = vec2(t1, t2);
 vec2 q = vec2(length(p.xz)-t.x,p.y);
 return length(q)-t.y;`...)
 	return b

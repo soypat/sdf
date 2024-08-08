@@ -32,13 +32,13 @@ func main() {
 	}
 	defer terminate()
 
-	err = test_sdf_gpu_cpu()
-	if err != nil {
-		log.Fatal("FAIL testing CPU/GPU sdf comparisons:", err.Error())
-	}
 	err = test_visualizer_generation()
 	if err != nil {
 		log.Fatal("FAIL generating visualization GLSL:", err.Error())
+	}
+	err = test_sdf_gpu_cpu()
+	if err != nil {
+		log.Fatal("FAIL testing CPU/GPU sdf comparisons:", err.Error())
 	}
 	err = test_stl_generation()
 	if err != nil {
@@ -80,8 +80,8 @@ var SmoothBinaryOps = []func(a, b glsdf3.Shader, k float32) glsdf3.Shader{
 var OtherUnaryRandomizedOps = []func(a glsdf3.Shader, rng *rand.Rand) glsdf3.Shader{
 	randomRotation,
 	randomShell,
+	randomElongate,
 	// randomArray,
-	// randomElongate,
 }
 
 func test_sdf_gpu_cpu() error {
@@ -179,13 +179,14 @@ func test_visualizer_generation() error {
 	const r = 0.1 // 1.01
 	const reps = 3
 	const diam = 2 * r
-	const filename = "sphere.glsl"
+	const filename = "visual.glsl"
 	// A larger Octree Positional buffer and a smaller RenderAll triangle buffer cause bug.
-	s, err := glsdf3.NewTorus(r, r/2)
+	s, err := glsdf3.NewTriangularPrism(r, r/4)
 	if err != nil {
 		return err
 	}
-	s, err = glsdf3.Array(s, diam, diam, diam, reps, reps, reps)
+	s = glsdf3.Elongate(s, 0, 0, 0)
+	s, err = glsdf3.Array(s, diam, diam, diam, 1, 2, reps)
 	if err != nil {
 		return err
 	}

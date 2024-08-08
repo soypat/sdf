@@ -541,7 +541,7 @@ return mix( d2, d1, h ) + k*h*(1.0-h);`...)
 }
 
 // Elongate "stretches" the SDF in a direction by splitting it on the origin in
-// the plane perpendicular to the argument direction.
+// the plane perpendicular to the argument direction. Arguments are distances, so zero-valued arguments are no-op.
 func Elongate(s Shader, dirX, dirY, dirZ float32) Shader {
 	return &elongate{s: s, h: ms3.Vec{X: dirX, Y: dirY, Z: dirZ}}
 }

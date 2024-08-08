@@ -51,6 +51,7 @@ func (t *torus) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	t1 := t.rGreater - t.rRing
 	t2 := t.rRing
 	for i, p := range pos {
+		p = ms3.Vec{X: p.X, Y: p.Z, Z: p.Y}
 		q1 := hypotf(p.X, p.Z) - t1
 		dist[i] = hypotf(q1, p.Y) - t2
 	}
@@ -75,7 +76,7 @@ func (h *hex) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	h2 := h.h
 	clm := k3 * h1
 	for i, p := range pos {
-		p = ms3.AbsElem(ms3.Vec{X: p.X, Y: p.Z, Z: p.Y})
+		p = ms3.AbsElem(p)
 		pm := minf(k1*p.X+k2*p.Y, 0)
 		p.X -= 2 * k1 * pm
 		p.Y -= 2 * k2 * pm
@@ -91,7 +92,6 @@ func (t *tri) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	h2 := t.h
 	h1d2 := h1 / 2
 	for i, p := range pos {
-		p = ms3.Vec{X: p.X, Y: p.Z, Z: p.Y}
 		q := ms3.AbsElem(p)
 		m1 := maxf(q.X*0.866025+p.Y*0.5, -p.Y)
 		dist[i] = maxf(q.Z-h2, m1-h1d2)
@@ -314,10 +314,10 @@ func (e *elongate) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	h := e.h
 	for i, p := range pos {
 		q := ms3.Sub(ms3.AbsElem(p), h)
-		aux[i] = minf(maxf(q.X, maxf(q.Y, q.Z)), 0)
+		aux[i] = math32.Min(q.Max(), 0)
 		transformed[i] = ms3.MaxElem(q, ms3.Vec{})
 	}
-	err := sdf.Evaluate(pos, dist, userData)
+	err := sdf.Evaluate(transformed, dist, userData)
 	if err != nil {
 		return err
 	}
