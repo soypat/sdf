@@ -170,7 +170,9 @@ func test_sdf_gpu_cpu() error {
 func test_stl_generation() error {
 	const r = 1.0 // 1.01
 	const filename = "sphere.stl"
-	const bufsize = 5568 // 5567 -> 5568 change breaks renderer.
+	// A larger Octree Positional buffer and a smaller RenderAll triangle buffer cause bug.
+	const bufsize = 5567 // 5567 -> 5568 change breaks renderer.
+
 	s, _ := glsdf3.NewSphere(r)
 	obj := sdfcpu{s: s}
 	renderer, err := glrender.NewOctreeRenderer(obj, r/16, bufsize)
