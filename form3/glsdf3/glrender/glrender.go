@@ -52,7 +52,7 @@ type icube struct {
 const sqrt3 = 1.73205080757
 
 func NewOctreeRenderer(s SDF3, cubeResolution float32, evalBufferSize int) (Renderer, error) {
-	if evalBufferSize <= 8 {
+	if evalBufferSize < 64 {
 		return nil, errors.New("bad octree eval buffer size")
 	} else if cubeResolution <= 0 {
 		return nil, errors.New("invalid renderer cube resolution")
@@ -60,7 +60,7 @@ func NewOctreeRenderer(s SDF3, cubeResolution float32, evalBufferSize int) (Rend
 
 	// Scale the bounding box about the center to make sure the boundaries
 	// aren't on the object surface.
-	bb := s.Bounds().ScaleCentered(ms3.Vec{X: 1.01, Y: 1.01, Z: 1.01})
+	bb := s.Bounds() //.ScaleCentered(ms3.Vec{X: 1.01, Y: 1.01, Z: 1.01})
 	longAxis := bb.Size().Max()
 	// cells := math32.Ceil(longAxis / resolution)
 	// Recalculate resolution ensuring minimum cubeResolution met.
@@ -139,15 +139,15 @@ func (oc *octree) marchCubes(dst []ms3.Triangle, limit int) int {
 	nTri := 0
 	var p [8]ms3.Vec
 	var d [8]float32
-	cubeDiag := 2 * sqrt3 * oc.resolution
+	// cubeDiag := 2 * sqrt3 * oc.resolution
 	iPos := 0
 	for iPos < limit && len(dst)-nTri > marchingCubesMaxTriangles {
-		if math32.Abs(oc.distbuf[iPos]) <= cubeDiag {
-			// Cube may have triangles.
-			copy(p[:], oc.posbuf[iPos:iPos+8])
-			copy(d[:], oc.distbuf[iPos:iPos+8])
-			nTri += mcToTriangles(dst[nTri:], p, d, 0)
-		}
+		// if math32.Abs(oc.distbuf[iPos]) <= cubeDiag {
+		// Cube may have triangles.
+		copy(p[:], oc.posbuf[iPos:iPos+8])
+		copy(d[:], oc.distbuf[iPos:iPos+8])
+		nTri += mcToTriangles(dst[nTri:], p, d, 0)
+		// }
 		iPos += 8
 	}
 	remaining := len(oc.posbuf) - iPos
@@ -155,7 +155,7 @@ func (oc *octree) marchCubes(dst []ms3.Triangle, limit int) int {
 		// Discard used positional and distance data.
 		aux := append([]ms3.Vec{}, oc.posbuf[iPos:]...)
 		oc.posbuf = append(oc.posbuf[:0], aux...)
-		println(len(oc.posbuf), len(oc.posbuf)%8, nTri)
+		println(len(oc.posbuf), nTri)
 		// k := copy(oc.posbuf, oc.posbuf[i:])
 		// oc.posbuf = oc.posbuf[:k]
 		// oc.posbuf = oc.posbuf[:0]
@@ -209,14 +209,16 @@ func (c icube) octree() [8]icube {
 // RenderAll reads the full contents of a Renderer and returns the slice read.
 // It does not return error on io.EOF, like the io.RenderAll implementation.
 func RenderAll(r Renderer) ([]ms3.Triangle, error) {
-	const startSize = 2048
+	const startSize = 6
 	var err error
 	var nt int
 	result := make([]ms3.Triangle, 0, startSize)
 	buf := make([]ms3.Triangle, startSize)
 	for {
 		nt, err = r.ReadTriangles(buf)
-		result = append(result, buf[:nt]...)
+		if err == nil || err == io.EOF {
+			result = append(result, buf[:nt]...)
+		}
 		if err != nil {
 			break
 		}
