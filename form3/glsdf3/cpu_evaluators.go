@@ -33,14 +33,14 @@ func (t *boxframe) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 		p = ms3.Sub(ms3.AbsElem(p), b)
 		q := ms3.AddScalar(-e, ms3.AbsElem(ms3.AddScalar(e, p)))
 
-		s1 := math32.Min(0, math32.Max(p.X, math32.Max(q.Y, q.Z)))
-		n1 := ms3.Norm(ms3.AddScalar(s1, ms3.MaxElem(ms3.Vec{X: p.X, Y: q.Y, Z: q.Z}, z3)))
+		s1 := math32.Min(0, math32.Max(p.X, math32.Max(q.Y, q.Z)))            // min(max(p.x,max(q.y,q.z)),0.0)
+		n1 := ms3.Norm(ms3.MaxElem(ms3.Vec{X: p.X, Y: q.Y, Z: q.Z}, z3)) + s1 // length(max(vec3(p.x,q.y,q.z),0.0))+s1
 
-		s2 := math32.Min(0, math32.Max(q.X, math32.Max(p.Y, q.Z)))
-		n2 := ms3.Norm(ms3.AddScalar(s2, ms3.MaxElem(ms3.Vec{X: q.X, Y: p.Y, Z: q.Z}, z3)))
+		s2 := math32.Min(0, math32.Max(q.X, math32.Max(p.Y, q.Z)))            // min(max(q.x,max(p.y,q.z)),0.0)
+		n2 := ms3.Norm(ms3.MaxElem(ms3.Vec{X: q.X, Y: p.Y, Z: q.Z}, z3)) + s2 // length(max(vec3(q.x,p.y,q.z),0.0))+s2
 
-		s3 := math32.Min(0, math32.Max(q.X, math32.Max(q.Y, p.Z)))
-		n3 := ms3.Norm(ms3.AddScalar(s3, ms3.MaxElem(ms3.Vec{X: q.X, Y: q.Y, Z: p.Z}, z3)))
+		s3 := math32.Min(0, math32.Max(q.X, math32.Max(q.Y, p.Z)))            // min(max(q.x,max(q.y,p.z)),0.0))
+		n3 := ms3.Norm(ms3.MaxElem(ms3.Vec{X: q.X, Y: q.Y, Z: p.Z}, z3)) + s3 // length(max(vec3(q.x,q.y,p.z),0.0))+s3
 
 		dist[i] = math32.Min(n1, math32.Min(n2, n3))
 	}
@@ -48,8 +48,8 @@ func (t *boxframe) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 }
 
 func (t *torus) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
-	t1 := t.rRing
-	t2 := t.rGreater
+	t1 := t.rGreater - t.rRing
+	t2 := t.rRing
 	for i, p := range pos {
 		q1 := hypotf(p.X, p.Z) - t1
 		dist[i] = hypotf(q1, p.Y) - t2
@@ -58,11 +58,11 @@ func (t *torus) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 }
 
 func (c *cylinder) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
-	h := c.h
+	h := c.h - c.round
 	ra := c.r
 	rb := c.round
 	for i, p := range pos {
-		d1 := hypotf(p.X, p.Z) - 2*ra + rb
+		d1 := hypotf(p.X, p.Z) - ra + rb
 		d2 := p.Y - h
 		dist[i] = minf(maxf(d1, d2), 0) + hypotf(maxf(d1, 0), maxf(d2, 0)) - rb
 	}
@@ -75,7 +75,7 @@ func (h *hex) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	h2 := h.h
 	clm := k3 * h1
 	for i, p := range pos {
-		p = ms3.AbsElem(p)
+		p = ms3.AbsElem(ms3.Vec{X: p.X, Y: p.Z, Z: p.Y})
 		pm := minf(k1*p.X+k2*p.Y, 0)
 		p.X -= 2 * k1 * pm
 		p.Y -= 2 * k2 * pm
@@ -91,6 +91,7 @@ func (t *tri) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	h2 := t.h
 	h1d2 := h1 / 2
 	for i, p := range pos {
+		p = ms3.Vec{X: p.X, Y: p.Z, Z: p.Y}
 		q := ms3.AbsElem(p)
 		m1 := maxf(q.X*0.866025+p.Y*0.5, -p.Y)
 		dist[i] = maxf(q.Z-h2, m1-h1d2)

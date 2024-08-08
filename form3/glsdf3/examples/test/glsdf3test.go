@@ -32,7 +32,7 @@ func main() {
 	}
 	defer terminate()
 
-	// err = test_sdf_gpu_cpu()
+	err = test_sdf_gpu_cpu()
 	if err != nil {
 		log.Fatal("FAIL testing CPU/GPU sdf comparisons:", err.Error())
 	}
