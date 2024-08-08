@@ -91,7 +91,7 @@ func (oc *octree) ReadTriangles(dst []ms3.Triangle) (n int, err error) {
 		return 0, io.ErrShortBuffer
 	}
 	for len(dst)-n > 5 {
-		if len(oc.cubes) == 0 {
+		if oc.done() {
 			return n, io.EOF // Done rendering model.
 		}
 		oc.processCubesDFS()
@@ -139,30 +139,30 @@ func (oc *octree) marchCubes(dst []ms3.Triangle, limit int) int {
 	nTri := 0
 	var p [8]ms3.Vec
 	var d [8]float32
-	// cubeDiag := 2 * sqrt3 * oc.resolution
+	cubeDiag := 2 * sqrt3 * oc.resolution
 	iPos := 0
 	for iPos < limit && len(dst)-nTri > marchingCubesMaxTriangles {
-		// if math32.Abs(oc.distbuf[iPos]) <= cubeDiag {
-		// Cube may have triangles.
-		copy(p[:], oc.posbuf[iPos:iPos+8])
-		copy(d[:], oc.distbuf[iPos:iPos+8])
-		nTri += mcToTriangles(dst[nTri:], p, d, 0)
-		// }
+		if math32.Abs(oc.distbuf[iPos]) <= cubeDiag {
+			// Cube may have triangles.
+			copy(p[:], oc.posbuf[iPos:iPos+8])
+			copy(d[:], oc.distbuf[iPos:iPos+8])
+			nTri += mcToTriangles(dst[nTri:], p, d, 0)
+		}
 		iPos += 8
 	}
 	remaining := len(oc.posbuf) - iPos
-	if iPos > 0 && remaining > 0 {
+	if remaining > 0 {
 		// Discard used positional and distance data.
-		aux := append([]ms3.Vec{}, oc.posbuf[iPos:]...)
-		oc.posbuf = append(oc.posbuf[:0], aux...)
-		println(len(oc.posbuf), nTri)
-		// k := copy(oc.posbuf, oc.posbuf[i:])
-		// oc.posbuf = oc.posbuf[:k]
-		// oc.posbuf = oc.posbuf[:0]
+		k := copy(oc.posbuf, oc.posbuf[iPos:])
+		oc.posbuf = oc.posbuf[:k]
 	} else {
 		oc.posbuf = oc.posbuf[:0] // Reset buffer.
 	}
 	return nTri
+}
+
+func (oc *octree) done() bool {
+	return len(oc.cubes) == 0 && len(oc.posbuf) == 0
 }
 
 func (c icube) size(baseRes float32) float32 {
@@ -209,7 +209,7 @@ func (c icube) octree() [8]icube {
 // RenderAll reads the full contents of a Renderer and returns the slice read.
 // It does not return error on io.EOF, like the io.RenderAll implementation.
 func RenderAll(r Renderer) ([]ms3.Triangle, error) {
-	const startSize = 6
+	const startSize = 4096
 	var err error
 	var nt int
 	result := make([]ms3.Triangle, 0, startSize)

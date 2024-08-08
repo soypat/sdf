@@ -171,10 +171,10 @@ func test_stl_generation() error {
 	const r = 1.0 // 1.01
 	const filename = "sphere.stl"
 	// A larger Octree Positional buffer and a smaller RenderAll triangle buffer cause bug.
-	const bufsize = 64
+	const bufsize = 1 << 15
 	s, _ := glsdf3.NewSphere(r)
 	obj := sdfcpu{s: s}
-	renderer, err := glrender.NewOctreeRenderer(obj, r/2, bufsize)
+	renderer, err := glrender.NewOctreeRenderer(obj, r/64, bufsize)
 	if err != nil {
 		return err
 	}
