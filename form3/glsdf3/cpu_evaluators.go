@@ -201,9 +201,9 @@ func (u *smoothIntersect) Evaluate(pos []ms3.Vec, dist []float32, userData any) 
 }
 
 func (s *scale) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
-	vp, ok := userData.(*VecPool)
-	if !ok {
-		return fmt.Errorf("want userData type vecPool, got %T", userData)
+	vp, err := getVecPool(userData)
+	if err != nil {
+		return err
 	}
 	scaled := vp.acquirev3(len(pos))
 	defer vp.releasev3(scaled)
@@ -213,7 +213,7 @@ func (s *scale) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 		scaled[i] = ms3.Scale(factorInv, p)
 	}
 	sdf1 := assertEvaluator(s.s)
-	err := sdf1.Evaluate(scaled, dist, userData)
+	err = sdf1.Evaluate(scaled, dist, userData)
 	if err != nil {
 		return err
 	}
@@ -224,9 +224,9 @@ func (s *scale) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 }
 
 func (s *symmetry) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
-	vp, ok := userData.(*VecPool)
-	if !ok {
-		return fmt.Errorf("want userData type vecPool, got %T", userData)
+	vp, err := getVecPool(userData)
+	if err != nil {
+		return err
 	}
 	transformed := vp.acquirev3(len(pos))
 	copy(transformed, pos)
@@ -243,7 +243,7 @@ func (s *symmetry) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 		}
 	}
 	sdf1 := assertEvaluator(s.s)
-	err := sdf1.Evaluate(transformed, dist, userData)
+	err = sdf1.Evaluate(transformed, dist, userData)
 	if err != nil {
 		return err
 	}
@@ -251,9 +251,9 @@ func (s *symmetry) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 }
 
 func (a *array) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
-	vp, ok := userData.(*VecPool)
-	if !ok {
-		return fmt.Errorf("want userData type vecPool, got %T", userData)
+	vp, err := getVecPool(userData)
+	if err != nil {
+		return err
 	}
 	transformed := vp.acquirev3(len(pos))
 	defer vp.releasev3(transformed)
@@ -280,10 +280,11 @@ func (a *array) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 				for ip, p := range pos {
 					id := ms3.RoundElem(ms3.DivElem(p, s))
 					o := ms3.SignElem(ms3.Sub(p, ms3.MulElem(s, id)))
+
 					rid := ms3.Add(id, ms3.MulElem(ijk, o))
-					transformed[ip] = rid
-					// rid = ms3.ClampElem(rid, minlim, n)
-					// transformed[ip] = ms3.Sub(p, ms3.MulElem(s, rid))
+					rid = ms3.ClampElem(rid, minlim, n)
+
+					transformed[ip] = ms3.Sub(p, ms3.MulElem(s, rid))
 				}
 				// And calculate the distance for each direction.
 				err := sdf.Evaluate(transformed, auxdist, userData)
@@ -292,8 +293,7 @@ func (a *array) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 				}
 				// And we reduce the distance with minimum rule.
 				for i, d := range dist {
-					// dist[i] = minf(d, auxdist[i])
-					dist[i] = minf(d, transformed[i].X)
+					dist[i] = minf(d, auxdist[i])
 				}
 			}
 		}
@@ -303,9 +303,9 @@ func (a *array) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 
 func (e *elongate) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	sdf := assertEvaluator(e.s)
-	vp, ok := userData.(*VecPool)
-	if !ok {
-		return fmt.Errorf("want userData type vecPool, got %T", userData)
+	vp, err := getVecPool(userData)
+	if err != nil {
+		return err
 	}
 	transformed := vp.acquirev3(len(pos))
 	defer vp.releasev3(transformed)
@@ -317,7 +317,7 @@ func (e *elongate) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 		aux[i] = math32.Min(q.Max(), 0)
 		transformed[i] = ms3.MaxElem(q, ms3.Vec{})
 	}
-	err := sdf.Evaluate(transformed, dist, userData)
+	err = sdf.Evaluate(transformed, dist, userData)
 	if err != nil {
 		return err
 	}
@@ -354,9 +354,9 @@ func (r *round) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 }
 
 func (t *translate) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
-	vp, ok := userData.(*VecPool)
-	if !ok {
-		return fmt.Errorf("want userData type vecPool, got %T", userData)
+	vp, err := getVecPool(userData)
+	if err != nil {
+		return err
 	}
 	transformed := vp.acquirev3(len(pos))
 	defer vp.releasev3(transformed)
@@ -369,9 +369,9 @@ func (t *translate) Evaluate(pos []ms3.Vec, dist []float32, userData any) error 
 }
 
 func (t *transform) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
-	vp, ok := userData.(*VecPool)
-	if !ok {
-		return fmt.Errorf("want userData type vecPool, got %T", userData)
+	vp, err := getVecPool(userData)
+	if err != nil {
+		return err
 	}
 	transformed := vp.acquirev3(len(pos))
 	defer vp.releasev3(transformed)
@@ -387,9 +387,9 @@ func (t *transform) Evaluate(pos []ms3.Vec, dist []float32, userData any) error 
 // the argument distance buffer cannot contain all of the data required for a distance calculation such
 // with operations on SDFs i.e: union and scale (binary operation and a positional transform operation).
 func evaluateShaders(pos []ms3.Vec, userData any, shaders ...Shader) (distances [][]float32, finalizer func(), err error) {
-	vp, ok := userData.(*VecPool)
-	if !ok {
-		return nil, nil, fmt.Errorf("want userData type vecPool, got %T", userData)
+	vp, err := getVecPool(userData)
+	if err != nil {
+		return nil, nil, err
 	}
 	finalizer = func() {
 		for i := range distances {
@@ -485,6 +485,14 @@ func (vp *VecPool) AssertAllReleased() error {
 		}
 	}
 	return nil
+}
+
+func getVecPool(userData any) (*VecPool, error) {
+	vp, ok := userData.(*VecPool)
+	if !ok {
+		return nil, fmt.Errorf("want userData type glsdf3.VecPool for CPU evaluations, got %T", userData)
+	}
+	return vp, nil
 }
 
 func assertEvaluator(s Shader) interface {

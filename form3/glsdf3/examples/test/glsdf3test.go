@@ -81,7 +81,7 @@ var OtherUnaryRandomizedOps = []func(a glsdf3.Shader, rng *rand.Rand) glsdf3.Sha
 	randomRotation,
 	randomShell,
 	randomElongate,
-	// randomArray,
+	// randomArray, // round() differs from go's math.Round()
 }
 
 func test_sdf_gpu_cpu() error {
