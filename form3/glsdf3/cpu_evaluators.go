@@ -1,9 +1,11 @@
 package glsdf3
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/chewxy/math32"
+	"github.com/soypat/glgl/math/ms2"
 	"github.com/soypat/glgl/math/ms3"
 )
 
@@ -205,8 +207,8 @@ func (s *scale) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	if err != nil {
 		return err
 	}
-	scaled := vp.acquirev3(len(pos))
-	defer vp.releasev3(scaled)
+	scaled := vp.v3.acquire(len(pos))
+	defer vp.v3.release(scaled)
 	factor := s.scale
 	factorInv := 1. / s.scale
 	for i, p := range pos {
@@ -228,9 +230,9 @@ func (s *symmetry) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	if err != nil {
 		return err
 	}
-	transformed := vp.acquirev3(len(pos))
+	transformed := vp.v3.acquire(len(pos))
 	copy(transformed, pos)
-	defer vp.releasev3(transformed)
+	defer vp.v3.release(transformed)
 	for i, p := range transformed {
 		if s.xyz&xBit != 0 {
 			transformed[i].X = absf(p.X)
@@ -255,10 +257,10 @@ func (a *array) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	if err != nil {
 		return err
 	}
-	transformed := vp.acquirev3(len(pos))
-	defer vp.releasev3(transformed)
-	auxdist := vp.acquiref32(len(dist))
-	defer vp.releasef32(auxdist)
+	transformed := vp.v3.acquire(len(pos))
+	defer vp.v3.release(transformed)
+	auxdist := vp.float.acquire(len(dist))
+	defer vp.float.release(auxdist)
 	s := a.d
 	n := a.nvec3()
 	minlim := ms3.Vec{}
@@ -266,7 +268,7 @@ func (a *array) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	_ = minlim
 	sdf := assertEvaluator(a.s)
 	for i := range dist {
-		dist[i] = 1e20
+		dist[i] = largenum
 	}
 	// We invert loops with respect to shader here to avoid needing 8 distance and 8 position buffers, instead we need 1 of each with this loop shape.
 	var ijk ms3.Vec
@@ -307,10 +309,10 @@ func (e *elongate) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	if err != nil {
 		return err
 	}
-	transformed := vp.acquirev3(len(pos))
-	defer vp.releasev3(transformed)
-	aux := vp.acquiref32(len(pos))
-	defer vp.releasef32(aux)
+	transformed := vp.v3.acquire(len(pos))
+	defer vp.v3.release(transformed)
+	aux := vp.float.acquire(len(pos))
+	defer vp.float.release(aux)
 	h := e.h
 	for i, p := range pos {
 		q := ms3.Sub(ms3.AbsElem(p), h)
@@ -358,8 +360,8 @@ func (t *translate) Evaluate(pos []ms3.Vec, dist []float32, userData any) error 
 	if err != nil {
 		return err
 	}
-	transformed := vp.acquirev3(len(pos))
-	defer vp.releasev3(transformed)
+	transformed := vp.v3.acquire(len(pos))
+	defer vp.v3.release(transformed)
 	T := t.p
 	for i, p := range pos {
 		transformed[i] = ms3.Sub(p, T)
@@ -373,8 +375,8 @@ func (t *transform) Evaluate(pos []ms3.Vec, dist []float32, userData any) error 
 	if err != nil {
 		return err
 	}
-	transformed := vp.acquirev3(len(pos))
-	defer vp.releasev3(transformed)
+	transformed := vp.v3.acquire(len(pos))
+	defer vp.v3.release(transformed)
 	Tinv := t.invT
 	for i, p := range pos {
 		transformed[i] = Tinv.MulPosition(p)
@@ -386,19 +388,19 @@ func (t *transform) Evaluate(pos []ms3.Vec, dist []float32, userData any) error 
 // evaluateShaders is an auxiliary function to evaluate shaders in parallel required for situations where
 // the argument distance buffer cannot contain all of the data required for a distance calculation such
 // with operations on SDFs i.e: union and scale (binary operation and a positional transform operation).
-func evaluateShaders(pos []ms3.Vec, userData any, shaders ...Shader) (distances [][]float32, finalizer func(), err error) {
+func evaluateShaders(pos []ms3.Vec, userData any, shaders ...Shader3D) (distances [][]float32, finalizer func(), err error) {
 	vp, err := getVecPool(userData)
 	if err != nil {
 		return nil, nil, err
 	}
 	finalizer = func() {
 		for i := range distances {
-			vp.releasef32(distances[i])
+			vp.float.release(distances[i])
 		}
 	}
 	for i := range shaders {
 		sdf := assertEvaluator(shaders[i])
-		aux := vp.acquiref32(len(pos))
+		aux := vp.float.acquire(len(pos))
 		distances = append(distances, aux)
 		err = sdf.Evaluate(pos, aux, userData)
 		if err != nil {
@@ -413,75 +415,63 @@ func evaluateShaders(pos []ms3.Vec, userData any, shaders ...Shader) (distances 
 // evaluating SDFs on the CPU while reducing garbage generation.
 // It also aids in calculation of memory usage.
 type VecPool struct {
-	_instancesV [][]ms3.Vec
-	_acquiredV  []bool
-	_instancesF [][]float32
-	_acquiredF  []bool
-}
-
-func (vp *VecPool) acquiref32(minLength int) []float32 {
-	for i, locked := range vp._acquiredF {
-		if !locked && len(vp._instancesF[i]) > minLength {
-			vp._acquiredF[i] = true
-			return vp._instancesF[i]
-		}
-	}
-	newSlice := make([]float32, minLength)
-	newSlice = newSlice[:cap(newSlice)]
-	vp._instancesF = append(vp._instancesF, newSlice)
-	vp._acquiredF = append(vp._acquiredF, true)
-	return newSlice
-}
-
-func (vp *VecPool) releasef32(released []float32) {
-	for i, instance := range vp._instancesF {
-		if &instance[0] == &released[0] {
-			if !vp._acquiredF[i] {
-				panic("release of unacquired resource")
-			}
-			vp._acquiredF[i] = false
-			return
-		}
-	}
-	panic("release of nonexistent resource")
-}
-
-func (vp *VecPool) acquirev3(minLength int) []ms3.Vec {
-	for i, locked := range vp._acquiredV {
-		if !locked && len(vp._instancesV[i]) > minLength {
-			vp._acquiredV[i] = true
-			return vp._instancesV[i]
-		}
-	}
-	newSlice := make([]ms3.Vec, minLength)
-	newSlice = newSlice[:cap(newSlice)]
-	vp._instancesV = append(vp._instancesV, newSlice)
-	vp._acquiredV = append(vp._acquiredV, true)
-	return newSlice
-}
-
-func (vp *VecPool) releasev3(released []ms3.Vec) {
-	for i, instance := range vp._instancesV {
-		if &instance[0] == &released[0] {
-			if !vp._acquiredV[i] {
-				panic("release of unacquired resource")
-			}
-			vp._acquiredV[i] = false
-			return
-		}
-	}
-	panic("release of nonexistent resource")
+	v3    bufPool[ms3.Vec]
+	v2    bufPool[ms2.Vec]
+	float bufPool[float32]
 }
 
 func (vp *VecPool) AssertAllReleased() error {
-	for _, locked := range vp._acquiredF {
-		if locked {
-			return fmt.Errorf("locked float32 resource found in vecPool.assertAllReleased, memory leak?")
+	err := vp.float.assertAllReleased()
+	if err != nil {
+		return err
+	}
+	err = vp.v2.assertAllReleased()
+	if err != nil {
+		return err
+	}
+	err = vp.v3.assertAllReleased()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type bufPool[T any] struct {
+	_ins      [][]T
+	_acquired []bool
+}
+
+func (bp bufPool[T]) acquire(minLength int) []T {
+	for i, locked := range bp._acquired {
+		if !locked && len(bp._ins[i]) > minLength {
+			bp._acquired[i] = true
+			return bp._ins[i]
 		}
 	}
-	for _, locked := range vp._acquiredV {
+	newSlice := make([]T, minLength)
+	newSlice = newSlice[:cap(newSlice)]
+	bp._ins = append(bp._ins, newSlice)
+	bp._acquired = append(bp._acquired, true)
+	return newSlice
+}
+
+func (bp bufPool[T]) release(buf []T) error {
+	for i, instance := range bp._ins {
+		if &instance[0] == &buf[0] {
+			if !bp._acquired[i] {
+				return errors.New("release of unacquired resource")
+			}
+			bp._acquired[i] = false
+			return nil
+		}
+	}
+	return errors.New("release of nonexistent resource")
+}
+
+func (bp bufPool[T]) assertAllReleased() error {
+	for _, locked := range bp._acquired {
 		if locked {
-			return fmt.Errorf("locked Vec3 resource found in vecPool.assertAllReleased, memory leak?")
+			return fmt.Errorf("locked %T resource found in bufPool.assertAllReleased, memory leak?", *new(T))
 		}
 	}
 	return nil
@@ -495,7 +485,7 @@ func getVecPool(userData any) (*VecPool, error) {
 	return vp, nil
 }
 
-func assertEvaluator(s Shader) interface {
+func assertEvaluator(s Shader3D) interface {
 	Evaluate(pos []ms3.Vec, dist []float32, userData any) error
 } {
 	evaluator, ok := s.(interface {

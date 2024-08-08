@@ -12,15 +12,21 @@ import (
 	"github.com/soypat/glgl/math/ms3"
 )
 
+const largenum = 1e20
+
 //go:embed visualizer_footer.tmpl
 var visualizerFooter []byte
 
-// Shader can create SDF shader source code for an arbitrary shape.
 type Shader interface {
-	Bounds() ms3.Box
 	AppendShaderName(b []byte) []byte
 	AppendShaderBody(b []byte) []byte
-	ForEachChild(userData any, fn func(userData any, s *Shader) error) error
+}
+
+// Shader3D can create SDF shader source code for an arbitrary shape.
+type Shader3D interface {
+	Shader
+	ForEachChild(userData any, fn func(userData any, s *Shader3D) error) error
+	Bounds() ms3.Box
 }
 
 // Programmer implements shader generation logic for Shader type.
@@ -43,7 +49,7 @@ func NewDefaultProgrammer() *Programmer {
 
 // WriteDistanceIO creates the bare bones I/O compute program for calculating SDF
 // and writes it to the writer.
-func (p *Programmer) WriteComputeDistanceIO(w io.Writer, obj Shader) (int, error) {
+func (p *Programmer) WriteComputeDistanceIO(w io.Writer, obj Shader3D) (int, error) {
 	baseName, nodes, err := p.parse(obj)
 	// Begin writing shader source code.
 	n, err := w.Write(p.computeHeader)
@@ -78,7 +84,7 @@ void main() {
 	return n, err
 }
 
-func (p *Programmer) WriteFragVisualizer(w io.Writer, obj Shader) (n int, err error) {
+func (p *Programmer) WriteFragVisualizer(w io.Writer, obj Shader3D) (n int, err error) {
 	// Add boxFrame to draw bounding box.
 	bb := obj.Bounds()
 	dims := bb.Size()
@@ -194,10 +200,17 @@ func appendAllNodes(buf []Shader, root Shader) ([]Shader, error) {
 		newChildren := children[nextChild:]
 		for _, obj := range newChildren {
 			nextChild++
-			err := obj.ForEachChild(0, func(userData any, s *Shader) error {
-				children = append(children, *s)
-				return nil
-			})
+			var err error
+			if obj3, ok := obj.(Shader3D); ok {
+				err = obj3.ForEachChild(0, func(userData any, s *Shader3D) error {
+					children = append(children, *s)
+					return nil
+				})
+			} else if _, ok := obj.(Shader2D); ok {
+				panic("2D shader processing not implemented")
+			} else {
+				panic("found shader that does not implement Shader3D nor Shader2D")
+			}
 			if err != nil {
 				return nil, err
 			}
@@ -263,15 +276,17 @@ func fappend(b []byte, v float32, neg, decimal byte) []byte {
 }
 
 func vecappend(b []byte, v ms3.Vec, sep, neg, decimal byte) []byte {
-	b = fappend(b, v.X, neg, decimal)
-	if sep != 0 {
-		b = append(b, sep)
+	arr := v.Array()
+	return sliceappend(b, arr[:], sep, neg, decimal)
+}
+
+func sliceappend(b []byte, s []float32, sep, neg, decimal byte) []byte {
+	for i, v := range s {
+		b = fappend(b, v, neg, decimal)
+		if sep != 0 && i != len(s)-1 {
+			b = append(b, sep)
+		}
 	}
-	b = fappend(b, v.Y, neg, decimal)
-	if sep != 0 {
-		b = append(b, sep)
-	}
-	b = fappend(b, v.Z, neg, decimal)
 	return b
 }
 
@@ -307,7 +322,7 @@ func (xyz xyzBits) AppendMapped(b []byte, Map [3]byte) []byte {
 	return b
 }
 
-func appendDistanceDecl(b []byte, s Shader, name, input string) []byte {
+func appendDistanceDecl(b []byte, s Shader3D, name, input string) []byte {
 	b = append(b, "float "...)
 	b = append(b, name...)
 	b = append(b, '=')

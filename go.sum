@@ -73,6 +73,16 @@ github.com/soypat/glgl v0.0.0-20240805030102-e90c03f0471a h1:8mmrPoYQx7DVkfqLYxk
 github.com/soypat/glgl v0.0.0-20240805030102-e90c03f0471a/go.mod h1:jcTX7fb8Y1WYrBfHyqZtzZyXzEQaOVp/z+ngMn9IQuk=
 github.com/soypat/glgl v0.0.0-20240806142848-a9957064165b h1:PaLorjR28LBzTqAQlXgMVEOZ+zhNsrZhKjHym7tkQSc=
 github.com/soypat/glgl v0.0.0-20240806142848-a9957064165b/go.mod h1:jcTX7fb8Y1WYrBfHyqZtzZyXzEQaOVp/z+ngMn9IQuk=
+github.com/soypat/glgl v0.0.0-20240808202236-05f11ef1f039 h1:gxaHkWKBrTPIHbrs5KM5cTvOpyeH7bceF7/4mRVYDy4=
+github.com/soypat/glgl v0.0.0-20240808202236-05f11ef1f039/go.mod h1:jcTX7fb8Y1WYrBfHyqZtzZyXzEQaOVp/z+ngMn9IQuk=
+github.com/soypat/glgl v0.0.0-20240808202812-2bb63dac38f7 h1:6a2ApKtew0U7BWm//WlwykDmDdkTrEZfBTLejGLbDo8=
+github.com/soypat/glgl v0.0.0-20240808202812-2bb63dac38f7/go.mod h1:jcTX7fb8Y1WYrBfHyqZtzZyXzEQaOVp/z+ngMn9IQuk=
+github.com/soypat/glgl v0.0.0-20240808204013-6d388b86e962 h1:na/KWNQbduBGTsE5AJqt+oqlDKuWDLazZRlOJZSXTUU=
+github.com/soypat/glgl v0.0.0-20240808204013-6d388b86e962/go.mod h1:jcTX7fb8Y1WYrBfHyqZtzZyXzEQaOVp/z+ngMn9IQuk=
+github.com/soypat/glgl v0.0.0-20240808204805-f8c284c5fd36 h1:nM7eh8auK+753eF+f4dU4gJkcJzb+w52ywwioSbMTTI=
+github.com/soypat/glgl v0.0.0-20240808204805-f8c284c5fd36/go.mod h1:jcTX7fb8Y1WYrBfHyqZtzZyXzEQaOVp/z+ngMn9IQuk=
+github.com/soypat/glgl v0.0.0-20240808205831-40786a6756f6 h1:AiecIVRwqo0TdbUQPad3BWgejbRVOUKfqXpblZw+feo=
+github.com/soypat/glgl v0.0.0-20240808205831-40786a6756f6/go.mod h1:jcTX7fb8Y1WYrBfHyqZtzZyXzEQaOVp/z+ngMn9IQuk=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
 github.com/stretchr/testify v1.7.0 h1:nwc3DEeHmmLAfoZucVR881uASk0Mfjw8xYJ99tb5CcY=
