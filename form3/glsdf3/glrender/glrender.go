@@ -8,6 +8,8 @@ import (
 	"github.com/soypat/glgl/math/ms3"
 )
 
+const sqrt3 = 1.73205080757
+
 type SDF3 interface {
 	Evaluate(pos []ms3.Vec, dist []float32, userData any) error
 	Bounds() ms3.Box
@@ -48,8 +50,6 @@ type icube struct {
 	ivec
 	lvl int
 }
-
-const sqrt3 = 1.73205080757
 
 func NewOctreeRenderer(s SDF3, cubeResolution float32, evalBufferSize int) (Renderer, error) {
 	if evalBufferSize < 64 {

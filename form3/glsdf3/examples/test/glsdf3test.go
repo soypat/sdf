@@ -14,6 +14,7 @@ import (
 
 	"github.com/chewxy/math32"
 	"github.com/go-gl/gl/all-core/gl"
+	"github.com/soypat/glgl/math/ms2"
 	"github.com/soypat/glgl/math/ms3"
 	"github.com/soypat/glgl/v4.6-core/glgl"
 	"github.com/soypat/sdf/form3/glsdf3"
@@ -52,6 +53,15 @@ var programmer = glsdf3.NewDefaultProgrammer()
 
 func init() {
 	runtime.LockOSThread() // For GL.
+}
+
+var PremadePrimitives2D = []glsdf3.Shader2D{
+	mustShader2D(glsdf3.NewCircle(1)),
+	mustShader2D(glsdf3.NewHexagon(1)),
+	mustShader2D(glsdf3.NewEllipse(1, 2)),
+	mustShader2D(glsdf3.NewPolygon([]ms2.Vec{
+		{-1, -1}, {-1, 0}, {0.5, 2},
+	})),
 }
 
 var PremadePrimitives = []glsdf3.Shader3D{
@@ -297,6 +307,13 @@ func meshgrid(bounds ms3.Box, nx, ny, nz int) []ms3.Vec {
 }
 
 func mustShader(s glsdf3.Shader3D, err error) glsdf3.Shader3D {
+	if err != nil || s == nil {
+		panic(err.Error())
+	}
+	return s
+}
+
+func mustShader2D(s glsdf3.Shader2D, err error) glsdf3.Shader2D {
 	if err != nil || s == nil {
 		panic(err.Error())
 	}

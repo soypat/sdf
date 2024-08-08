@@ -385,6 +385,93 @@ func (t *transform) Evaluate(pos []ms3.Vec, dist []float32, userData any) error 
 	return sdf.Evaluate(transformed, dist, userData)
 }
 
+func (c *circle2D) Evaluate(pos []ms2.Vec, dist []float32, userData any) error {
+	r := c.r
+	for i, p := range pos {
+		dist[i] = ms2.Norm(p) - r
+	}
+	return nil
+}
+
+func (c *rect2D) Evaluate(pos []ms2.Vec, dist []float32, userData any) error {
+	b := c.d
+	for i, p := range pos {
+		d := ms2.Sub(ms2.AbsElem(p), b)
+		dist[i] = ms2.Norm(ms2.MaxElem(d, ms2.Vec{})) + math32.Min(0, math32.Max(d.X, d.Y))
+	}
+	return nil
+}
+
+func (c *ellipse2D) Evaluate(pos []ms2.Vec, dist []float32, userData any) error {
+	// https://iquilezles.org/articles/ellipsedist
+	a, b := c.a, c.b
+	for i, p := range pos {
+		p = ms2.AbsElem(p)
+		if p.X > p.Y {
+			p.X, p.Y = p.Y, p.X
+			a, b = b, a
+		}
+		l := b*b - a*a
+		m := a * p.X / l
+		m2 := m * m
+		n := b * p.Y / l
+		n2 := n * n
+		c := (m2 + n2 - 1) / 3
+		c3 := c * c * c
+		q := c3 + 2*m2*n2
+		d := c3 + m2*n2
+		g := m + m*n2
+		var co float32
+		if d < 0 {
+			h := math32.Acos(q/c3) / 3
+			sh, ch := math32.Sincos(h)
+			t := sqrt3 * sh
+			rx := math32.Sqrt(-c*(ch+t+2) + m2)
+			ry := math32.Sqrt(-c*(ch-t+2) + m2)
+			co = (ry + signf(l)*rx + math32.Abs(g)/(rx*ry) - m) / 2
+		} else {
+			h := 2 * m * n * math32.Sqrt(d)
+			s := signf(q+h) * math32.Pow(math32.Abs(q+h), 1./3.)
+			u := signf(q-h) * math32.Pow(math32.Abs(q-h), 1./3.)
+
+			rx := -s - u - 4*c + 2*m2
+			ry := sqrt3 * (s - u)
+			rm := math32.Hypot(rx, ry)
+			co = (ry/math32.Sqrt(rm-rx) + 2*g/rm - m) / 2
+		}
+		r := ms2.Vec{X: a * co, Y: b * math32.Sqrt(1-co*co)}
+		dist[i] = ms2.Norm(ms2.Sub(r, p)) * signf(p.Y-r.Y)
+	}
+	return nil
+}
+
+func (p *poly2D) Evaluate(pos []ms2.Vec, dist []float32, userData any) error {
+	// https://www.shadertoy.com/view/wdBXRW
+	verts := p.vert
+	for i, p := range pos {
+		d := ms2.Norm2(ms2.Sub(p, verts[0]))
+		s := float32(1.0)
+		jv := len(verts) - 1
+		for iv, v1 := range verts {
+			v2 := verts[jv]
+			e := ms2.Sub(v2, v1)
+			w := ms2.Sub(p, v1)
+			b := ms2.Sub(w, ms2.Scale(ms3.Clamp(ms2.Dot(w, e)/ms2.Norm2(e), 0, 1), e))
+			d = math32.Min(d, ms2.Norm2(b))
+			// winding number from http://geomalgorithms.com/a03-_inclusion.html
+			b1 := p.Y >= v1.Y
+			b2 := p.Y < v2.Y
+			b3 := e.X*w.Y > e.Y*w.X
+			if (b1 && b2 && b3) || ((!b1) && (!b2) && (!b3)) {
+				s = -s
+			}
+			jv = iv
+		}
+		dist[i] = s * math32.Sqrt(d)
+	}
+	return nil
+}
+
 // evaluateShaders is an auxiliary function to evaluate shaders in parallel required for situations where
 // the argument distance buffer cannot contain all of the data required for a distance calculation such
 // with operations on SDFs i.e: union and scale (binary operation and a positional transform operation).

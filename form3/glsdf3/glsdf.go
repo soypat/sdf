@@ -12,7 +12,10 @@ import (
 	"github.com/soypat/glgl/math/ms3"
 )
 
-const largenum = 1e20
+const (
+	sqrt3    = 1.73205080757
+	largenum = 1e20
+)
 
 //go:embed visualizer_footer.tmpl
 var visualizerFooter []byte

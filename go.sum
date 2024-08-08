@@ -83,6 +83,8 @@ github.com/soypat/glgl v0.0.0-20240808204805-f8c284c5fd36 h1:nM7eh8auK+753eF+f4d
 github.com/soypat/glgl v0.0.0-20240808204805-f8c284c5fd36/go.mod h1:jcTX7fb8Y1WYrBfHyqZtzZyXzEQaOVp/z+ngMn9IQuk=
 github.com/soypat/glgl v0.0.0-20240808205831-40786a6756f6 h1:AiecIVRwqo0TdbUQPad3BWgejbRVOUKfqXpblZw+feo=
 github.com/soypat/glgl v0.0.0-20240808205831-40786a6756f6/go.mod h1:jcTX7fb8Y1WYrBfHyqZtzZyXzEQaOVp/z+ngMn9IQuk=
+github.com/soypat/glgl v0.0.0-20240808224527-478af55b0e83 h1:boLpiKRzktwP4vjBRzCev+/tJRCbMJ3vGCsgT/MjXks=
+github.com/soypat/glgl v0.0.0-20240808224527-478af55b0e83/go.mod h1:jcTX7fb8Y1WYrBfHyqZtzZyXzEQaOVp/z+ngMn9IQuk=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
 github.com/stretchr/testify v1.7.0 h1:nwc3DEeHmmLAfoZucVR881uASk0Mfjw8xYJ99tb5CcY=
