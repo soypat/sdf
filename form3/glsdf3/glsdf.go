@@ -325,7 +325,7 @@ func (xyz xyzBits) AppendMapped(b []byte, Map [3]byte) []byte {
 	return b
 }
 
-func appendDistanceDecl(b []byte, s Shader3D, name, input string) []byte {
+func appendDistanceDecl(b []byte, s Shader, name, input string) []byte {
 	b = append(b, "float "...)
 	b = append(b, name...)
 	b = append(b, '=')

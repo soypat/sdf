@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/soypat/glgl/math/ms2"
+	"github.com/soypat/glgl/math/ms3"
 )
 
 // Shader3D can create SDF shader source code for an arbitrary shape.
@@ -251,6 +252,253 @@ return s*sqrt(d);`...)
 
 func (c *poly2D) ForEach2DChild(userData any, fn func(userData any, s *Shader2D) error) error {
 	return nil
+}
+
+// Extrude converts a 2D SDF into a 3D extrusion. Extrudes in both positive and negative Z direction, half of h both ways.
+func Extrude(s Shader2D, h float32) Shader3D {
+	if s == nil {
+		panic("nil argument to Extrude")
+	}
+	return &extrusion{s: s, h: h}
+}
+
+type extrusion struct {
+	s Shader2D
+	h float32
+}
+
+func (e *extrusion) Bounds() ms3.Box {
+	b2 := e.s.Bounds()
+	hd2 := e.h / 2
+	return ms3.Box{
+		Min: ms3.Vec{X: b2.Min.X, Y: b2.Min.Y, Z: -hd2},
+		Max: ms3.Vec{X: b2.Max.X, Y: b2.Max.Y, Z: hd2},
+	}
+}
+
+func (e *extrusion) ForEach2DChild(userData any, fn func(userData any, s *Shader2D) error) error {
+	return fn(userData, &e.s)
+}
+func (e *extrusion) ForEachChild(userData any, fn func(userData any, s *Shader3D) error) error {
+	return nil
+}
+
+func (e *extrusion) AppendShaderName(b []byte) []byte {
+	b = append(b, "extrusion_"...)
+	b = e.s.AppendShaderName(b)
+	return b
+}
+
+func (e *extrusion) AppendShaderBody(b []byte) []byte {
+	b = appendFloatDecl(b, "h", e.h)
+	b = appendDistanceDecl(b, e.s, "d", "p.xy")
+	b = append(b, `vec2 w = vec2( d, abs(p.z) - h );
+return min(max(w.x,w.y),0.0) + length(max(w,0.0));`...)
+	return b
+}
+
+// Revolve revolves a 2D SDF around the y axis, offsetting the axis of revolution by axisOffset.
+func Revolve(s Shader2D, axisOffset float32) Shader3D {
+	if s == nil {
+		panic("nil argument to Revolve")
+	}
+	return &revolution{s: s, off: axisOffset}
+}
+
+type revolution struct {
+	s   Shader2D
+	off float32
+}
+
+func (r *revolution) Bounds() ms3.Box {
+	b2 := r.s.Bounds()
+	return ms3.Box{
+		Min: ms3.Vec{X: b2.Min.X, Y: b2.Min.Y, Z: -r.off},
+		Max: ms3.Vec{X: b2.Max.X, Y: b2.Max.Y, Z: r.off}, // TODO
+	}
+}
+
+func (r *revolution) ForEach2DChild(userData any, fn func(userData any, s *Shader2D) error) error {
+	return fn(userData, &r.s)
+}
+func (r *revolution) ForEachChild(userData any, fn func(userData any, s *Shader3D) error) error {
+	return nil
+}
+
+func (r *revolution) AppendShaderName(b []byte) []byte {
+	b = append(b, "revolution_"...)
+	b = r.s.AppendShaderName(b)
+	return b
+}
+
+func (r *revolution) AppendShaderBody(b []byte) []byte {
+	b = appendFloatDecl(b, "w", r.off)
+	b = append(b, "vec2 q = vec2( length(p.xz) - o, p.y );\n"...)
+	b = appendDistanceDecl(b, r.s, "d", "q")
+	b = append(b, "return d;"...)
+	return b
+}
+
+// Union2D joins the shapes of two SDFs into one. Is exact.
+func Union2D(s1, s2 Shader2D) Shader2D {
+	if s1 == nil || s2 == nil {
+		panic("nil object")
+	}
+	return &union2D{s1: s1, s2: s2}
+}
+
+type union2D struct {
+	s1, s2 Shader2D
+}
+
+func (u *union2D) Bounds() ms2.Box {
+	return u.s1.Bounds().Union(u.s2.Bounds())
+}
+
+func (s *union2D) ForEach2DChild(userData any, fn func(userData any, s *Shader2D) error) error {
+	err := fn(userData, &s.s1)
+	if err != nil {
+		return err
+	}
+	return fn(userData, &s.s2)
+}
+
+func (s *union2D) AppendShaderName(b []byte) []byte {
+	b = append(b, "union2D_"...)
+	b = s.s1.AppendShaderName(b)
+	b = append(b, '_')
+	b = s.s2.AppendShaderName(b)
+	return b
+}
+
+func (s *union2D) AppendShaderBody(b []byte) []byte {
+	b = append(b, "return min("...)
+	b = s.s1.AppendShaderName(b)
+	b = append(b, "(p),"...)
+	b = s.s2.AppendShaderName(b)
+	b = append(b, "(p));"...)
+	return b
+}
+
+// Difference2D is the SDF difference of a-b. Does not produce a true SDF.
+func Difference2D(a, b Shader2D) Shader2D {
+	if a == nil || b == nil {
+		panic("nil argument to Difference")
+	}
+	return &diff2D{s1: a, s2: b}
+}
+
+type diff2D struct {
+	s1, s2 Shader2D // Performs s1-s2.
+}
+
+func (u *diff2D) Bounds() ms2.Box {
+	return u.s1.Bounds()
+}
+
+func (s *diff2D) ForEach2DChild(userData any, fn func(userData any, s *Shader2D) error) error {
+	err := fn(userData, &s.s1)
+	if err != nil {
+		return err
+	}
+	return fn(userData, &s.s2)
+}
+
+func (s *diff2D) AppendShaderName(b []byte) []byte {
+	b = append(b, "diff2D_"...)
+	b = s.s1.AppendShaderName(b)
+	b = append(b, '_')
+	b = s.s2.AppendShaderName(b)
+	return b
+}
+
+func (s *diff2D) AppendShaderBody(b []byte) []byte {
+	b = append(b, "return max(-"...)
+	b = s.s1.AppendShaderName(b)
+	b = append(b, "(p),"...)
+	b = s.s2.AppendShaderName(b)
+	b = append(b, "(p));"...)
+	return b
+}
+
+// Intersection2D is the SDF intersection of a ^ b. Does not produce an exact SDF.
+func Intersection2D(a, b Shader2D) Shader2D {
+	if a == nil || b == nil {
+		panic("nil argument to Difference")
+	}
+	return &intersect2D{s1: a, s2: b}
+}
+
+type intersect2D struct {
+	s1, s2 Shader2D // Performs s1 ^ s2.
+}
+
+func (u *intersect2D) Bounds() ms2.Box {
+	return u.s1.Bounds().Intersect(u.s2.Bounds())
+}
+
+func (s *intersect2D) ForEach2DChild(userData any, fn func(userData any, s *Shader2D) error) error {
+	err := fn(userData, &s.s1)
+	if err != nil {
+		return err
+	}
+	return fn(userData, &s.s2)
+}
+
+func (s *intersect2D) AppendShaderName(b []byte) []byte {
+	b = append(b, "intersect2D_"...)
+	b = s.s1.AppendShaderName(b)
+	b = append(b, '_')
+	b = s.s2.AppendShaderName(b)
+	return b
+}
+
+func (s *intersect2D) AppendShaderBody(b []byte) []byte {
+	b = append(b, "return max("...)
+	b = s.s1.AppendShaderName(b)
+	b = append(b, "(p),"...)
+	b = s.s2.AppendShaderName(b)
+	b = append(b, "(p));"...)
+	return b
+}
+
+// Xor2D is the mutually exclusive boolean operation and results in an exact SDF.
+func Xor2D(s1, s2 Shader2D) Shader2D {
+	if s1 == nil || s2 == nil {
+		panic("nil argument to Xor")
+	}
+	return &xor2D{s1: s1, s2: s2}
+}
+
+type xor2D struct {
+	s1, s2 Shader2D
+}
+
+func (u *xor2D) Bounds() ms2.Box {
+	return u.s1.Bounds().Union(u.s2.Bounds())
+}
+
+func (s *xor2D) ForEach2DChild(userData any, fn func(userData any, s *Shader2D) error) error {
+	err := fn(userData, &s.s1)
+	if err != nil {
+		return err
+	}
+	return fn(userData, &s.s2)
+}
+
+func (s *xor2D) AppendShaderName(b []byte) []byte {
+	b = append(b, "xor2D_"...)
+	b = s.s1.AppendShaderName(b)
+	b = append(b, '_')
+	b = s.s2.AppendShaderName(b)
+	return b
+}
+
+func (s *xor2D) AppendShaderBody(b []byte) []byte {
+	b = appendDistanceDecl(b, s.s1, "d1", "(p)")
+	b = appendDistanceDecl(b, s.s2, "d2", "(p)")
+	b = append(b, "return max(min(d1,d2),-max(d1,d2));"...)
+	return b
 }
 
 func appendVec2Decl(b []byte, name string, v ms2.Vec) []byte {
