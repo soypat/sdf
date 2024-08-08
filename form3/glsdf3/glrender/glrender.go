@@ -136,27 +136,33 @@ func (oc *octree) processCubesDFS() {
 }
 
 func (oc *octree) marchCubes(dst []ms3.Triangle, limit int) int {
-	n := 0
+	nTri := 0
 	var p [8]ms3.Vec
 	var d [8]float32
-	i := 0
 	cubeDiag := 2 * sqrt3 * oc.resolution
-	for i < limit && len(dst)-n > marchingCubesMaxTriangles {
-		if math32.Abs(oc.distbuf[i]) <= cubeDiag {
+	iPos := 0
+	for iPos < limit && len(dst)-nTri > marchingCubesMaxTriangles {
+		if math32.Abs(oc.distbuf[iPos]) <= cubeDiag {
 			// Cube may have triangles.
-			copy(p[:], oc.posbuf[i:i+8])
-			copy(d[:], oc.distbuf[i:i+8])
-			n += mcToTriangles(dst[n:], p, d, 0)
+			copy(p[:], oc.posbuf[iPos:iPos+8])
+			copy(d[:], oc.distbuf[iPos:iPos+8])
+			nTri += mcToTriangles(dst[nTri:], p, d, 0)
 		}
-		i += 8
+		iPos += 8
 	}
-
-	if i > 0 {
+	remaining := len(oc.posbuf) - iPos
+	if iPos > 0 && remaining > 0 {
 		// Discard used positional and distance data.
-		k := copy(oc.posbuf, oc.posbuf[i:])
-		oc.posbuf = oc.posbuf[:k]
+		aux := append([]ms3.Vec{}, oc.posbuf[iPos:]...)
+		oc.posbuf = append(oc.posbuf[:0], aux...)
+		println(len(oc.posbuf), len(oc.posbuf)%8, nTri)
+		// k := copy(oc.posbuf, oc.posbuf[i:])
+		// oc.posbuf = oc.posbuf[:k]
+		// oc.posbuf = oc.posbuf[:0]
+	} else {
+		oc.posbuf = oc.posbuf[:0] // Reset buffer.
 	}
-	return n
+	return nTri
 }
 
 func (c icube) size(baseRes float32) float32 {
@@ -203,10 +209,11 @@ func (c icube) octree() [8]icube {
 // RenderAll reads the full contents of a Renderer and returns the slice read.
 // It does not return error on io.EOF, like the io.RenderAll implementation.
 func RenderAll(r Renderer) ([]ms3.Triangle, error) {
+	const startSize = 2048
 	var err error
 	var nt int
-	result := make([]ms3.Triangle, 0, 1024)
-	buf := make([]ms3.Triangle, 1024)
+	result := make([]ms3.Triangle, 0, startSize)
+	buf := make([]ms3.Triangle, startSize)
 	for {
 		nt, err = r.ReadTriangles(buf)
 		result = append(result, buf[:nt]...)

@@ -11,7 +11,7 @@ const (
 	marchingCubesMaxTriangles = 5
 )
 
-func mcToTriangles(dst []ms3.Triangle, p [8]ms3.Vec, v [8]float32, x float32) (n int) {
+func mcToTriangles(dst []ms3.Triangle, p [8]ms3.Vec, v [8]float32, x float32) int {
 	if len(dst) < marchingCubesMaxTriangles {
 		panic("destination triangle buffer must be greater than 5")
 	}
@@ -39,16 +39,17 @@ func mcToTriangles(dst []ms3.Triangle, p [8]ms3.Vec, v [8]float32, x float32) (n
 	}
 	// create and write the triangles.
 	table := mcTriangleTable[index]
+	nTri := 0
 	for i := 0; i < len(table); i += 3 {
 		t := ms3.Triangle{
 			points[table[i+2]],
 			points[table[i+1]],
 			points[table[i+0]],
 		}
-		dst[n] = t
-		n++
+		dst[nTri] = t
+		nTri++
 	}
-	return n
+	return nTri
 }
 
 // mcInterpolate
