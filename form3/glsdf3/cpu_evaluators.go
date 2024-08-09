@@ -7,6 +7,7 @@ import (
 	"github.com/chewxy/math32"
 	"github.com/soypat/glgl/math/ms2"
 	"github.com/soypat/glgl/math/ms3"
+	"github.com/soypat/sdf/form3/glsdf3/glbuild"
 )
 
 func (u *sphere) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
@@ -233,14 +234,15 @@ func (s *symmetry) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	transformed := vp.v3.acquire(len(pos))
 	copy(transformed, pos)
 	defer vp.v3.release(transformed)
+	xb, yb, zb := s.xyz.X(), s.xyz.Y(), s.xyz.Z()
 	for i, p := range transformed {
-		if s.xyz&xBit != 0 {
+		if xb {
 			transformed[i].X = absf(p.X)
 		}
-		if s.xyz&yBit != 0 {
+		if yb {
 			transformed[i].Y = absf(p.Y)
 		}
-		if s.xyz&zBit != 0 {
+		if zb {
 			transformed[i].Z = absf(p.Z)
 		}
 	}
@@ -463,8 +465,6 @@ func (c *ellipse2D) Evaluate(pos []ms2.Vec, dist []float32, userData any) error 
 			p.X, p.Y = p.Y, p.X
 			a, b = b, a
 		}
-		dist[i] = a
-		continue
 		l := b*b - a*a
 		m := a * p.X / l
 		m2 := m * m
@@ -628,7 +628,7 @@ func (a *array2D) Evaluate(pos []ms2.Vec, dist []float32, userData any) error {
 // evaluateShaders is an auxiliary function to evaluate shaders in parallel required for situations where
 // the argument distance buffer cannot contain all of the data required for a distance calculation such
 // with operations on SDFs i.e: union and scale (binary operation and a positional transform operation).
-func evaluateShaders(pos []ms3.Vec, userData any, shaders ...Shader3D) (distances [][]float32, finalizer func(), err error) {
+func evaluateShaders(pos []ms3.Vec, userData any, shaders ...glbuild.Shader3D) (distances [][]float32, finalizer func(), err error) {
 	vp, err := getVecPool(userData)
 	if err != nil {
 		return nil, nil, err
@@ -654,7 +654,7 @@ func evaluateShaders(pos []ms3.Vec, userData any, shaders ...Shader3D) (distance
 // evaluateShaders is an auxiliary function to evaluate shaders in parallel required for situations where
 // the argument distance buffer cannot contain all of the data required for a distance calculation such
 // with operations on SDFs i.e: union and scale (binary operation and a positional transform operation).
-func evaluateShaders2D(pos []ms2.Vec, userData any, shaders ...Shader2D) (distances [][]float32, finalizer func(), err error) {
+func evaluateShaders2D(pos []ms2.Vec, userData any, shaders ...glbuild.Shader2D) (distances [][]float32, finalizer func(), err error) {
 	vp, err := getVecPool(userData)
 	if err != nil {
 		return nil, nil, err
@@ -751,7 +751,7 @@ func getVecPool(userData any) (*VecPool, error) {
 	return vp, nil
 }
 
-func assertEvaluator(s Shader3D) interface {
+func assertEvaluator(s glbuild.Shader3D) interface {
 	Evaluate(pos []ms3.Vec, dist []float32, userData any) error
 } {
 	evaluator, ok := s.(interface {
@@ -763,7 +763,7 @@ func assertEvaluator(s Shader3D) interface {
 	return evaluator
 }
 
-func assertEvaluator2D(s Shader2D) interface {
+func assertEvaluator2D(s glbuild.Shader2D) interface {
 	Evaluate(pos []ms2.Vec, dist []float32, userData any) error
 } {
 	evaluator, ok := s.(interface {

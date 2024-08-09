@@ -18,6 +18,7 @@ import (
 	"github.com/soypat/glgl/math/ms3"
 	"github.com/soypat/glgl/v4.6-core/glgl"
 	"github.com/soypat/sdf/form3/glsdf3"
+	"github.com/soypat/sdf/form3/glsdf3/glbuild"
 	"github.com/soypat/sdf/form3/glsdf3/glrender"
 )
 
@@ -55,7 +56,7 @@ func init() {
 	runtime.LockOSThread() // For GL.
 }
 
-var PremadePrimitives = []glsdf3.Shader3D{
+var PremadePrimitives = []glbuild.Shader3D{
 	mustShader(glsdf3.NewSphere(1)),
 	mustShader(glsdf3.NewBox(1, 1.2, 2.2, 0.3)),
 	mustShader(glsdf3.NewHexagonalPrism(1, 2)),
@@ -65,7 +66,7 @@ var PremadePrimitives = []glsdf3.Shader3D{
 	mustShader(glsdf3.NewCylinder(1, 3, .3)),
 }
 
-var PremadePrimitives2D = []glsdf3.Shader2D{
+var PremadePrimitives2D = []glbuild.Shader2D{
 	mustShader2D(glsdf3.NewCircle(1)),
 	mustShader2D(glsdf3.NewHexagon(1)),
 	mustShader2D(glsdf3.NewPolygon([]ms2.Vec{
@@ -73,27 +74,27 @@ var PremadePrimitives2D = []glsdf3.Shader2D{
 	})),
 	// mustShader2D(glsdf3.NewEllipse(1, 2)), // Ellipse seems to be very sensitive to position.
 }
-var BinaryOps = []func(a, b glsdf3.Shader3D) glsdf3.Shader3D{
+var BinaryOps = []func(a, b glbuild.Shader3D) glbuild.Shader3D{
 	glsdf3.Union,
 	glsdf3.Difference,
 	glsdf3.Intersection,
 	glsdf3.Xor,
 }
 
-var BinaryOps2D = []func(a, b glsdf3.Shader2D) glsdf3.Shader2D{
+var BinaryOps2D = []func(a, b glbuild.Shader2D) glbuild.Shader2D{
 	glsdf3.Union2D,
 	glsdf3.Difference2D,
 	glsdf3.Intersection2D,
 	glsdf3.Xor2D,
 }
 
-var SmoothBinaryOps = []func(a, b glsdf3.Shader3D, k float32) glsdf3.Shader3D{
+var SmoothBinaryOps = []func(a, b glbuild.Shader3D, k float32) glbuild.Shader3D{
 	glsdf3.SmoothUnion,
 	glsdf3.SmoothDifference,
 	glsdf3.SmoothIntersect,
 }
 
-var OtherUnaryRandomizedOps = []func(a glsdf3.Shader3D, rng *rand.Rand) glsdf3.Shader3D{
+var OtherUnaryRandomizedOps = []func(a glbuild.Shader3D, rng *rand.Rand) glbuild.Shader3D{
 	randomRotation,
 	randomShell,
 	randomElongate,
@@ -104,7 +105,7 @@ var OtherUnaryRandomizedOps = []func(a glsdf3.Shader3D, rng *rand.Rand) glsdf3.S
 	// randomArray, // round() differs from go's math.Round()
 }
 
-var OtherUnaryRandomizedOps2D3D = []func(a glsdf3.Shader2D, rng *rand.Rand) glsdf3.Shader3D{
+var OtherUnaryRandomizedOps2D3D = []func(a glbuild.Shader2D, rng *rand.Rand) glbuild.Shader3D{
 	randomExtrude,
 	randomRevolve,
 }
@@ -340,21 +341,21 @@ func meshgrid(bounds ms3.Box, nx, ny, nz int) []ms3.Vec {
 	return positions
 }
 
-func mustShader(s glsdf3.Shader3D, err error) glsdf3.Shader3D {
+func mustShader(s glbuild.Shader3D, err error) glbuild.Shader3D {
 	if err != nil || s == nil {
 		panic(err.Error())
 	}
 	return s
 }
 
-func mustShader2D(s glsdf3.Shader2D, err error) glsdf3.Shader2D {
+func mustShader2D(s glbuild.Shader2D, err error) glbuild.Shader2D {
 	if err != nil || s == nil {
 		panic(err.Error())
 	}
 	return s
 }
 
-func assertEvaluator(s glsdf3.Shader3D) interface {
+func assertEvaluator(s glbuild.Shader3D) interface {
 	Evaluate(pos []ms3.Vec, dist []float32, userData any) error
 } {
 	evaluator, ok := s.(interface {
@@ -366,7 +367,7 @@ func assertEvaluator(s glsdf3.Shader3D) interface {
 	return evaluator
 }
 
-func evaluateCPU(obj glsdf3.Shader3D, pos []ms3.Vec, dist []float32, vp *glsdf3.VecPool) error {
+func evaluateCPU(obj glbuild.Shader3D, pos []ms3.Vec, dist []float32, vp *glsdf3.VecPool) error {
 	if len(pos) != len(dist) {
 		return errors.New("mismatched position/distance lengths")
 	}
@@ -383,7 +384,7 @@ func evaluateCPU(obj glsdf3.Shader3D, pos []ms3.Vec, dist []float32, vp *glsdf3.
 }
 
 type sdfcpu struct {
-	s  glsdf3.Shader3D
+	s  glbuild.Shader3D
 	vp glsdf3.VecPool
 }
 
@@ -401,7 +402,7 @@ func (sdf sdfcpu) Bounds() ms3.Box {
 }
 
 type sdfgpu struct {
-	s glsdf3.Shader3D
+	s glbuild.Shader3D
 }
 
 func (sdf sdfgpu) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
@@ -412,7 +413,7 @@ func (sdf sdfgpu) Bounds() ms3.Box {
 	return sdf.s.Bounds()
 }
 
-func evaluateGPU(obj glsdf3.Shader3D, pos []ms3.Vec, dist []float32) error {
+func evaluateGPU(obj glbuild.Shader3D, pos []ms3.Vec, dist []float32) error {
 	if len(pos) != len(dist) {
 		return errors.New("mismatched position/distance lengths")
 	}
@@ -498,7 +499,7 @@ func cmpDist(pos []ms3.Vec, dcpu, dgpu []float32) error {
 	return mismatchErr
 }
 
-func randomRotation(a glsdf3.Shader3D, rng *rand.Rand) glsdf3.Shader3D {
+func randomRotation(a glbuild.Shader3D, rng *rand.Rand) glbuild.Shader3D {
 	var axis ms3.Vec
 	for ms3.Norm(axis) < 1e-2 {
 		axis = ms3.Vec{X: rng.Float32(), Y: rng.Float32(), Z: rng.Float32()}
@@ -511,7 +512,7 @@ func randomRotation(a glsdf3.Shader3D, rng *rand.Rand) glsdf3.Shader3D {
 	return a
 }
 
-func randomShell(a glsdf3.Shader3D, rng *rand.Rand) glsdf3.Shader3D {
+func randomShell(a glbuild.Shader3D, rng *rand.Rand) glbuild.Shader3D {
 	thickness := rng.Float32()
 	if thickness <= 1e-8 {
 		thickness = rng.Float32()
@@ -519,7 +520,7 @@ func randomShell(a glsdf3.Shader3D, rng *rand.Rand) glsdf3.Shader3D {
 	return glsdf3.Shell(a, thickness)
 }
 
-func randomArray(a glsdf3.Shader3D, rng *rand.Rand) glsdf3.Shader3D {
+func randomArray(a glbuild.Shader3D, rng *rand.Rand) glbuild.Shader3D {
 	const minDim = 0.1
 	const maxRepeat = 8
 	nx, ny, nz := rng.Intn(maxRepeat)+1, rng.Intn(maxRepeat)+1, rng.Intn(maxRepeat)+1
@@ -531,13 +532,13 @@ func randomArray(a glsdf3.Shader3D, rng *rand.Rand) glsdf3.Shader3D {
 	return s
 }
 
-func randomElongate(a glsdf3.Shader3D, rng *rand.Rand) glsdf3.Shader3D {
+func randomElongate(a glbuild.Shader3D, rng *rand.Rand) glbuild.Shader3D {
 	const minDim = 1.0
 	dx, dy, dz := rng.Float32()+minDim, rng.Float32()+minDim, rng.Float32()+minDim
 	return glsdf3.Elongate(a, dx, dy, dz)
 }
 
-func randomRound(a glsdf3.Shader3D, rng *rand.Rand) glsdf3.Shader3D {
+func randomRound(a glbuild.Shader3D, rng *rand.Rand) glbuild.Shader3D {
 	bb := a.Bounds().Size()
 	minround := bb.Min() / 64
 	maxround := bb.Min() / 2
@@ -545,13 +546,13 @@ func randomRound(a glsdf3.Shader3D, rng *rand.Rand) glsdf3.Shader3D {
 	return glsdf3.Round(a, round)
 }
 
-func randomTranslate(a glsdf3.Shader3D, rng *rand.Rand) glsdf3.Shader3D {
+func randomTranslate(a glbuild.Shader3D, rng *rand.Rand) glbuild.Shader3D {
 	p := ms3.Vec{X: rng.Float32(), Y: rng.Float32(), Z: rng.Float32()}
 	p = ms3.Scale((rng.Float32())*10, p)
 	return glsdf3.Translate(a, p.X, p.Y, p.Z)
 }
 
-func randomSymmetry(a glsdf3.Shader3D, rng *rand.Rand) glsdf3.Shader3D {
+func randomSymmetry(a glbuild.Shader3D, rng *rand.Rand) glbuild.Shader3D {
 	q := rng.Uint32()
 	x := q&(1<<0) != 0
 	y := q&(1<<1) != 0
@@ -559,19 +560,19 @@ func randomSymmetry(a glsdf3.Shader3D, rng *rand.Rand) glsdf3.Shader3D {
 	return glsdf3.Symmetry(a, x, y, z)
 }
 
-func randomScale(a glsdf3.Shader3D, rng *rand.Rand) glsdf3.Shader3D {
+func randomScale(a glbuild.Shader3D, rng *rand.Rand) glbuild.Shader3D {
 	const minScale, maxScale = 0.01, 100.
 	scale := minScale + rng.Float32()*(maxScale-minScale)
 	return glsdf3.Scale(a, scale)
 }
 
-func randomExtrude(a glsdf3.Shader2D, rng *rand.Rand) glsdf3.Shader3D {
+func randomExtrude(a glbuild.Shader2D, rng *rand.Rand) glbuild.Shader3D {
 	const minheight, maxHeight = 0.01, 40.
 	height := minheight + rng.Float32()*(maxHeight-minheight)
 	return glsdf3.Extrude(a, height)
 }
 
-func randomRevolve(a glsdf3.Shader2D, rng *rand.Rand) glsdf3.Shader3D {
+func randomRevolve(a glbuild.Shader2D, rng *rand.Rand) glbuild.Shader3D {
 	const minOff, maxOff = 0.01, 40.
 	off := minOff + rng.Float32()*(maxOff-minOff)
 	return glsdf3.Revolve(a, off)

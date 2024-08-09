@@ -4,13 +4,14 @@ import (
 	"errors"
 
 	"github.com/soypat/glgl/math/ms3"
+	"github.com/soypat/sdf/form3/glsdf3/glbuild"
 )
 
 type sphere struct {
 	r float32
 }
 
-func NewSphere(r float32) (Shader3D, error) {
+func NewSphere(r float32) (glbuild.Shader3D, error) {
 	valid := r > 0
 	if !valid {
 		return nil, errors.New("zero or negative sphere radius")
@@ -18,7 +19,7 @@ func NewSphere(r float32) (Shader3D, error) {
 	return &sphere{r: r}, nil
 }
 
-func (s *sphere) ForEachChild(userData any, fn func(userData any, s *Shader3D) error) error {
+func (s *sphere) ForEachChild(userData any, fn func(userData any, s *glbuild.Shader3D) error) error {
 	return nil
 }
 
@@ -42,7 +43,7 @@ func (s *sphere) Bounds() ms3.Box {
 	}
 }
 
-func NewBox(x, y, z, round float32) (Shader3D, error) {
+func NewBox(x, y, z, round float32) (glbuild.Shader3D, error) {
 	if round < 0 || round > x/2 || round > y/2 || round > z/2 {
 		return nil, errors.New("invalid box rounding value")
 	} else if x <= 0 || y <= 0 || z <= 0 {
@@ -56,7 +57,9 @@ type box struct {
 	round float32
 }
 
-func (s *box) ForEachChild(userData any, fn func(userData any, s *Shader3D) error) error { return nil }
+func (s *box) ForEachChild(userData any, fn func(userData any, s *glbuild.Shader3D) error) error {
+	return nil
+}
 
 func (s *box) AppendShaderName(b []byte) []byte {
 	b = append(b, "box"...)
@@ -80,7 +83,7 @@ func (s *box) Bounds() ms3.Box {
 	}
 }
 
-func NewCylinder(r, h, rounding float32) (Shader3D, error) {
+func NewCylinder(r, h, rounding float32) (glbuild.Shader3D, error) {
 	if rounding < 0 || rounding >= r || rounding > h/2 {
 		return nil, errors.New("invalid cylinder rounding")
 	}
@@ -95,7 +98,7 @@ type cylinder struct {
 	round float32
 }
 
-func (s *cylinder) ForEachChild(userData any, fn func(userData any, s *Shader3D) error) error {
+func (s *cylinder) ForEachChild(userData any, fn func(userData any, s *glbuild.Shader3D) error) error {
 	return nil
 }
 
@@ -128,7 +131,7 @@ func (s *cylinder) Bounds() ms3.Box {
 	}
 }
 
-func NewHexagonalPrism(side, h float32) (Shader3D, error) {
+func NewHexagonalPrism(side, h float32) (glbuild.Shader3D, error) {
 	if side <= 0 || h <= 0 {
 		return nil, errors.New("invalid hexagonal prism parameter")
 	}
@@ -139,7 +142,9 @@ type hex struct {
 	side, h float32
 }
 
-func (s *hex) ForEachChild(userData any, fn func(userData any, s *Shader3D) error) error { return nil }
+func (s *hex) ForEachChild(userData any, fn func(userData any, s *glbuild.Shader3D) error) error {
+	return nil
+}
 
 func (s *hex) AppendShaderName(b []byte) []byte {
 	b = append(b, "hex"...)
@@ -169,7 +174,7 @@ func (s *hex) Bounds() ms3.Box {
 	}
 }
 
-func NewTriangularPrism(side, h float32) (Shader3D, error) {
+func NewTriangularPrism(side, h float32) (glbuild.Shader3D, error) {
 	if side <= 0 || h <= 0 {
 		return nil, errors.New("invalid triangular prism parameter")
 	}
@@ -180,7 +185,9 @@ type tri struct {
 	side, h float32
 }
 
-func (s *tri) ForEachChild(userData any, fn func(userData any, s *Shader3D) error) error { return nil }
+func (s *tri) ForEachChild(userData any, fn func(userData any, s *glbuild.Shader3D) error) error {
+	return nil
+}
 
 func (s *tri) AppendShaderName(b []byte) []byte {
 	b = append(b, "tri"...)
@@ -210,7 +217,7 @@ type torus struct {
 	rRing, rGreater float32
 }
 
-func NewTorus(greaterRadius, ringRadius float32) (Shader3D, error) {
+func NewTorus(greaterRadius, ringRadius float32) (glbuild.Shader3D, error) {
 	if greaterRadius < 2*ringRadius {
 		return nil, errors.New("too large torus ring radius")
 	} else if greaterRadius <= 0 || ringRadius <= 0 {
@@ -219,7 +226,7 @@ func NewTorus(greaterRadius, ringRadius float32) (Shader3D, error) {
 	return &torus{rRing: ringRadius, rGreater: greaterRadius}, nil
 }
 
-func (s *torus) ForEachChild(userData any, fn func(userData any, s *Shader3D) error) error {
+func (s *torus) ForEachChild(userData any, fn func(userData any, s *glbuild.Shader3D) error) error {
 	return nil
 }
 
@@ -248,7 +255,7 @@ func (s *torus) Bounds() ms3.Box {
 	}
 }
 
-func NewBoxFrame(dimX, dimY, dimZ, e float32) (Shader3D, error) {
+func NewBoxFrame(dimX, dimY, dimZ, e float32) (glbuild.Shader3D, error) {
 	if dimX <= 0 || dimY <= 0 || dimZ <= 0 || e <= 0 {
 		return nil, errors.New("negative or zero BoxFrame dimension")
 	}
@@ -261,7 +268,7 @@ type boxframe struct {
 	e    float32
 }
 
-func (s *boxframe) ForEachChild(userData any, fn func(userData any, s *Shader3D) error) error {
+func (s *boxframe) ForEachChild(userData any, fn func(userData any, s *glbuild.Shader3D) error) error {
 	return nil
 }
 

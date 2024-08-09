@@ -8,20 +8,14 @@ import (
 
 	"github.com/soypat/glgl/math/ms2"
 	"github.com/soypat/glgl/math/ms3"
+	"github.com/soypat/sdf/form3/glsdf3/glbuild"
 )
-
-// Shader3D can create SDF shader source code for an arbitrary shape.
-type Shader2D interface {
-	Shader
-	ForEach2DChild(userData any, fn func(userData any, s *Shader2D) error) error
-	Bounds() ms2.Box
-}
 
 type circle2D struct {
 	r float32
 }
 
-func NewCircle(radius float32) (Shader2D, error) {
+func NewCircle(radius float32) (glbuild.Shader2D, error) {
 	if radius <= 0 {
 		return nil, errors.New("zero or negative circle radius")
 	}
@@ -45,7 +39,7 @@ func (c *circle2D) AppendShaderBody(b []byte) []byte {
 	return b
 }
 
-func (c *circle2D) ForEach2DChild(userData any, fn func(userData any, s *Shader2D) error) error {
+func (c *circle2D) ForEach2DChild(userData any, fn func(userData any, s *glbuild.Shader2D) error) error {
 	return nil
 }
 
@@ -53,7 +47,7 @@ type rect2D struct {
 	d ms2.Vec
 }
 
-func NewRectangle(x, y float32) (Shader2D, error) {
+func NewRectangle(x, y float32) (glbuild.Shader2D, error) {
 	if x <= 0 || y <= 0 {
 		return nil, errors.New("zero or negative rectangle dimension")
 	}
@@ -79,7 +73,7 @@ func (c *rect2D) AppendShaderBody(b []byte) []byte {
 	return b
 }
 
-func (c *rect2D) ForEach2DChild(userData any, fn func(userData any, s *Shader2D) error) error {
+func (c *rect2D) ForEach2DChild(userData any, fn func(userData any, s *glbuild.Shader2D) error) error {
 	return nil
 }
 
@@ -87,7 +81,7 @@ type hex2D struct {
 	side float32
 }
 
-func NewHexagon(side float32) (Shader2D, error) {
+func NewHexagon(side float32) (glbuild.Shader2D, error) {
 	if side <= 0 {
 		return nil, errors.New("zero or negative hexagon dimension")
 	}
@@ -115,7 +109,7 @@ return length(p)*sign(p.y);`...)
 	return b
 }
 
-func (c *hex2D) ForEach2DChild(userData any, fn func(userData any, s *Shader2D) error) error {
+func (c *hex2D) ForEach2DChild(userData any, fn func(userData any, s *glbuild.Shader2D) error) error {
 	return nil
 }
 
@@ -123,7 +117,7 @@ type ellipse2D struct {
 	a, b float32
 }
 
-func NewEllipse(a, b float32) (Shader2D, error) {
+func NewEllipse(a, b float32) (glbuild.Shader2D, error) {
 	if a <= 0 || b <= 0 {
 		return nil, errors.New("zero or negative ellipse dimension")
 	}
@@ -182,7 +176,7 @@ return length(r-p) * sign(p.y-r.y);`...)
 	return b
 }
 
-func (c *ellipse2D) ForEach2DChild(userData any, fn func(userData any, s *Shader2D) error) error {
+func (c *ellipse2D) ForEach2DChild(userData any, fn func(userData any, s *glbuild.Shader2D) error) error {
 	return nil
 }
 
@@ -190,7 +184,7 @@ type poly2D struct {
 	vert []ms2.Vec
 }
 
-func NewPolygon(vertices []ms2.Vec) (Shader2D, error) {
+func NewPolygon(vertices []ms2.Vec) (glbuild.Shader2D, error) {
 	if len(vertices) < 3 {
 		return nil, errors.New("polygon needs at least 3 vertices")
 	}
@@ -252,12 +246,12 @@ return s*sqrt(d);`...)
 	return b
 }
 
-func (c *poly2D) ForEach2DChild(userData any, fn func(userData any, s *Shader2D) error) error {
+func (c *poly2D) ForEach2DChild(userData any, fn func(userData any, s *glbuild.Shader2D) error) error {
 	return nil
 }
 
 // Extrude converts a 2D SDF into a 3D extrusion. Extrudes in both positive and negative Z direction, half of h both ways.
-func Extrude(s Shader2D, h float32) Shader3D {
+func Extrude(s glbuild.Shader2D, h float32) glbuild.Shader3D {
 	if s == nil {
 		panic("nil argument to Extrude")
 	}
@@ -265,7 +259,7 @@ func Extrude(s Shader2D, h float32) Shader3D {
 }
 
 type extrusion struct {
-	s Shader2D
+	s glbuild.Shader2D
 	h float32
 }
 
@@ -278,10 +272,10 @@ func (e *extrusion) Bounds() ms3.Box {
 	}
 }
 
-func (e *extrusion) ForEach2DChild(userData any, fn func(userData any, s *Shader2D) error) error {
+func (e *extrusion) ForEach2DChild(userData any, fn func(userData any, s *glbuild.Shader2D) error) error {
 	return fn(userData, &e.s)
 }
-func (e *extrusion) ForEachChild(userData any, fn func(userData any, s *Shader3D) error) error {
+func (e *extrusion) ForEachChild(userData any, fn func(userData any, s *glbuild.Shader3D) error) error {
 	return nil
 }
 
@@ -300,7 +294,7 @@ return min(max(w.x,w.y),0.0) + length(max(w,0.0));`...)
 }
 
 // Revolve revolves a 2D SDF around the y axis, offsetting the axis of revolution by axisOffset.
-func Revolve(s Shader2D, axisOffset float32) Shader3D {
+func Revolve(s glbuild.Shader2D, axisOffset float32) glbuild.Shader3D {
 	if s == nil {
 		panic("nil argument to Revolve")
 	}
@@ -308,7 +302,7 @@ func Revolve(s Shader2D, axisOffset float32) Shader3D {
 }
 
 type revolution struct {
-	s   Shader2D
+	s   glbuild.Shader2D
 	off float32
 }
 
@@ -320,10 +314,10 @@ func (r *revolution) Bounds() ms3.Box {
 	}
 }
 
-func (r *revolution) ForEach2DChild(userData any, fn func(userData any, s *Shader2D) error) error {
+func (r *revolution) ForEach2DChild(userData any, fn func(userData any, s *glbuild.Shader2D) error) error {
 	return fn(userData, &r.s)
 }
-func (r *revolution) ForEachChild(userData any, fn func(userData any, s *Shader3D) error) error {
+func (r *revolution) ForEachChild(userData any, fn func(userData any, s *glbuild.Shader3D) error) error {
 	return nil
 }
 
@@ -342,7 +336,7 @@ func (r *revolution) AppendShaderBody(b []byte) []byte {
 }
 
 // Union2D joins the shapes of two SDFs into one. Is exact.
-func Union2D(s1, s2 Shader2D) Shader2D {
+func Union2D(s1, s2 glbuild.Shader2D) glbuild.Shader2D {
 	if s1 == nil || s2 == nil {
 		panic("nil object")
 	}
@@ -350,14 +344,14 @@ func Union2D(s1, s2 Shader2D) Shader2D {
 }
 
 type union2D struct {
-	s1, s2 Shader2D
+	s1, s2 glbuild.Shader2D
 }
 
 func (u *union2D) Bounds() ms2.Box {
 	return u.s1.Bounds().Union(u.s2.Bounds())
 }
 
-func (s *union2D) ForEach2DChild(userData any, fn func(userData any, s *Shader2D) error) error {
+func (s *union2D) ForEach2DChild(userData any, fn func(userData any, s *glbuild.Shader2D) error) error {
 	err := fn(userData, &s.s1)
 	if err != nil {
 		return err
@@ -383,7 +377,7 @@ func (s *union2D) AppendShaderBody(b []byte) []byte {
 }
 
 // Difference2D is the SDF difference of a-b. Does not produce a true SDF.
-func Difference2D(a, b Shader2D) Shader2D {
+func Difference2D(a, b glbuild.Shader2D) glbuild.Shader2D {
 	if a == nil || b == nil {
 		panic("nil argument to Difference")
 	}
@@ -391,14 +385,14 @@ func Difference2D(a, b Shader2D) Shader2D {
 }
 
 type diff2D struct {
-	s1, s2 Shader2D // Performs s1-s2.
+	s1, s2 glbuild.Shader2D // Performs s1-s2.
 }
 
 func (u *diff2D) Bounds() ms2.Box {
 	return u.s1.Bounds()
 }
 
-func (s *diff2D) ForEach2DChild(userData any, fn func(userData any, s *Shader2D) error) error {
+func (s *diff2D) ForEach2DChild(userData any, fn func(userData any, s *glbuild.Shader2D) error) error {
 	err := fn(userData, &s.s1)
 	if err != nil {
 		return err
@@ -424,7 +418,7 @@ func (s *diff2D) AppendShaderBody(b []byte) []byte {
 }
 
 // Intersection2D is the SDF intersection of a ^ b. Does not produce an exact SDF.
-func Intersection2D(a, b Shader2D) Shader2D {
+func Intersection2D(a, b glbuild.Shader2D) glbuild.Shader2D {
 	if a == nil || b == nil {
 		panic("nil argument to Difference")
 	}
@@ -432,14 +426,14 @@ func Intersection2D(a, b Shader2D) Shader2D {
 }
 
 type intersect2D struct {
-	s1, s2 Shader2D // Performs s1 ^ s2.
+	s1, s2 glbuild.Shader2D // Performs s1 ^ s2.
 }
 
 func (u *intersect2D) Bounds() ms2.Box {
 	return u.s1.Bounds().Intersect(u.s2.Bounds())
 }
 
-func (s *intersect2D) ForEach2DChild(userData any, fn func(userData any, s *Shader2D) error) error {
+func (s *intersect2D) ForEach2DChild(userData any, fn func(userData any, s *glbuild.Shader2D) error) error {
 	err := fn(userData, &s.s1)
 	if err != nil {
 		return err
@@ -465,7 +459,7 @@ func (s *intersect2D) AppendShaderBody(b []byte) []byte {
 }
 
 // Xor2D is the mutually exclusive boolean operation and results in an exact SDF.
-func Xor2D(s1, s2 Shader2D) Shader2D {
+func Xor2D(s1, s2 glbuild.Shader2D) glbuild.Shader2D {
 	if s1 == nil || s2 == nil {
 		panic("nil argument to Xor")
 	}
@@ -473,14 +467,14 @@ func Xor2D(s1, s2 Shader2D) Shader2D {
 }
 
 type xor2D struct {
-	s1, s2 Shader2D
+	s1, s2 glbuild.Shader2D
 }
 
 func (u *xor2D) Bounds() ms2.Box {
 	return u.s1.Bounds().Union(u.s2.Bounds())
 }
 
-func (s *xor2D) ForEach2DChild(userData any, fn func(userData any, s *Shader2D) error) error {
+func (s *xor2D) ForEach2DChild(userData any, fn func(userData any, s *glbuild.Shader2D) error) error {
 	err := fn(userData, &s.s1)
 	if err != nil {
 		return err
@@ -504,7 +498,7 @@ func (s *xor2D) AppendShaderBody(b []byte) []byte {
 }
 
 // Array is the domain repetition operation. It repeats domain centered around (x,y)=(0,0)
-func Array2D(s Shader2D, spacingX, spacingY float32, nx, ny int) (Shader2D, error) {
+func Array2D(s glbuild.Shader2D, spacingX, spacingY float32, nx, ny int) (glbuild.Shader2D, error) {
 	if nx <= 0 || ny <= 0 {
 		return nil, errors.New("invalid array repeat param")
 	} else if spacingX <= 0 || spacingY <= 0 {
@@ -514,7 +508,7 @@ func Array2D(s Shader2D, spacingX, spacingY float32, nx, ny int) (Shader2D, erro
 }
 
 type array2D struct {
-	s      Shader2D
+	s      glbuild.Shader2D
 	d      ms2.Vec
 	nx, ny int
 }
@@ -529,7 +523,7 @@ func (u *array2D) Bounds() ms2.Box {
 	return bb
 }
 
-func (s *array2D) ForEach2DChild(userData any, fn func(userData any, s *Shader2D) error) error {
+func (s *array2D) ForEach2DChild(userData any, fn func(userData any, s *glbuild.Shader2D) error) error {
 	return fn(userData, &s.s)
 }
 

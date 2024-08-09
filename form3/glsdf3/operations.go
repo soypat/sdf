@@ -6,10 +6,11 @@ import (
 
 	"github.com/chewxy/math32"
 	"github.com/soypat/glgl/math/ms3"
+	"github.com/soypat/sdf/form3/glsdf3/glbuild"
 )
 
 // Union joins the shapes of two SDFs into one. Is exact.
-func Union(s1, s2 Shader3D) Shader3D {
+func Union(s1, s2 glbuild.Shader3D) glbuild.Shader3D {
 	if s1 == nil || s2 == nil {
 		panic("nil object")
 	}
@@ -17,14 +18,14 @@ func Union(s1, s2 Shader3D) Shader3D {
 }
 
 type union struct {
-	s1, s2 Shader3D
+	s1, s2 glbuild.Shader3D
 }
 
 func (u *union) Bounds() ms3.Box {
 	return u.s1.Bounds().Union(u.s2.Bounds())
 }
 
-func (s *union) ForEachChild(userData any, fn func(userData any, s *Shader3D) error) error {
+func (s *union) ForEachChild(userData any, fn func(userData any, s *glbuild.Shader3D) error) error {
 	err := fn(userData, &s.s1)
 	if err != nil {
 		return err
@@ -50,7 +51,7 @@ func (s *union) AppendShaderBody(b []byte) []byte {
 }
 
 // Difference is the SDF difference of a-b. Does not produce a true SDF.
-func Difference(a, b Shader3D) Shader3D {
+func Difference(a, b glbuild.Shader3D) glbuild.Shader3D {
 	if a == nil || b == nil {
 		panic("nil argument to Difference")
 	}
@@ -58,14 +59,14 @@ func Difference(a, b Shader3D) Shader3D {
 }
 
 type diff struct {
-	s1, s2 Shader3D // Performs s1-s2.
+	s1, s2 glbuild.Shader3D // Performs s1-s2.
 }
 
 func (u *diff) Bounds() ms3.Box {
 	return u.s1.Bounds()
 }
 
-func (s *diff) ForEachChild(userData any, fn func(userData any, s *Shader3D) error) error {
+func (s *diff) ForEachChild(userData any, fn func(userData any, s *glbuild.Shader3D) error) error {
 	err := fn(userData, &s.s1)
 	if err != nil {
 		return err
@@ -91,7 +92,7 @@ func (s *diff) AppendShaderBody(b []byte) []byte {
 }
 
 // Intersection is the SDF intersection of a ^ b. Does not produce an exact SDF.
-func Intersection(a, b Shader3D) Shader3D {
+func Intersection(a, b glbuild.Shader3D) glbuild.Shader3D {
 	if a == nil || b == nil {
 		panic("nil argument to Difference")
 	}
@@ -99,14 +100,14 @@ func Intersection(a, b Shader3D) Shader3D {
 }
 
 type intersect struct {
-	s1, s2 Shader3D // Performs s1 ^ s2.
+	s1, s2 glbuild.Shader3D // Performs s1 ^ s2.
 }
 
 func (u *intersect) Bounds() ms3.Box {
 	return u.s1.Bounds().Intersect(u.s2.Bounds())
 }
 
-func (s *intersect) ForEachChild(userData any, fn func(userData any, s *Shader3D) error) error {
+func (s *intersect) ForEachChild(userData any, fn func(userData any, s *glbuild.Shader3D) error) error {
 	err := fn(userData, &s.s1)
 	if err != nil {
 		return err
@@ -132,7 +133,7 @@ func (s *intersect) AppendShaderBody(b []byte) []byte {
 }
 
 // Xor is the mutually exclusive boolean operation and results in an exact SDF.
-func Xor(s1, s2 Shader3D) Shader3D {
+func Xor(s1, s2 glbuild.Shader3D) glbuild.Shader3D {
 	if s1 == nil || s2 == nil {
 		panic("nil argument to Xor")
 	}
@@ -140,14 +141,14 @@ func Xor(s1, s2 Shader3D) Shader3D {
 }
 
 type xor struct {
-	s1, s2 Shader3D
+	s1, s2 glbuild.Shader3D
 }
 
 func (u *xor) Bounds() ms3.Box {
 	return u.s1.Bounds().Union(u.s2.Bounds())
 }
 
-func (s *xor) ForEachChild(userData any, fn func(userData any, s *Shader3D) error) error {
+func (s *xor) ForEachChild(userData any, fn func(userData any, s *glbuild.Shader3D) error) error {
 	err := fn(userData, &s.s1)
 	if err != nil {
 		return err
@@ -171,12 +172,12 @@ func (s *xor) AppendShaderBody(b []byte) []byte {
 }
 
 // Scale scales s by scaleFactor around the origin.
-func Scale(s Shader3D, scaleFactor float32) Shader3D {
+func Scale(s glbuild.Shader3D, scaleFactor float32) glbuild.Shader3D {
 	return &scale{s: s, scale: scaleFactor}
 }
 
 type scale struct {
-	s     Shader3D
+	s     glbuild.Shader3D
 	scale float32
 }
 
@@ -185,7 +186,7 @@ func (u *scale) Bounds() ms3.Box {
 	return b.Scale(ms3.Vec{X: u.scale, Y: u.scale, Z: u.scale})
 }
 
-func (s *scale) ForEachChild(userData any, fn func(userData any, s *Shader3D) error) error {
+func (s *scale) ForEachChild(userData any, fn func(userData any, s *glbuild.Shader3D) error) error {
 	return fn(userData, &s.s)
 }
 
@@ -204,33 +205,34 @@ func (s *scale) AppendShaderBody(b []byte) []byte {
 }
 
 // Symmetry reflects the SDF around one or more cartesian planes.
-func Symmetry(s Shader3D, mirrorX, mirrorY, mirrorZ bool) Shader3D {
+func Symmetry(s glbuild.Shader3D, mirrorX, mirrorY, mirrorZ bool) glbuild.Shader3D {
 	if !mirrorX && !mirrorY && !mirrorZ {
 		panic("ineffective symmetry")
 	}
-	return &symmetry{s: s, xyz: newXYZBits(mirrorX, mirrorY, mirrorZ)}
+
+	return &symmetry{s: s, xyz: glbuild.NewXYZBits(mirrorX, mirrorY, mirrorZ)}
 }
 
 type symmetry struct {
-	s   Shader3D
-	xyz xyzBits
+	s   glbuild.Shader3D
+	xyz glbuild.XYZBits
 }
 
 func (u *symmetry) Bounds() ms3.Box {
 	box := u.s.Bounds()
-	if u.xyz&xBit != 0 {
+	if u.xyz.X() {
 		box.Min.X = minf(box.Min.X, -box.Max.X)
 	}
-	if u.xyz&yBit != 0 {
+	if u.xyz.Y() {
 		box.Min.Y = minf(box.Min.Y, -box.Max.Y)
 	}
-	if u.xyz&zBit != 0 {
+	if u.xyz.Z() {
 		box.Min.Z = minf(box.Min.Z, -box.Max.Z)
 	}
 	return box
 }
 
-func (s *symmetry) ForEachChild(userData any, fn func(userData any, s *Shader3D) error) error {
+func (s *symmetry) ForEachChild(userData any, fn func(userData any, s *glbuild.Shader3D) error) error {
 	return fn(userData, &s.s)
 }
 
@@ -255,7 +257,7 @@ func (s *symmetry) AppendShaderBody(b []byte) []byte {
 
 // Transform applies a 4x4 matrix transformation to the argument shader by
 // inverting the argument matrix.
-func Transform(s Shader3D, m ms3.Mat4) (Shader3D, error) {
+func Transform(s glbuild.Shader3D, m ms3.Mat4) (glbuild.Shader3D, error) {
 	det := m.Determinant()
 	if math32.Abs(det) < 1e-8 {
 		return nil, errors.New("singular Mat4")
@@ -264,7 +266,7 @@ func Transform(s Shader3D, m ms3.Mat4) (Shader3D, error) {
 }
 
 type transform struct {
-	s    Shader3D
+	s    glbuild.Shader3D
 	invT ms3.Mat4
 }
 
@@ -272,7 +274,7 @@ func (u *transform) Bounds() ms3.Box {
 	return u.invT.MulBox(u.s.Bounds())
 }
 
-func (s *transform) ForEachChild(userData any, fn func(userData any, s *Shader3D) error) error {
+func (s *transform) ForEachChild(userData any, fn func(userData any, s *glbuild.Shader3D) error) error {
 	return fn(userData, &s.s)
 }
 
@@ -295,7 +297,7 @@ func (r *transform) AppendShaderBody(b []byte) []byte {
 }
 
 // Rotate is the rotation of radians angle around an axis vector.
-func Rotate(s Shader3D, radians float32, axis ms3.Vec) (Shader3D, error) {
+func Rotate(s glbuild.Shader3D, radians float32, axis ms3.Vec) (glbuild.Shader3D, error) {
 	if axis == (ms3.Vec{}) {
 		return nil, errors.New("null vector")
 	}
@@ -304,12 +306,12 @@ func Rotate(s Shader3D, radians float32, axis ms3.Vec) (Shader3D, error) {
 }
 
 // Translate moves the SDF s in the given direction.
-func Translate(s Shader3D, dirX, dirY, dirZ float32) Shader3D {
+func Translate(s glbuild.Shader3D, dirX, dirY, dirZ float32) glbuild.Shader3D {
 	return &translate{s: s, p: ms3.Vec{X: dirX, Y: dirY, Z: dirZ}}
 }
 
 type translate struct {
-	s Shader3D
+	s glbuild.Shader3D
 	p ms3.Vec
 }
 
@@ -317,7 +319,7 @@ func (u *translate) Bounds() ms3.Box {
 	return u.s.Bounds().Add(u.p)
 }
 
-func (s *translate) ForEachChild(userData any, fn func(userData any, s *Shader3D) error) error {
+func (s *translate) ForEachChild(userData any, fn func(userData any, s *glbuild.Shader3D) error) error {
 	return fn(userData, &s.s)
 }
 
@@ -338,12 +340,12 @@ func (s *translate) AppendShaderBody(b []byte) []byte {
 }
 
 // Round performs a rounding operation on the input SDF, rounding off all edges by radius.
-func Round(s Shader3D, radius float32) Shader3D {
+func Round(s glbuild.Shader3D, radius float32) glbuild.Shader3D {
 	return &round{s: s, rad: radius}
 }
 
 type round struct {
-	s   Shader3D
+	s   glbuild.Shader3D
 	rad float32
 }
 
@@ -351,7 +353,7 @@ func (u *round) Bounds() ms3.Box {
 	return u.s.Bounds()
 }
 
-func (s *round) ForEachChild(userData any, fn func(userData any, s *Shader3D) error) error {
+func (s *round) ForEachChild(userData any, fn func(userData any, s *glbuild.Shader3D) error) error {
 	return fn(userData, &s.s)
 }
 
@@ -373,7 +375,7 @@ func (s *round) AppendShaderBody(b []byte) []byte {
 }
 
 // Array is the domain repetition operation. It repeats domain centered around (x,y,z)=(0,0,0)
-func Array(s Shader3D, spacingX, spacingY, spacingZ float32, nx, ny, nz int) (Shader3D, error) {
+func Array(s glbuild.Shader3D, spacingX, spacingY, spacingZ float32, nx, ny, nz int) (glbuild.Shader3D, error) {
 	if nx <= 0 || ny <= 0 || nz <= 0 {
 		return nil, errors.New("invalid array repeat param")
 	} else if spacingX <= 0 || spacingY <= 0 || spacingZ <= 0 {
@@ -383,7 +385,7 @@ func Array(s Shader3D, spacingX, spacingY, spacingZ float32, nx, ny, nz int) (Sh
 }
 
 type array struct {
-	s          Shader3D
+	s          glbuild.Shader3D
 	d          ms3.Vec
 	nx, ny, nz int
 }
@@ -398,7 +400,7 @@ func (u *array) Bounds() ms3.Box {
 	return bb
 }
 
-func (s *array) ForEachChild(userData any, fn func(userData any, s *Shader3D) error) error {
+func (s *array) ForEachChild(userData any, fn func(userData any, s *glbuild.Shader3D) error) error {
 	return fn(userData, &s.s)
 }
 
@@ -445,7 +447,7 @@ return d;`, s.d.X, s.d.Y, s.d.Z,
 }
 
 // SmoothUnion joins the shapes of two shaders into one with a smoothing blend.
-func SmoothUnion(s1, s2 Shader3D, k float32) Shader3D {
+func SmoothUnion(s1, s2 glbuild.Shader3D, k float32) glbuild.Shader3D {
 	if s1 == nil || s2 == nil {
 		panic("nil object")
 	}
@@ -477,7 +479,7 @@ return mix( d2, d1, h ) - k*h*(1.0-h);`...)
 }
 
 // SmoothDifference performs the difference of two SDFs with a smoothing parameter.
-func SmoothDifference(s1, s2 Shader3D, k float32) Shader3D {
+func SmoothDifference(s1, s2 glbuild.Shader3D, k float32) glbuild.Shader3D {
 	if s1 == nil || s2 == nil {
 		panic("nil object")
 	}
@@ -509,7 +511,7 @@ return mix( d2, -d1, h ) + k*h*(1.0-h);`...)
 }
 
 // SmoothIntersect performs the intesection of two SDFs with a smoothing parameter.
-func SmoothIntersect(s1, s2 Shader3D, k float32) Shader3D {
+func SmoothIntersect(s1, s2 glbuild.Shader3D, k float32) glbuild.Shader3D {
 	if s1 == nil || s2 == nil {
 		panic("nil object")
 	}
@@ -542,12 +544,12 @@ return mix( d2, d1, h ) + k*h*(1.0-h);`...)
 
 // Elongate "stretches" the SDF in a direction by splitting it on the origin in
 // the plane perpendicular to the argument direction. Arguments are distances, so zero-valued arguments are no-op.
-func Elongate(s Shader3D, dirX, dirY, dirZ float32) Shader3D {
+func Elongate(s glbuild.Shader3D, dirX, dirY, dirZ float32) glbuild.Shader3D {
 	return &elongate{s: s, h: ms3.Vec{X: dirX, Y: dirY, Z: dirZ}}
 }
 
 type elongate struct {
-	s Shader3D
+	s glbuild.Shader3D
 	h ms3.Vec
 }
 
@@ -558,7 +560,7 @@ func (u *elongate) Bounds() ms3.Box {
 	return box
 }
 
-func (s *elongate) ForEachChild(userData any, fn func(userData any, s *Shader3D) error) error {
+func (s *elongate) ForEachChild(userData any, fn func(userData any, s *glbuild.Shader3D) error) error {
 	return fn(userData, &s.s)
 }
 
@@ -579,12 +581,12 @@ func (s *elongate) AppendShaderBody(b []byte) []byte {
 }
 
 // Shell carves the interior of the SDF leaving only the exterior shell of the part.
-func Shell(s Shader3D, thickness float32) Shader3D {
+func Shell(s glbuild.Shader3D, thickness float32) glbuild.Shader3D {
 	return &shell{s: s, thick: thickness}
 }
 
 type shell struct {
-	s     Shader3D
+	s     glbuild.Shader3D
 	thick float32
 }
 
@@ -592,7 +594,7 @@ func (u *shell) Bounds() ms3.Box {
 	return u.s.Bounds()
 }
 
-func (s *shell) ForEachChild(userData any, fn func(userData any, s *Shader3D) error) error {
+func (s *shell) ForEachChild(userData any, fn func(userData any, s *glbuild.Shader3D) error) error {
 	return fn(userData, &s.s)
 }
 
