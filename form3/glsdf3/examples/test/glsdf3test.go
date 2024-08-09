@@ -120,7 +120,7 @@ func test_sdf_gpu_cpu() error {
 		pos := meshgrid(bounds, nx, ny, nz)
 		distCPU := make([]float32, len(pos))
 		distGPU := make([]float32, len(pos))
-		sdf, err := glsdf3.CPUEvaluator(primitive)
+		sdf, err := gleval.AssertSDF3(primitive)
 		if err != nil {
 			return err
 		}
@@ -145,7 +145,7 @@ func test_sdf_gpu_cpu() error {
 		pos := meshgrid(bounds, nx, ny, nz)
 		distCPU := make([]float32, len(pos))
 		distGPU := make([]float32, len(pos))
-		sdf, err := glsdf3.CPUEvaluator(obj)
+		sdf, err := gleval.AssertSDF3(obj)
 		if err != nil {
 			return err
 		}
@@ -170,7 +170,7 @@ func test_sdf_gpu_cpu() error {
 		pos := meshgrid(bounds, nx, ny, nz)
 		distCPU := make([]float32, len(pos))
 		distGPU := make([]float32, len(pos))
-		sdf, err := glsdf3.CPUEvaluator(obj)
+		sdf, err := gleval.AssertSDF3(obj)
 		if err != nil {
 			return err
 		}
@@ -197,7 +197,7 @@ func test_sdf_gpu_cpu() error {
 			pos := meshgrid(bounds, nx, ny, nz)
 			distCPU := make([]float32, len(pos))
 			distGPU := make([]float32, len(pos))
-			sdf, err := glsdf3.CPUEvaluator(obj)
+			sdf, err := gleval.AssertSDF3(obj)
 			if err != nil {
 				return err
 			}
@@ -224,7 +224,7 @@ func test_sdf_gpu_cpu() error {
 			pos := meshgrid(bounds, nx, ny, nz)
 			distCPU := make([]float32, len(pos))
 			distGPU := make([]float32, len(pos))
-			sdf, err := glsdf3.CPUEvaluator(obj)
+			sdf, err := gleval.AssertSDF3(obj)
 			if err != nil {
 				return err
 			}

@@ -8,6 +8,7 @@ import (
 	"github.com/soypat/glgl/math/ms2"
 	"github.com/soypat/glgl/math/ms3"
 	"github.com/soypat/sdf/form3/glsdf3/glbuild"
+	"github.com/soypat/sdf/form3/glsdf3/gleval"
 )
 
 // Screws
@@ -98,6 +99,14 @@ func Screw(length float32, thread Threader) (glbuild.Shader3D, error) {
 	return &s, nil
 }
 
+func (s *screw) ForEachChild(any, func(any, *glbuild.Shader3D) error) error {
+	return nil
+}
+
+func (s *screw) ForEach2DChild(userData any, fn func(any, *glbuild.Shader2D) error) error {
+	return fn(userData, &s.thread)
+}
+
 func (s *screw) AppendShaderName(b []byte) []byte {
 	b = append(b, "screw_"...)
 	b = s.thread.AppendShaderName(b)
@@ -105,15 +114,36 @@ func (s *screw) AppendShaderName(b []byte) []byte {
 }
 
 func (s *screw) AppendShaderBody(b []byte) []byte {
-	a := `
-p0 = vec2(length(p), 	
-`
-
+	b = glbuild.AppendFloatDecl(b, "lead", s.lead)
+	b = glbuild.AppendFloatDecl(b, "pitch", s.pitch)
+	b = glbuild.AppendFloatDecl(b, "taper", s.taper)
+	b = glbuild.AppendFloatDecl(b, "L", s.length)
+	b = append(b, `
+#define Pi 3.1415926535897932384626433832795
+float y = length(p.xy);
+if (taper != 0) { y += p.z * atan(p.x, taper); }
+float theta = atan(p.y, p.x);
+float z = p.z + lead*theta/(2*Pi);
+float sawt = (z + pitch/2)/pitch;
+float saw = pitch*(sawt - floor(sawt)) - 0.5*pitch;
+vec2 p2 = vec2(saw ,y);
+`...)
+	b = glbuild.AppendDistanceDecl(b, s.thread, "d2", "p2")
+	b = append(b, `float d3 = abs(p.z) - L;
+return max(d2, d3);`...)
 	return b
 }
 
 // Evaluate returns the minimum distance to a 3d screw form.
 func (s *screw) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
+	vp, err := gleval.GetVecPool(userData)
+	if err != nil {
+		return err
+	}
+	transf := vp.V2.Acquire(len(pos))
+	defer vp.V2.Release(transf)
+
+	// glsdf3.CPUEvaluator
 	for i, p := range pos {
 		// map the 3d point back to the xy space of the profile
 		p0 := ms2.Vec{}
@@ -127,13 +157,15 @@ func (s *screw) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 		theta := math.Atan2(p.Y, p.X)
 		z := p.Z + s.lead*theta/(2*math.Pi)
 		p0.X = sawTooth(z, s.pitch)
-		// get the thread profile distance
-		d0 := s.thread.Evaluate(p0)
-		// create a region for the screw length
-		d1 := math.Abs(p.Z) - s.length
-		// return the intersection
-		return math.Max(d0, d1)
+		transf[i] = p0
 	}
+
+	// get the thread profile distance
+	d0 := s.thread.Evaluate(p0)
+	// create a region for the screw length
+	d1 := math.Abs(p.Z) - s.length
+	// return the intersection
+	return math.Max(d0, d1)
 
 }
 

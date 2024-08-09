@@ -1,32 +1,12 @@
 package glsdf3
 
 import (
-	"fmt"
-
 	"github.com/chewxy/math32"
 	"github.com/soypat/glgl/math/ms2"
 	"github.com/soypat/glgl/math/ms3"
 	"github.com/soypat/sdf/form3/glsdf3/glbuild"
 	"github.com/soypat/sdf/form3/glsdf3/gleval"
 )
-
-// CPUEvaluator
-func CPUEvaluator(root glbuild.Shader3D) (gleval.SDF3, error) {
-	sdf, err := assertEvaluator(root)
-	if err != nil {
-		return nil, fmt.Errorf("top level SDF cannot be CPU evaluated: %s", err.Error())
-	}
-	sdfcpu := gleval.SDF3CPU{
-		SDF: sdf,
-	}
-	// Do a test evaluation.
-	bb := sdfcpu.Bounds()
-	err = sdfcpu.Evaluate([]ms3.Vec{bb.Min}, []float32{0}, nil)
-	if err != nil {
-		return nil, err
-	}
-	return &sdfcpu, nil
-}
 
 func (u *sphere) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	r := u.r
@@ -222,7 +202,7 @@ func (u *smoothIntersect) Evaluate(pos []ms3.Vec, dist []float32, userData any) 
 }
 
 func (s *scale) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
-	sdf, err := assertEvaluator(s.s)
+	sdf, err := gleval.AssertSDF3(s.s)
 	if err != nil {
 		return err
 	}
@@ -248,7 +228,7 @@ func (s *scale) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 }
 
 func (s *symmetry) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
-	sdf, err := assertEvaluator(s.s)
+	sdf, err := gleval.AssertSDF3(s.s)
 	if err != nil {
 		return err
 	}
@@ -279,7 +259,7 @@ func (s *symmetry) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 }
 
 func (a *array) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
-	sdf, err := assertEvaluator(a.s)
+	sdf, err := gleval.AssertSDF3(a.s)
 	if err != nil {
 		return err
 	}
@@ -333,7 +313,7 @@ func (a *array) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 }
 
 func (e *elongate) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
-	sdf, err := assertEvaluator(e.s)
+	sdf, err := gleval.AssertSDF3(e.s)
 	if err != nil {
 		return err
 	}
@@ -362,7 +342,7 @@ func (e *elongate) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 }
 
 func (sh *shell) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
-	sdf, err := assertEvaluator(sh.s)
+	sdf, err := gleval.AssertSDF3(sh.s)
 	if err != nil {
 		return err
 	}
@@ -378,7 +358,7 @@ func (sh *shell) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 }
 
 func (r *round) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
-	sdf, err := assertEvaluator(r.s)
+	sdf, err := gleval.AssertSDF3(r.s)
 	if err != nil {
 		return err
 	}
@@ -404,7 +384,7 @@ func (t *translate) Evaluate(pos []ms3.Vec, dist []float32, userData any) error 
 	for i, p := range pos {
 		transformed[i] = ms3.Sub(p, T)
 	}
-	sdf, err := assertEvaluator(t.s)
+	sdf, err := gleval.AssertSDF3(t.s)
 	if err != nil {
 		return err
 	}
@@ -422,7 +402,7 @@ func (t *transform) Evaluate(pos []ms3.Vec, dist []float32, userData any) error 
 	for i, p := range pos {
 		transformed[i] = Tinv.MulPosition(p)
 	}
-	sdf, err := assertEvaluator(t.s)
+	sdf, err := gleval.AssertSDF3(t.s)
 	if err != nil {
 		return err
 	}
@@ -434,7 +414,7 @@ func (e *extrusion) Evaluate(pos []ms3.Vec, dist []float32, userData any) error 
 	if err != nil {
 		return err
 	}
-	sdf, err := assertEvaluator2D(e.s)
+	sdf, err := gleval.AssertSDF2(e.s)
 	if err != nil {
 		return err
 	}
@@ -462,7 +442,7 @@ func (e *revolution) Evaluate(pos []ms3.Vec, dist []float32, userData any) error
 	if err != nil {
 		return err
 	}
-	sdf, err := assertEvaluator2D(e.s)
+	sdf, err := gleval.AssertSDF2(e.s)
 	if err != nil {
 		return err
 	}
@@ -639,7 +619,7 @@ func (a *array2D) Evaluate(pos []ms2.Vec, dist []float32, userData any) error {
 	s := a.d
 	n := a.nvec2()
 	minlim := ms2.Vec{}
-	sdf, err := assertEvaluator2D(a.s)
+	sdf, err := gleval.AssertSDF2(a.s)
 	if err != nil {
 		return err
 	}
@@ -690,7 +670,7 @@ func evaluateShaders(pos []ms3.Vec, userData any, shaders ...glbuild.Shader3D) (
 		}
 	}
 	for i := range shaders {
-		sdf, err := assertEvaluator(shaders[i])
+		sdf, err := gleval.AssertSDF3(shaders[i])
 		if err != nil {
 			finalizer()
 			return nil, nil, err
@@ -720,7 +700,7 @@ func evaluateShaders2D(pos []ms2.Vec, userData any, shaders ...glbuild.Shader2D)
 		}
 	}
 	for i := range shaders {
-		sdf, err := assertEvaluator2D(shaders[i])
+		sdf, err := gleval.AssertSDF2(shaders[i])
 		if err != nil {
 			finalizer()
 			return nil, nil, err
@@ -734,20 +714,4 @@ func evaluateShaders2D(pos []ms2.Vec, userData any, shaders ...glbuild.Shader2D)
 		}
 	}
 	return distances, finalizer, nil
-}
-
-func assertEvaluator(s glbuild.Shader3D) (gleval.SDF3, error) {
-	evaluator, ok := s.(gleval.SDF3)
-	if !ok {
-		return nil, fmt.Errorf("%T does not implement 3D evaluator", s)
-	}
-	return evaluator, nil
-}
-
-func assertEvaluator2D(s glbuild.Shader2D) (gleval.SDF2, error) {
-	evaluator, ok := s.(gleval.SDF2)
-	if !ok {
-		return nil, fmt.Errorf("%T does not implement 2D evaluator", s)
-	}
-	return evaluator, nil
 }

@@ -8,6 +8,48 @@ import (
 	"github.com/soypat/glgl/math/ms3"
 )
 
+// NewCPUSDF3 checks if the shader implements CPU evaluation and returns a [gleval.SDF3]
+// ready for evaluation, taking care of the buffers for evaluating the SDF correctly.
+//
+// The returned [gleval.SDF3] should only require a [gleval.VecPool] as a userData argument,
+// this is automatically taken care of if a nil userData is passed in.
+func NewCPUSDF3(root any) (SDF3, error) {
+	sdf, err := AssertSDF3(root)
+	if err != nil {
+		return nil, fmt.Errorf("top level SDF cannot be CPU evaluated: %s", err.Error())
+	}
+	sdfcpu := SDF3CPU{
+		SDF: sdf,
+	}
+	// Do a test evaluation with 1 value.
+	bb := sdfcpu.Bounds()
+	err = sdfcpu.Evaluate([]ms3.Vec{bb.Min}, []float32{0}, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &sdfcpu, nil
+}
+
+// AssertSDF3 asserts the Shader3D as a SDF3 implementation
+// and returns the raw result. It provides readable errors beyond simply converting the interface.
+func AssertSDF3(s any) (SDF3, error) {
+	evaluator, ok := s.(SDF3)
+	if !ok {
+		return nil, fmt.Errorf("%T does not implement 3D evaluator", s)
+	}
+	return evaluator, nil
+}
+
+// AssertSDF2 asserts the argument as a SDF2 implementation
+// and returns the raw result. It provides readable errors beyond simply converting the interface.
+func AssertSDF2(s any) (SDF2, error) {
+	evaluator, ok := s.(SDF2)
+	if !ok {
+		return nil, fmt.Errorf("%T does not implement 2D evaluator", s)
+	}
+	return evaluator, nil
+}
+
 type SDF3CPU struct {
 	SDF SDF3
 	vp  VecPool
