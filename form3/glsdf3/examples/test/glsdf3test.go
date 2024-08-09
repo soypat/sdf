@@ -112,7 +112,7 @@ var OtherUnaryRandomizedOps2D3D = []func(a glbuild.Shader2D, rng *rand.Rand) glb
 
 func test_sdf_gpu_cpu() error {
 	const nx, ny, nz = 10, 10, 10
-	vp := &glsdf3.VecPool{}
+	vp := &glbuild.VecPool{}
 	for _, primitive := range PremadePrimitives {
 		log.Printf("begin evaluating %s\n", getBaseTypename(primitive))
 		bounds := primitive.Bounds()
@@ -367,7 +367,7 @@ func assertEvaluator(s glbuild.Shader3D) interface {
 	return evaluator
 }
 
-func evaluateCPU(obj glbuild.Shader3D, pos []ms3.Vec, dist []float32, vp *glsdf3.VecPool) error {
+func evaluateCPU(obj glbuild.Shader3D, pos []ms3.Vec, dist []float32, vp *glbuild.VecPool) error {
 	if len(pos) != len(dist) {
 		return errors.New("mismatched position/distance lengths")
 	}
@@ -385,7 +385,7 @@ func evaluateCPU(obj glbuild.Shader3D, pos []ms3.Vec, dist []float32, vp *glsdf3
 
 type sdfcpu struct {
 	s  glbuild.Shader3D
-	vp glsdf3.VecPool
+	vp glbuild.VecPool
 }
 
 func (sdf sdfcpu) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {

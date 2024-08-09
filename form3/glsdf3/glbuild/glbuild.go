@@ -36,15 +36,15 @@ type shader3D2D interface {
 
 // ParseAppendNodes parses the shader object tree and appends all nodes in Depth First order
 // to the dst Shader argument buffer and returns the result.
-func ParseAppendNodes(dst []Shader, obj Shader) (baseName string, nodes []Shader, err error) {
-	if obj == nil {
+func ParseAppendNodes(dst []Shader, root Shader) (baseName string, nodes []Shader, err error) {
+	if root == nil {
 		return "", nil, errors.New("nil shader object")
 	}
-	baseName = string(obj.AppendShaderName([]byte{}))
+	baseName = string(root.AppendShaderName([]byte{}))
 	if baseName == "" {
 		return "", nil, errors.New("empty shader name")
 	}
-	dst, err = AppendAllNodes(dst, obj)
+	dst, err = AppendAllNodes(dst, root)
 	if err != nil {
 		return "", nil, err
 	}
@@ -139,6 +139,16 @@ func AppendVec3Decl(b []byte, name string, v ms3.Vec) []byte {
 	b = append(b, "vec3 "...)
 	b = append(b, name...)
 	b = append(b, "=vec3("...)
+	arr := v.Array()
+	b = AppendFloats(b, arr[:], ',', '-', '.')
+	b = append(b, ')', ';', '\n')
+	return b
+}
+
+func AppendVec2Decl(b []byte, name string, v ms2.Vec) []byte {
+	b = append(b, "vec2 "...)
+	b = append(b, name...)
+	b = append(b, "=vec2("...)
 	arr := v.Array()
 	b = AppendFloats(b, arr[:], ',', '-', '.')
 	b = append(b, ')', ';', '\n')

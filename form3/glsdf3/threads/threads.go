@@ -7,7 +7,7 @@ import (
 
 	"github.com/soypat/glgl/math/ms2"
 	"github.com/soypat/glgl/math/ms3"
-	"github.com/soypat/sdf/form3/glsdf3"
+	"github.com/soypat/sdf/form3/glsdf3/glbuild"
 )
 
 // Screws
@@ -24,7 +24,7 @@ import (
 // clearance.
 
 type Threader interface {
-	Thread() (glsdf3.Shader2D, error)
+	Thread() (glbuild.Shader2D, error)
 	ThreadParams() Parameters
 }
 
@@ -58,11 +58,11 @@ type ScrewParameters struct {
 
 // screw is a 3d screw form.
 type screw struct {
-	thread glsdf3.Shader2D // 2D thread profile
-	pitch  float32         // thread to thread distance
-	lead   float32         // distance per turn (starts * pitch)
-	length float32         // total length of screw
-	taper  float32         // thread taper angle
+	thread glbuild.Shader2D // 2D thread profile
+	pitch  float32          // thread to thread distance
+	lead   float32          // distance per turn (starts * pitch)
+	length float32          // total length of screw
+	taper  float32          // thread taper angle
 	// starts int     // number of thread starts
 }
 
@@ -71,7 +71,7 @@ type screw struct {
 // - thread taper angle (radians)
 // - pitch thread to thread distance
 // - number of thread starts (< 0 for left hand threads)
-func Screw(length float32, thread Threader) (glsdf3.Shader3D, error) {
+func Screw(length float32, thread Threader) (glbuild.Shader3D, error) {
 	if thread == nil {
 		return nil, errors.New("nil threader")
 	}
@@ -105,30 +105,36 @@ func (s *screw) AppendShaderName(b []byte) []byte {
 }
 
 func (s *screw) AppendShaderBody(b []byte) []byte {
+	a := `
+p0 = vec2(length(p), 	
+`
 
 	return b
 }
 
 // Evaluate returns the minimum distance to a 3d screw form.
-func (s *screw) Evaluate(p ms3.Vec) float32 {
-	// map the 3d point back to the xy space of the profile
-	p0 := ms2.Vec{}
-	// the distance from the 3d z-axis maps to the 2d y-axis
-	p0.Y = math.Sqrt(p.X*p.X + p.Y*p.Y)
-	if s.taper != 0 {
-		p0.Y += p.Z * math.Atan(s.taper)
+func (s *screw) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
+	for i, p := range pos {
+		// map the 3d point back to the xy space of the profile
+		p0 := ms2.Vec{}
+		// the distance from the 3d z-axis maps to the 2d y-axis
+		p0.Y = math.Hypot(p.X, p.Y)
+		if s.taper != 0 {
+			p0.Y += p.Z * math.Atan(s.taper)
+		}
+		// the x/y angle and the z-height map to the 2d x-axis
+		// ie: the position along thread pitch
+		theta := math.Atan2(p.Y, p.X)
+		z := p.Z + s.lead*theta/(2*math.Pi)
+		p0.X = sawTooth(z, s.pitch)
+		// get the thread profile distance
+		d0 := s.thread.Evaluate(p0)
+		// create a region for the screw length
+		d1 := math.Abs(p.Z) - s.length
+		// return the intersection
+		return math.Max(d0, d1)
 	}
-	// the x/y angle and the z-height map to the 2d x-axis
-	// ie: the position along thread pitch
-	theta := math.Atan2(p.Y, p.X)
-	z := p.Z + s.lead*theta/(2*math.Pi)
-	p0.X = sawTooth(z, s.pitch)
-	// get the thread profile distance
-	d0 := s.thread.Evaluate(p0)
-	// create a region for the screw length
-	d1 := math.Abs(p.Z) - s.length
-	// return the intersection
-	return math.Max(d0, d1)
+
 }
 
 // BoundingBox returns the bounding box for a 3d screw form.
