@@ -1,4 +1,4 @@
-package glbuild
+package gleval
 
 import (
 	"errors"
@@ -7,6 +7,53 @@ import (
 	"github.com/soypat/glgl/math/ms2"
 	"github.com/soypat/glgl/math/ms3"
 )
+
+type SDF3CPU struct {
+	SDF SDF3
+	vp  VecPool
+}
+
+func (sdf *SDF3CPU) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
+	if userData == nil {
+		userData = &sdf.vp
+	}
+	err := sdf.SDF.Evaluate(pos, dist, userData)
+	err2 := sdf.vp.AssertAllReleased()
+	if err != nil {
+		if err2 != nil {
+			return fmt.Errorf("VecPool leak:(%s) SDF error:(%s)", err2, err)
+		}
+		return err
+	}
+	if err2 != nil {
+		return err2
+	}
+	return nil
+}
+
+func (sdf *SDF3CPU) Bounds() ms3.Box {
+	return sdf.SDF.Bounds()
+}
+
+// VecPool method exposes the SDF3CPU's VecPool in case user wishes to use their own userData in evaluations.
+func (sdf *SDF3CPU) VecPool() *VecPool { return &sdf.vp }
+
+// GetVecPool asserts the userData as a VecPool. If assert fails then
+// an error is returned with information on what went wrong.
+func GetVecPool(userData any) (*VecPool, error) {
+	vp, ok := userData.(*VecPool)
+	if !ok {
+		vper, ok := userData.(interface{ VecPool() *VecPool })
+		if !ok {
+			return nil, fmt.Errorf("want userData type glbuild.VecPool for CPU evaluations, got %T", userData)
+		}
+		vp = vper.VecPool()
+		if vp == nil {
+			return nil, fmt.Errorf("nil return value from VecPool method of %T", userData)
+		}
+	}
+	return vp, nil
+}
 
 // VecPool serves as a pool of Vec3 and float32 slices for
 // evaluating SDFs on the CPU while reducing garbage generation.
@@ -74,14 +121,4 @@ func (bp *bufPool[T]) assertAllReleased() error {
 		}
 	}
 	return nil
-}
-
-// GetVecPool asserts the userData as a VecPool. If assert fails then
-// an error is returned with information on what went wrong.
-func GetVecPool(userData any) (*VecPool, error) {
-	vp, ok := userData.(*VecPool)
-	if !ok {
-		return nil, fmt.Errorf("want userData type glbuild.VecPool for CPU evaluations, got %T", userData)
-	}
-	return vp, nil
 }

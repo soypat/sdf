@@ -10,8 +10,13 @@ import (
 	"github.com/soypat/glgl/math/ms3"
 )
 
+// Shader stores information for automatically generating SDF Shader pipelines.
 type Shader interface {
+	// AppendShaderName appends the name of the GL shader function
+	// to the buffer and returns the result. It should be unique to that shader.
 	AppendShaderName(b []byte) []byte
+	// AppendShaderBody appends the body of the shader function to the
+	// buffer and returns the result.
 	AppendShaderBody(b []byte) []byte
 }
 

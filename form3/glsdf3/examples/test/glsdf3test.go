@@ -19,6 +19,7 @@ import (
 	"github.com/soypat/glgl/v4.6-core/glgl"
 	"github.com/soypat/sdf/form3/glsdf3"
 	"github.com/soypat/sdf/form3/glsdf3/glbuild"
+	"github.com/soypat/sdf/form3/glsdf3/gleval"
 	"github.com/soypat/sdf/form3/glsdf3/glrender"
 )
 
@@ -112,14 +113,18 @@ var OtherUnaryRandomizedOps2D3D = []func(a glbuild.Shader2D, rng *rand.Rand) glb
 
 func test_sdf_gpu_cpu() error {
 	const nx, ny, nz = 10, 10, 10
-	vp := &glbuild.VecPool{}
+	vp := &gleval.VecPool{}
 	for _, primitive := range PremadePrimitives {
 		log.Printf("begin evaluating %s\n", getBaseTypename(primitive))
 		bounds := primitive.Bounds()
 		pos := meshgrid(bounds, nx, ny, nz)
 		distCPU := make([]float32, len(pos))
 		distGPU := make([]float32, len(pos))
-		err := evaluateCPU(primitive, pos, distCPU, vp)
+		sdf, err := glsdf3.CPUEvaluator(primitive)
+		if err != nil {
+			return err
+		}
+		err = sdf.Evaluate(pos, distCPU, vp)
 		if err != nil {
 			return err
 		}
@@ -140,7 +145,11 @@ func test_sdf_gpu_cpu() error {
 		pos := meshgrid(bounds, nx, ny, nz)
 		distCPU := make([]float32, len(pos))
 		distGPU := make([]float32, len(pos))
-		err := evaluateCPU(obj, pos, distCPU, vp)
+		sdf, err := glsdf3.CPUEvaluator(obj)
+		if err != nil {
+			return err
+		}
+		err = sdf.Evaluate(pos, distCPU, vp)
 		if err != nil {
 			return err
 		}
@@ -161,7 +170,11 @@ func test_sdf_gpu_cpu() error {
 		pos := meshgrid(bounds, nx, ny, nz)
 		distCPU := make([]float32, len(pos))
 		distGPU := make([]float32, len(pos))
-		err := evaluateCPU(obj, pos, distCPU, vp)
+		sdf, err := glsdf3.CPUEvaluator(obj)
+		if err != nil {
+			return err
+		}
+		err = sdf.Evaluate(pos, distCPU, vp)
 		if err != nil {
 			return err
 		}
@@ -184,7 +197,11 @@ func test_sdf_gpu_cpu() error {
 			pos := meshgrid(bounds, nx, ny, nz)
 			distCPU := make([]float32, len(pos))
 			distGPU := make([]float32, len(pos))
-			err := evaluateCPU(obj, pos, distCPU, vp)
+			sdf, err := glsdf3.CPUEvaluator(obj)
+			if err != nil {
+				return err
+			}
+			err = sdf.Evaluate(pos, distCPU, vp)
 			if err != nil {
 				return err
 			}
@@ -207,7 +224,11 @@ func test_sdf_gpu_cpu() error {
 			pos := meshgrid(bounds, nx, ny, nz)
 			distCPU := make([]float32, len(pos))
 			distGPU := make([]float32, len(pos))
-			err := evaluateCPU(obj, pos, distCPU, vp)
+			sdf, err := glsdf3.CPUEvaluator(obj)
+			if err != nil {
+				return err
+			}
+			err = sdf.Evaluate(pos, distCPU, vp)
 			if err != nil {
 				return err
 			}
@@ -367,7 +388,7 @@ func assertEvaluator(s glbuild.Shader3D) interface {
 	return evaluator
 }
 
-func evaluateCPU(obj glbuild.Shader3D, pos []ms3.Vec, dist []float32, vp *glbuild.VecPool) error {
+func evaluateCPU(obj glbuild.Shader3D, pos []ms3.Vec, dist []float32, vp *gleval.VecPool) error {
 	if len(pos) != len(dist) {
 		return errors.New("mismatched position/distance lengths")
 	}
@@ -381,24 +402,6 @@ func evaluateCPU(obj glbuild.Shader3D, pos []ms3.Vec, dist []float32, vp *glbuil
 		return err
 	}
 	return nil
-}
-
-type sdfcpu struct {
-	s  glbuild.Shader3D
-	vp glbuild.VecPool
-}
-
-func (sdf sdfcpu) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
-	err := evaluateCPU(sdf.s, pos, dist, &sdf.vp)
-	err2 := sdf.vp.AssertAllReleased()
-	if err2 != nil {
-		return err2
-	}
-	return err
-}
-
-func (sdf sdfcpu) Bounds() ms3.Box {
-	return sdf.s.Bounds()
 }
 
 type sdfgpu struct {

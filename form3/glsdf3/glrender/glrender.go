@@ -6,21 +6,17 @@ import (
 
 	"github.com/chewxy/math32"
 	"github.com/soypat/glgl/math/ms3"
+	"github.com/soypat/sdf/form3/glsdf3/gleval"
 )
 
 const sqrt3 = 1.73205080757
-
-type SDF3 interface {
-	Evaluate(pos []ms3.Vec, dist []float32, userData any) error
-	Bounds() ms3.Box
-}
 
 type Renderer interface {
 	ReadTriangles(dst []ms3.Triangle) (n int, err error)
 }
 
 type octree struct {
-	s          SDF3
+	s          gleval.SDF3
 	origin     ms3.Vec
 	levels     int
 	resolution float32
@@ -51,7 +47,7 @@ type icube struct {
 	lvl int
 }
 
-func NewOctreeRenderer(s SDF3, cubeResolution float32, evalBufferSize int) (Renderer, error) {
+func NewOctreeRenderer(s gleval.SDF3, cubeResolution float32, evalBufferSize int) (Renderer, error) {
 	if evalBufferSize < 64 {
 		return nil, errors.New("bad octree eval buffer size")
 	} else if cubeResolution <= 0 {
