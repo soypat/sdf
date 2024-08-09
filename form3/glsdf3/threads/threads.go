@@ -90,12 +90,6 @@ func Screw(length float32, thread Threader) (glbuild.Shader3D, error) {
 	s.length = length / 2
 	s.taper = params.Taper
 	s.lead = -s.pitch * float32(params.Starts)
-	// Work out the bounding box.
-	// The max-y axis of the sdf2 bounding box is the radius of the thread.
-	bb := s.thread.Bounds()
-	r := bb.Max.Y
-	// add the taper increment
-	r += s.length * math.Tan(s.taper)
 	return &s, nil
 }
 
@@ -142,36 +136,55 @@ func (s *screw) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	}
 	transf := vp.V2.Acquire(len(pos))
 	defer vp.V2.Release(transf)
-
-	// glsdf3.CPUEvaluator
+	sdf, err := gleval.AssertSDF2(s.thread)
+	if err != nil {
+		return err
+	}
+	taper := s.taper
+	lead := s.lead
+	pitch := s.pitch
 	for i, p := range pos {
 		// map the 3d point back to the xy space of the profile
 		p0 := ms2.Vec{}
 		// the distance from the 3d z-axis maps to the 2d y-axis
 		p0.Y = math.Hypot(p.X, p.Y)
-		if s.taper != 0 {
-			p0.Y += p.Z * math.Atan(s.taper)
+		if taper != 0 {
+			p0.Y += p.Z * math.Atan(taper)
 		}
 		// the x/y angle and the z-height map to the 2d x-axis
 		// ie: the position along thread pitch
 		theta := math.Atan2(p.Y, p.X)
-		z := p.Z + s.lead*theta/(2*math.Pi)
-		p0.X = sawTooth(z, s.pitch)
+		z := p.Z + lead*theta/(2*math.Pi)
+		p0.X = sawTooth(z, pitch)
 		transf[i] = p0
 	}
-
-	// get the thread profile distance
-	d0 := s.thread.Evaluate(p0)
-	// create a region for the screw length
-	d1 := math.Abs(p.Z) - s.length
-	// return the intersection
-	return math.Max(d0, d1)
-
+	// Get thread profile distance.
+	err = sdf.Evaluate(transf, dist, userData)
+	if err != nil {
+		return err
+	}
+	L := s.length
+	for i, p := range pos {
+		d0 := dist[i]
+		d1 := math.Abs(p.Z) - L    // Region for screw length.
+		dist[i] = math.Max(d0, d1) // Return intersection of both.
+	}
+	return nil
 }
 
 // BoundingBox returns the bounding box for a 3d screw form.
 func (s *screw) Bounds() ms3.Box {
+	r := s.radius()
 	return ms3.Box{Min: ms3.Vec{X: -r, Y: -r, Z: -s.length}, Max: ms3.Vec{X: r, Y: r, Z: s.length}}
+}
+
+func (s *screw) radius() float32 {
+	// Work out the bounding box.
+	// The max-y axis of the sdf2 bounding box is the radius of the thread.
+	r := s.thread.Bounds().Max.Y
+	// add the taper increment
+	r += s.length * math.Tan(s.taper)
+	return r
 }
 
 func sawTooth(x, period float32) float32 {

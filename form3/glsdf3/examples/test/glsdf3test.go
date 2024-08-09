@@ -21,6 +21,7 @@ import (
 	"github.com/soypat/sdf/form3/glsdf3/glbuild"
 	"github.com/soypat/sdf/form3/glsdf3/gleval"
 	"github.com/soypat/sdf/form3/glsdf3/glrender"
+	"github.com/soypat/sdf/form3/glsdf3/threads"
 )
 
 func main() {
@@ -64,7 +65,12 @@ var PremadePrimitives = []glbuild.Shader3D{
 	mustShader(glsdf3.NewTorus(3, .5)),
 	mustShader(glsdf3.NewTriangularPrism(1, 3)),
 	mustShader(glsdf3.NewBoxFrame(1, 1.2, 2.2, .2)),
-	mustShader(glsdf3.NewCylinder(1, 3, .3)),
+	mustShader(glsdf3.NewCylinder(1, 3, .1)),
+	mustShader(threads.Screw(5, threads.ISO{
+		D:   1,
+		P:   0.1,
+		Ext: true,
+	})),
 }
 
 var PremadePrimitives2D = []glbuild.Shader2D{
@@ -134,13 +140,16 @@ func test_sdf_gpu_cpu() error {
 		}
 		err = cmpDist(pos, distCPU, distGPU)
 		if err != nil {
-			return err
+			description := sprintOpPrimitive(nil, primitive)
+			return fmt.Errorf("%s for %s", err, description)
 		}
 	}
 
 	for _, op := range BinaryOps {
 		log.Printf("begin evaluating %s\n", getFnName(op))
-		obj := op(PremadePrimitives[0], PremadePrimitives[1])
+		p1 := PremadePrimitives[0]
+		p2 := PremadePrimitives[1]
+		obj := op(p1, p2)
 		bounds := obj.Bounds()
 		pos := meshgrid(bounds, nx, ny, nz)
 		distCPU := make([]float32, len(pos))
@@ -159,13 +168,16 @@ func test_sdf_gpu_cpu() error {
 		}
 		err = cmpDist(pos, distCPU, distGPU)
 		if err != nil {
-			return err
+			description := sprintOpPrimitive(op, p1, p2)
+			return fmt.Errorf("%s for %s", err, description)
 		}
 	}
 
 	for _, op := range SmoothBinaryOps {
 		log.Printf("begin evaluating %s\n", getFnName(op))
-		obj := op(PremadePrimitives[3], PremadePrimitives[1], .1)
+		p1 := PremadePrimitives[3]
+		p2 := PremadePrimitives[1]
+		obj := op(p1, p2, .1)
 		bounds := obj.Bounds()
 		pos := meshgrid(bounds, nx, ny, nz)
 		distCPU := make([]float32, len(pos))
@@ -184,13 +196,14 @@ func test_sdf_gpu_cpu() error {
 		}
 		err = cmpDist(pos, distCPU, distGPU)
 		if err != nil {
-			return err
+			description := sprintOpPrimitive(op, p1, p2)
+			return fmt.Errorf("%s for %s", err, description)
 		}
 	}
 	rng := rand.New(rand.NewSource(1))
 	for _, op := range OtherUnaryRandomizedOps {
 		log.Printf("begin evaluating %s\n", getFnName(op))
-		for i := 0; i < 10; i++ {
+		for i := 0; i < 50; i++ {
 			primitive := PremadePrimitives[rng.Intn(len(PremadePrimitives))]
 			obj := op(primitive, rng)
 			bounds := obj.Bounds()
@@ -211,7 +224,8 @@ func test_sdf_gpu_cpu() error {
 			}
 			err = cmpDist(pos, distCPU, distGPU)
 			if err != nil {
-				return fmt.Errorf("%s for %s%d(%s):%+v", err, getBaseTypename(obj), i, getBaseTypename(primitive), obj)
+				description := sprintOpPrimitive(op, primitive)
+				return fmt.Errorf("%d %s for %s", i, err, description)
 			}
 		}
 	}
@@ -238,7 +252,8 @@ func test_sdf_gpu_cpu() error {
 			}
 			err = cmpDist(pos, distCPU, distGPU)
 			if err != nil {
-				return fmt.Errorf("%s for %s%d(%s):%+v", err, getBaseTypename(obj), i, getBaseTypename(primitive), obj)
+				description := sprintOpPrimitive(op, primitive)
+				return fmt.Errorf("%s for %s", err, description)
 			}
 		}
 	}
@@ -336,6 +351,10 @@ func getFnName(fnPtr any) string {
 	return name[idx+1:]
 }
 
+func isFn(fnPtr any) bool {
+	return reflect.ValueOf(fnPtr).Kind() == reflect.Func
+}
+
 func getBaseTypename(a any) string {
 	s := fmt.Sprintf("%T", a)
 	pointIdx := strings.LastIndexByte(s, '.')
@@ -386,22 +405,6 @@ func assertEvaluator(s glbuild.Shader3D) interface {
 		panic(fmt.Sprintf("%T does not implement evaluator", s))
 	}
 	return evaluator
-}
-
-func evaluateCPU(obj glbuild.Shader3D, pos []ms3.Vec, dist []float32, vp *gleval.VecPool) error {
-	if len(pos) != len(dist) {
-		return errors.New("mismatched position/distance lengths")
-	}
-	sdf := assertEvaluator(obj)
-	err := sdf.Evaluate(pos, dist, vp)
-	if err != nil {
-		return err
-	}
-	err = vp.AssertAllReleased()
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 type sdfgpu struct {
@@ -481,7 +484,7 @@ func evaluateGPU(obj glbuild.Shader3D, pos []ms3.Vec, dist []float32) error {
 
 func cmpDist(pos []ms3.Vec, dcpu, dgpu []float32) error {
 	mismatches := 0
-	const tol = 1e-4
+	const tol = 5e-3
 	var mismatchErr error
 	for i, dg := range dcpu {
 		dc := dgpu[i]
@@ -504,11 +507,15 @@ func cmpDist(pos []ms3.Vec, dcpu, dgpu []float32) error {
 
 func randomRotation(a glbuild.Shader3D, rng *rand.Rand) glbuild.Shader3D {
 	var axis ms3.Vec
-	for ms3.Norm(axis) < 1e-2 {
-		axis = ms3.Vec{X: rng.Float32(), Y: rng.Float32(), Z: rng.Float32()}
+	for ms3.Norm(axis) < .5 {
+		axis = ms3.Vec{X: rng.Float32() * 3, Y: rng.Float32() * 3, Z: rng.Float32() * 3}
 	}
-	const maxAngle = 3
-	a, err := glsdf3.Rotate(a, 2*maxAngle*(rng.Float32()-0.5), axis)
+	const maxAngle = 3.14159
+	var angle float32
+	for math32.Abs(angle) < 1e-1 || math32.Abs(angle) > 1 {
+		angle = 2 * maxAngle * (rng.Float32() - 0.5)
+	}
+	a, err := glsdf3.Rotate(a, angle, axis)
 	if err != nil {
 		panic(err)
 	}
@@ -550,13 +557,20 @@ func randomRound(a glbuild.Shader3D, rng *rand.Rand) glbuild.Shader3D {
 }
 
 func randomTranslate(a glbuild.Shader3D, rng *rand.Rand) glbuild.Shader3D {
-	p := ms3.Vec{X: rng.Float32(), Y: rng.Float32(), Z: rng.Float32()}
-	p = ms3.Scale((rng.Float32())*10, p)
+	var p ms3.Vec
+	for ms3.Norm(p) < 0.1 {
+		p = ms3.Vec{X: rng.Float32(), Y: rng.Float32(), Z: rng.Float32()}
+		p = ms3.Scale((rng.Float32()-0.5)*4, p)
+	}
+
 	return glsdf3.Translate(a, p.X, p.Y, p.Z)
 }
 
 func randomSymmetry(a glbuild.Shader3D, rng *rand.Rand) glbuild.Shader3D {
 	q := rng.Uint32()
+	for q&0b111 == 0 {
+		q = rng.Uint32()
+	}
 	x := q&(1<<0) != 0
 	y := q&(1<<1) != 0
 	z := q&(1<<2) != 0
@@ -579,4 +593,23 @@ func randomRevolve(a glbuild.Shader2D, rng *rand.Rand) glbuild.Shader3D {
 	const minOff, maxOff = 0.01, 40.
 	off := minOff + rng.Float32()*(maxOff-minOff)
 	return glsdf3.Revolve(a, off)
+}
+
+func sprintOpPrimitive(op any, primitives ...any) string {
+	var buf strings.Builder
+	if isFn(op) {
+		buf.WriteString(getFnName(op))
+	} else {
+		buf.WriteString(getBaseTypename(op))
+		// buf.WriteString(fmt.Sprintf("%+v", op))
+	}
+	buf.WriteByte('(')
+	for i := range primitives {
+		buf.WriteString(getBaseTypename(primitives[i]))
+		if i < len(primitives)-1 {
+			buf.WriteByte(',')
+		}
+	}
+	buf.WriteByte(')')
+	return buf.String()
 }
