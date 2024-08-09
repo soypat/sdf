@@ -2,6 +2,7 @@ package glsdf3
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"strconv"
 
@@ -83,29 +84,29 @@ func (c *rect2D) ForEach2DChild(userData any, fn func(userData any, s *Shader2D)
 }
 
 type hex2D struct {
-	s float32
+	side float32
 }
 
 func NewHexagon(side float32) (Shader2D, error) {
 	if side <= 0 {
 		return nil, errors.New("zero or negative hexagon dimension")
 	}
-	return &hex2D{s: side}, nil
+	return &hex2D{side: side}, nil
 }
 
 func (c *hex2D) Bounds() ms2.Box {
-	s := c.s
+	s := c.side
 	return ms2.NewBox(-s, -s, s, s)
 }
 
 func (c *hex2D) AppendShaderName(b []byte) []byte {
 	b = append(b, "hex2d"...)
-	b = fappend(b, c.s, 'n', 'p')
+	b = fappend(b, c.side, 'n', 'p')
 	return b
 }
 
 func (c *hex2D) AppendShaderBody(b []byte) []byte {
-	b = appendFloatDecl(b, "r", c.s)
+	b = appendFloatDecl(b, "r", c.side)
 	b = append(b, `const vec3 k = vec3(-0.866025404,0.5,0.577350269);
 p = abs(p);
 p -= 2.0*min(dot(k.xy,p),0.0)*k.xy;
@@ -144,10 +145,14 @@ func (c *ellipse2D) AppendShaderName(b []byte) []byte {
 
 func (c *ellipse2D) AppendShaderBody(b []byte) []byte {
 	b = appendVec2Decl(b, "ab", ms2.Vec{X: c.a, Y: c.b})
-	b = append(b, `p = abs(p); if( p.x > p.y ) {p=p.yx;ab=ab.yx;}
+	b = append(b, `p = abs(p);
+if( p.x > p.y ) {
+	p=p.yx;
+	ab=ab.yx;
+}
 float l = ab.y*ab.y - ab.x*ab.x;
 float m = ab.x*p.x/l;
-float m2 = m*m; 
+float m2 = m*m;
 float n = ab.y*p.y/l;
 float n2 = n*n; 
 float c = (m2+n2-1.0)/3.0;
@@ -156,17 +161,14 @@ float q = c3 + m2*n2*2.0;
 float d = c3 + m2*n2;
 float g = m + m*n2;
 float co;
-if( d<0.0 )
-{
+if ( d<0.0 ) {
 	float h = acos(q/c3)/3.0;
 	float s = cos(h);
 	float t = sin(h)*sqrt(3.0);
 	float rx = sqrt( -c*(s + t + 2.0) + m2 );
 	float ry = sqrt( -c*(s - t + 2.0) + m2 );
 	co = (ry+sign(l)*rx+abs(g)/(rx*ry)- m)/2.0;
-}
-else
-{
+} else {
 	float h = 2.0*m*n*sqrt( d );
 	float s = sign(q+h)*pow(abs(q+h), 1.0/3.0);
 	float u = sign(q-h)*pow(abs(q-h), 1.0/3.0);
@@ -333,7 +335,7 @@ func (r *revolution) AppendShaderName(b []byte) []byte {
 
 func (r *revolution) AppendShaderBody(b []byte) []byte {
 	b = appendFloatDecl(b, "w", r.off)
-	b = append(b, "vec2 q = vec2( length(p.xz) - o, p.y );\n"...)
+	b = append(b, "vec2 q = vec2( length(p.xz) - w, p.y );\n"...)
 	b = appendDistanceDecl(b, r.s, "d", "q")
 	b = append(b, "return d;"...)
 	return b
@@ -498,6 +500,81 @@ func (s *xor2D) AppendShaderBody(b []byte) []byte {
 	b = appendDistanceDecl(b, s.s1, "d1", "(p)")
 	b = appendDistanceDecl(b, s.s2, "d2", "(p)")
 	b = append(b, "return max(min(d1,d2),-max(d1,d2));"...)
+	return b
+}
+
+// Array is the domain repetition operation. It repeats domain centered around (x,y)=(0,0)
+func Array2D(s Shader2D, spacingX, spacingY float32, nx, ny int) (Shader2D, error) {
+	if nx <= 0 || ny <= 0 {
+		return nil, errors.New("invalid array repeat param")
+	} else if spacingX <= 0 || spacingY <= 0 {
+		return nil, errors.New("invalid array spacing")
+	}
+	return &array2D{s: s, d: ms2.Vec{X: spacingX, Y: spacingY}, nx: nx, ny: ny}, nil
+}
+
+type array2D struct {
+	s      Shader2D
+	d      ms2.Vec
+	nx, ny int
+}
+
+func (u *array2D) Bounds() ms2.Box {
+	size := ms2.MulElem(u.nvec2(), u.d)
+	bb := ms2.Box{Max: size}
+	halfd := ms2.Scale(0.5, u.d)
+	halfSize := ms2.Scale(-0.5, size)
+	offset := ms2.Add(halfSize, halfd)
+	bb = bb.Add(offset)
+	return bb
+}
+
+func (s *array2D) ForEach2DChild(userData any, fn func(userData any, s *Shader2D) error) error {
+	return fn(userData, &s.s)
+}
+
+func (s *array2D) AppendShaderName(b []byte) []byte {
+	b = append(b, "array2d"...)
+	arr := s.d.Array()
+	b = sliceappend(b, arr[:], 'q', 'n', 'p')
+	arr = s.nvec2().Array()
+	b = sliceappend(b, arr[:], 'q', 'n', 'p')
+	b = append(b, '_')
+	b = s.s.AppendShaderName(b)
+	return b
+}
+
+func (s *array2D) nvec2() ms2.Vec {
+	return ms2.Vec{X: float32(s.nx), Y: float32(s.ny)}
+}
+
+func (s *array2D) AppendShaderBody(b []byte) []byte {
+	sdf := string(s.s.AppendShaderName(nil))
+	// id is the tile index in 3 directions.
+	// o is neighbor offset direction (which neighboring tile is closest in 3 directions)
+	// s is scaling factors in 3 directions.
+	// rid is the neighboring tile index, which is then corrected for limited repetition using clamp.
+	body := fmt.Sprintf(`
+vec2 s = vec2(%f,%f);
+vec2 n = vec2(%d.,%d.);
+vec2 minlim = vec2(0.,0.);
+vec2 id = round(p/s);
+vec2 o = sign(p-s*id);
+float d = %f;
+for( int j=0; j<2; j++ )
+for( int i=0; i<2; i++ )
+{
+	vec2 rid = id + vec2(i,j)*o;
+	// limited repetition
+	rid = clamp(rid, minlim, n);
+	vec2 r = p - s*rid;
+	d = min( d, %s(r) );
+}
+return d;`, s.d.X, s.d.Y,
+		s.nx-1, s.ny-1,
+		largenum, sdf,
+	)
+	b = append(b, body...)
 	return b
 }
 

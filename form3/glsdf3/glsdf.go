@@ -32,6 +32,11 @@ type Shader3D interface {
 	Bounds() ms3.Box
 }
 
+type shader3D2D interface {
+	Shader3D
+	ForEach2DChild(userData any, fn func(userData any, s *Shader2D) error) error
+}
+
 // Programmer implements shader generation logic for Shader type.
 type Programmer struct {
 	scratchNodes  []Shader
@@ -188,7 +193,11 @@ func writeShader(w io.Writer, s Shader, scratch []byte) (int, error) {
 	scratch = scratch[:0]
 	scratch = append(scratch, "float "...)
 	scratch = s.AppendShaderName(scratch)
-	scratch = append(scratch, "(vec3 p) {\n"...)
+	if _, ok := s.(Shader3D); ok {
+		scratch = append(scratch, "(vec3 p) {\n"...)
+	} else {
+		scratch = append(scratch, "(vec2 p) {\n"...)
+	}
 	scratch = s.AppendShaderBody(scratch)
 	scratch = append(scratch, "\n}\n\n"...)
 	return w.Write(scratch)
@@ -197,6 +206,7 @@ func writeShader(w io.Writer, s Shader, scratch []byte) (int, error) {
 // appendAllNodes DFS iterates over all of root's descendants and appends all nodes
 // found to buf.
 func appendAllNodes(buf []Shader, root Shader) ([]Shader, error) {
+	var userData any
 	children := []Shader{root}
 	nextChild := 0
 	for len(children[nextChild:]) > 0 {
@@ -204,14 +214,27 @@ func appendAllNodes(buf []Shader, root Shader) ([]Shader, error) {
 		for _, obj := range newChildren {
 			nextChild++
 			var err error
-			if obj3, ok := obj.(Shader3D); ok {
-				err = obj3.ForEachChild(0, func(userData any, s *Shader3D) error {
+			obj3, ok3 := obj.(Shader3D)
+			obj2, ok2 := obj.(Shader2D)
+			if ok3 {
+				err = obj3.ForEachChild(userData, func(userData any, s *Shader3D) error {
 					children = append(children, *s)
 					return nil
 				})
-			} else if _, ok := obj.(Shader2D); ok {
-				panic("2D shader processing not implemented")
-			} else {
+				if obj32, ok32 := obj.(shader3D2D); ok32 {
+					err = obj32.ForEach2DChild(userData, func(userData any, s *Shader2D) error {
+						children = append(children, *s)
+						return nil
+					})
+				}
+			}
+			if err == nil && ok2 {
+				err = obj2.ForEach2DChild(userData, func(userData any, s *Shader2D) error {
+					children = append(children, *s)
+					return nil
+				})
+			}
+			if !ok2 && !ok3 {
 				panic("found shader that does not implement Shader3D nor Shader2D")
 			}
 			if err != nil {

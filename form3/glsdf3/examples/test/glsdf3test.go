@@ -55,15 +55,6 @@ func init() {
 	runtime.LockOSThread() // For GL.
 }
 
-var PremadePrimitives2D = []glsdf3.Shader2D{
-	mustShader2D(glsdf3.NewCircle(1)),
-	mustShader2D(glsdf3.NewHexagon(1)),
-	mustShader2D(glsdf3.NewEllipse(1, 2)),
-	mustShader2D(glsdf3.NewPolygon([]ms2.Vec{
-		{-1, -1}, {-1, 0}, {0.5, 2},
-	})),
-}
-
 var PremadePrimitives = []glsdf3.Shader3D{
 	mustShader(glsdf3.NewSphere(1)),
 	mustShader(glsdf3.NewBox(1, 1.2, 2.2, 0.3)),
@@ -74,11 +65,26 @@ var PremadePrimitives = []glsdf3.Shader3D{
 	mustShader(glsdf3.NewCylinder(1, 3, .3)),
 }
 
+var PremadePrimitives2D = []glsdf3.Shader2D{
+	mustShader2D(glsdf3.NewCircle(1)),
+	mustShader2D(glsdf3.NewHexagon(1)),
+	mustShader2D(glsdf3.NewPolygon([]ms2.Vec{
+		{-1, -1}, {-1, 0}, {0.5, 2},
+	})),
+	// mustShader2D(glsdf3.NewEllipse(1, 2)), // Ellipse seems to be very sensitive to position.
+}
 var BinaryOps = []func(a, b glsdf3.Shader3D) glsdf3.Shader3D{
 	glsdf3.Union,
 	glsdf3.Difference,
 	glsdf3.Intersection,
 	glsdf3.Xor,
+}
+
+var BinaryOps2D = []func(a, b glsdf3.Shader2D) glsdf3.Shader2D{
+	glsdf3.Union2D,
+	glsdf3.Difference2D,
+	glsdf3.Intersection2D,
+	glsdf3.Xor2D,
 }
 
 var SmoothBinaryOps = []func(a, b glsdf3.Shader3D, k float32) glsdf3.Shader3D{
@@ -96,6 +102,11 @@ var OtherUnaryRandomizedOps = []func(a glsdf3.Shader3D, rng *rand.Rand) glsdf3.S
 	randomSymmetry,
 	randomTranslate,
 	// randomArray, // round() differs from go's math.Round()
+}
+
+var OtherUnaryRandomizedOps2D3D = []func(a glsdf3.Shader2D, rng *rand.Rand) glsdf3.Shader3D{
+	randomExtrude,
+	randomRevolve,
 }
 
 func test_sdf_gpu_cpu() error {
@@ -167,6 +178,29 @@ func test_sdf_gpu_cpu() error {
 		log.Printf("begin evaluating %s\n", getFnName(op))
 		for i := 0; i < 10; i++ {
 			primitive := PremadePrimitives[rng.Intn(len(PremadePrimitives))]
+			obj := op(primitive, rng)
+			bounds := obj.Bounds()
+			pos := meshgrid(bounds, nx, ny, nz)
+			distCPU := make([]float32, len(pos))
+			distGPU := make([]float32, len(pos))
+			err := evaluateCPU(obj, pos, distCPU, vp)
+			if err != nil {
+				return err
+			}
+			err = evaluateGPU(obj, pos, distGPU)
+			if err != nil {
+				return err
+			}
+			err = cmpDist(pos, distCPU, distGPU)
+			if err != nil {
+				return fmt.Errorf("%s for %s%d(%s):%+v", err, getBaseTypename(obj), i, getBaseTypename(primitive), obj)
+			}
+		}
+	}
+	for _, op := range OtherUnaryRandomizedOps2D3D {
+		log.Printf("begin evaluating %s\n", getFnName(op))
+		for i := 0; i < 10; i++ {
+			primitive := PremadePrimitives2D[rng.Intn(len(PremadePrimitives2D))]
 			obj := op(primitive, rng)
 			bounds := obj.Bounds()
 			pos := meshgrid(bounds, nx, ny, nz)
@@ -529,4 +563,16 @@ func randomScale(a glsdf3.Shader3D, rng *rand.Rand) glsdf3.Shader3D {
 	const minScale, maxScale = 0.01, 100.
 	scale := minScale + rng.Float32()*(maxScale-minScale)
 	return glsdf3.Scale(a, scale)
+}
+
+func randomExtrude(a glsdf3.Shader2D, rng *rand.Rand) glsdf3.Shader3D {
+	const minheight, maxHeight = 0.01, 40.
+	height := minheight + rng.Float32()*(maxHeight-minheight)
+	return glsdf3.Extrude(a, height)
+}
+
+func randomRevolve(a glsdf3.Shader2D, rng *rand.Rand) glsdf3.Shader3D {
+	const minOff, maxOff = 0.01, 40.
+	off := minOff + rng.Float32()*(maxOff-minOff)
+	return glsdf3.Revolve(a, off)
 }

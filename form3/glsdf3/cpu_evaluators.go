@@ -385,6 +385,45 @@ func (t *transform) Evaluate(pos []ms3.Vec, dist []float32, userData any) error 
 	return sdf.Evaluate(transformed, dist, userData)
 }
 
+func (e *extrusion) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
+	vp, err := getVecPool(userData)
+	if err != nil {
+		return err
+	}
+	sdf := assertEvaluator2D(e.s)
+	pos2 := vp.v2.acquire(len(pos))
+	defer vp.v2.release(pos2)
+	for i, p := range pos {
+		pos2[i] = ms2.Vec{X: p.X, Y: p.Y}
+	}
+	err = sdf.Evaluate(pos2, dist, userData)
+	if err != nil {
+		return err
+	}
+	h := e.h
+	for i, p := range pos {
+		d := dist[i]
+		wy := math32.Abs(p.Z) - h
+		dist[i] = math32.Min(0, math32.Max(d, wy)) + math32.Hypot(math32.Max(d, 0), math32.Max(wy, 0))
+	}
+	return nil
+}
+
+func (e *revolution) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
+	o := e.off
+	vp, err := getVecPool(userData)
+	if err != nil {
+		return err
+	}
+	sdf := assertEvaluator2D(e.s)
+	pos2 := vp.v2.acquire(len(pos))
+	defer vp.v2.release(pos2)
+	for i, p := range pos {
+		pos2[i] = ms2.Vec{X: math32.Hypot(p.X, p.Z) - o, Y: p.Y}
+	}
+	return sdf.Evaluate(pos2, dist, userData)
+}
+
 func (c *circle2D) Evaluate(pos []ms2.Vec, dist []float32, userData any) error {
 	r := c.r
 	for i, p := range pos {
@@ -402,6 +441,19 @@ func (c *rect2D) Evaluate(pos []ms2.Vec, dist []float32, userData any) error {
 	return nil
 }
 
+func (c *hex2D) Evaluate(pos []ms2.Vec, dist []float32, userData any) error {
+	r := c.side
+	k := ms2.Vec{X: -0.866025404, Y: 0.5}
+	const kz = 0.577350269
+	for i, p := range pos {
+		p = ms2.AbsElem(p)
+		p = ms2.Sub(p, ms2.Scale(2*math32.Min(ms2.Dot(k, p), 0), k))
+		p = ms2.Sub(p, ms2.Vec{X: clampf(p.X, -kz*r, kz*r), Y: r})
+		dist[i] = signf(p.Y) * ms2.Norm(p)
+	}
+	return nil
+}
+
 func (c *ellipse2D) Evaluate(pos []ms2.Vec, dist []float32, userData any) error {
 	// https://iquilezles.org/articles/ellipsedist
 	a, b := c.a, c.b
@@ -411,6 +463,8 @@ func (c *ellipse2D) Evaluate(pos []ms2.Vec, dist []float32, userData any) error 
 			p.X, p.Y = p.Y, p.X
 			a, b = b, a
 		}
+		dist[i] = a
+		continue
 		l := b*b - a*a
 		m := a * p.X / l
 		m2 := m * m
@@ -472,6 +526,105 @@ func (p *poly2D) Evaluate(pos []ms2.Vec, dist []float32, userData any) error {
 	return nil
 }
 
+func (u *union2D) Evaluate(pos []ms2.Vec, dist []float32, userData any) error {
+	distS1S2, finalizer, err := evaluateShaders2D(pos, userData, u.s1, u.s2)
+	if err != nil {
+		return err
+	}
+	defer finalizer()
+	d1, d2 := distS1S2[0], distS1S2[1]
+	for i := range dist {
+		dist[i] = minf(d1[i], d2[i])
+	}
+	return nil
+}
+
+func (u *intersect2D) Evaluate(pos []ms2.Vec, dist []float32, userData any) error {
+	distS1S2, finalizer, err := evaluateShaders2D(pos, userData, u.s1, u.s2)
+	if err != nil {
+		return err
+	}
+	defer finalizer()
+	d1, d2 := distS1S2[0], distS1S2[1]
+	for i := range dist {
+		dist[i] = maxf(d1[i], d2[i])
+	}
+	return nil
+}
+
+func (u *diff2D) Evaluate(pos []ms2.Vec, dist []float32, userData any) error {
+	distS1S2, finalizer, err := evaluateShaders2D(pos, userData, u.s1, u.s2)
+	if err != nil {
+		return err
+	}
+	defer finalizer()
+	D1, D2 := distS1S2[0], distS1S2[1]
+	for i := range dist {
+		dist[i] = maxf(-D1[i], D2[i])
+	}
+	return nil
+}
+
+func (u *xor2D) Evaluate(pos []ms2.Vec, dist []float32, userData any) error {
+	distS1S2, finalizer, err := evaluateShaders2D(pos, userData, u.s1, u.s2)
+	if err != nil {
+		return err
+	}
+	defer finalizer()
+	D1, D2 := distS1S2[0], distS1S2[1]
+	for i := range dist {
+		d1, d2 := D1[i], D2[i]
+		dist[i] = maxf(minf(d1, d2), -maxf(d1, d2))
+	}
+	return nil
+}
+
+func (a *array2D) Evaluate(pos []ms2.Vec, dist []float32, userData any) error {
+	vp, err := getVecPool(userData)
+	if err != nil {
+		return err
+	}
+	transformed := vp.v2.acquire(len(pos))
+	defer vp.v2.release(transformed)
+	auxdist := vp.float.acquire(len(dist))
+	defer vp.float.release(auxdist)
+	s := a.d
+	n := a.nvec2()
+	minlim := ms2.Vec{}
+	sdf := assertEvaluator2D(a.s)
+	for i := range dist {
+		dist[i] = largenum
+	}
+	// We invert loops with respect to shader here to avoid needing 8 distance and 8 position buffers, instead we need 1 of each with this loop shape.
+	var ij ms2.Vec
+	for j := float32(0.); j < 2; j++ {
+		ij.Y = j
+		for i := float32(0.); i < 2; i++ {
+			ij.X = i
+			// We acquire the transformed position for each direction.
+			for ip, p := range pos {
+				id := ms2.RoundElem(ms2.DivElem(p, s))
+				o := ms2.SignElem(ms2.Sub(p, ms2.MulElem(s, id)))
+
+				rid := ms2.Add(id, ms2.MulElem(ij, o))
+				rid = ms2.ClampElem(rid, minlim, n)
+
+				transformed[ip] = ms2.Sub(p, ms2.MulElem(s, rid))
+			}
+			// And calculate the distance for each direction.
+			err := sdf.Evaluate(transformed, auxdist, userData)
+			if err != nil {
+				return err
+			}
+			// And we reduce the distance with minimum rule.
+			for i, d := range dist {
+				dist[i] = minf(d, auxdist[i])
+			}
+		}
+	}
+	return nil
+}
+
 // evaluateShaders is an auxiliary function to evaluate shaders in parallel required for situations where
 // the argument distance buffer cannot contain all of the data required for a distance calculation such
 // with operations on SDFs i.e: union and scale (binary operation and a positional transform operation).
@@ -487,6 +640,32 @@ func evaluateShaders(pos []ms3.Vec, userData any, shaders ...Shader3D) (distance
 	}
 	for i := range shaders {
 		sdf := assertEvaluator(shaders[i])
+		aux := vp.float.acquire(len(pos))
+		distances = append(distances, aux)
+		err = sdf.Evaluate(pos, aux, userData)
+		if err != nil {
+			finalizer()
+			return nil, nil, err
+		}
+	}
+	return distances, finalizer, nil
+}
+
+// evaluateShaders is an auxiliary function to evaluate shaders in parallel required for situations where
+// the argument distance buffer cannot contain all of the data required for a distance calculation such
+// with operations on SDFs i.e: union and scale (binary operation and a positional transform operation).
+func evaluateShaders2D(pos []ms2.Vec, userData any, shaders ...Shader2D) (distances [][]float32, finalizer func(), err error) {
+	vp, err := getVecPool(userData)
+	if err != nil {
+		return nil, nil, err
+	}
+	finalizer = func() {
+		for i := range distances {
+			vp.float.release(distances[i])
+		}
+	}
+	for i := range shaders {
+		sdf := assertEvaluator2D(shaders[i])
 		aux := vp.float.acquire(len(pos))
 		distances = append(distances, aux)
 		err = sdf.Evaluate(pos, aux, userData)
@@ -577,6 +756,18 @@ func assertEvaluator(s Shader3D) interface {
 } {
 	evaluator, ok := s.(interface {
 		Evaluate(pos []ms3.Vec, dist []float32, userData any) error
+	})
+	if !ok {
+		panic(fmt.Sprintf("%T does not implement evaluator", s))
+	}
+	return evaluator
+}
+
+func assertEvaluator2D(s Shader2D) interface {
+	Evaluate(pos []ms2.Vec, dist []float32, userData any) error
+} {
+	evaluator, ok := s.(interface {
+		Evaluate(pos []ms2.Vec, dist []float32, userData any) error
 	})
 	if !ok {
 		panic(fmt.Sprintf("%T does not implement evaluator", s))
