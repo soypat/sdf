@@ -4,7 +4,6 @@ import (
 	"github.com/chewxy/math32"
 	"github.com/soypat/glgl/math/ms2"
 	"github.com/soypat/glgl/math/ms3"
-	"github.com/soypat/sdf/form3/glsdf3/glbuild"
 	"github.com/soypat/sdf/form3/glsdf3/gleval"
 )
 
@@ -100,103 +99,182 @@ func (t *tri) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	return nil
 }
 
-func (u *union) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
-	distS1S2, finalizer, err := evaluateShaders(pos, userData, u.s1, u.s2)
+func evaluateSDF3(obj any, pos []ms3.Vec, dist []float32, userData any) error {
+	sdf, err := gleval.AssertSDF3(obj)
 	if err != nil {
 		return err
 	}
-	defer finalizer()
-	d1, d2 := distS1S2[0], distS1S2[1]
-	for i := range dist {
+	return sdf.Evaluate(pos, dist, userData)
+}
+
+func evaluateSDF2(obj any, pos []ms2.Vec, dist []float32, userData any) error {
+	sdf, err := gleval.AssertSDF2(obj)
+	if err != nil {
+		return err
+	}
+	return sdf.Evaluate(pos, dist, userData)
+}
+
+func (u *union) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
+	vp, err := gleval.GetVecPool(userData)
+	if err != nil {
+		return err
+	}
+	d1 := dist
+	d2 := vp.Float.Acquire(len(dist))
+	defer vp.Float.Release(d2)
+	err = evaluateSDF3(u.s1, pos, d1, userData)
+	if err != nil {
+		return err
+	}
+	err = evaluateSDF3(u.s2, pos, d2, userData)
+	if err != nil {
+		return err
+	}
+	for i := range d1 {
 		dist[i] = minf(d1[i], d2[i])
 	}
 	return nil
 }
 
 func (u *intersect) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
-	distS1S2, finalizer, err := evaluateShaders(pos, userData, u.s1, u.s2)
+	vp, err := gleval.GetVecPool(userData)
 	if err != nil {
 		return err
 	}
-	defer finalizer()
-	d1, d2 := distS1S2[0], distS1S2[1]
-	for i := range dist {
+	d1 := dist
+	d2 := vp.Float.Acquire(len(dist))
+	defer vp.Float.Release(d2)
+	err = evaluateSDF3(u.s1, pos, d1, userData)
+	if err != nil {
+		return err
+	}
+	err = evaluateSDF3(u.s2, pos, d2, userData)
+	if err != nil {
+		return err
+	}
+	for i := range d1 {
 		dist[i] = maxf(d1[i], d2[i])
 	}
 	return nil
 }
 
 func (u *diff) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
-	distS1S2, finalizer, err := evaluateShaders(pos, userData, u.s1, u.s2)
+	vp, err := gleval.GetVecPool(userData)
 	if err != nil {
 		return err
 	}
-	defer finalizer()
-	D1, D2 := distS1S2[0], distS1S2[1]
+	d1 := dist
+	d2 := vp.Float.Acquire(len(dist))
+	defer vp.Float.Release(d2)
+	err = evaluateSDF3(u.s1, pos, d1, userData)
+	if err != nil {
+		return err
+	}
+	err = evaluateSDF3(u.s2, pos, d2, userData)
+	if err != nil {
+		return err
+	}
 	for i := range dist {
-		dist[i] = maxf(-D1[i], D2[i])
+		dist[i] = maxf(-d1[i], d2[i])
 	}
 	return nil
 }
 
 func (u *xor) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
-	distS1S2, finalizer, err := evaluateShaders(pos, userData, u.s1, u.s2)
+	vp, err := gleval.GetVecPool(userData)
 	if err != nil {
 		return err
 	}
-	defer finalizer()
-	D1, D2 := distS1S2[0], distS1S2[1]
+	d1 := dist
+	d2 := vp.Float.Acquire(len(dist))
+	defer vp.Float.Release(d2)
+	err = evaluateSDF3(u.s1, pos, d1, userData)
+	if err != nil {
+		return err
+	}
+	err = evaluateSDF3(u.s2, pos, d2, userData)
+	if err != nil {
+		return err
+	}
 	for i := range dist {
-		d1, d2 := D1[i], D2[i]
-		dist[i] = maxf(minf(d1, d2), -maxf(d1, d2))
+		a, b := d1[i], d2[i]
+		dist[i] = maxf(minf(a, b), -maxf(a, b))
 	}
 	return nil
 }
 
 func (u *smoothUnion) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
-	distS1S2, finalizer, err := evaluateShaders(pos, userData, u.s1, u.s2)
+	vp, err := gleval.GetVecPool(userData)
 	if err != nil {
 		return err
 	}
-	defer finalizer()
+	d1 := dist
+	d2 := vp.Float.Acquire(len(dist))
+	defer vp.Float.Release(d2)
+	err = evaluateSDF3(u.s1, pos, d1, userData)
+	if err != nil {
+		return err
+	}
+	err = evaluateSDF3(u.s2, pos, d2, userData)
+	if err != nil {
+		return err
+	}
 	k := u.k
-	D1, D2 := distS1S2[0], distS1S2[1]
 	for i := range dist {
-		d1, d2 := D1[i], D2[i]
-		h := clampf(0.5+0.5*(d2-d1)/k, 0, 1)
-		dist[i] = mixf(d2, d1, h) - k*h*(1-h)
+		a, b := d1[i], d2[i]
+		h := clampf(0.5+0.5*(b-a)/k, 0, 1)
+		dist[i] = mixf(b, a, h) - k*h*(1-h)
 	}
 	return nil
 }
 
 func (u *smoothDiff) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
-	distS1S2, finalizer, err := evaluateShaders(pos, userData, u.s1, u.s2)
+	vp, err := gleval.GetVecPool(userData)
 	if err != nil {
 		return err
 	}
-	defer finalizer()
+	d1 := dist
+	d2 := vp.Float.Acquire(len(dist))
+	defer vp.Float.Release(d2)
+	err = evaluateSDF3(u.s1, pos, d1, userData)
+	if err != nil {
+		return err
+	}
+	err = evaluateSDF3(u.s2, pos, d2, userData)
+	if err != nil {
+		return err
+	}
 	k := u.k
-	D1, D2 := distS1S2[0], distS1S2[1]
 	for i := range dist {
-		d1, d2 := D1[i], D2[i]
-		h := clampf(0.5-0.5*(d2+d1)/k, 0, 1)
-		dist[i] = mixf(d2, -d1, h) + k*h*(1-h)
+		a, b := d1[i], d2[i]
+		h := clampf(0.5-0.5*(b+a)/k, 0, 1)
+		dist[i] = mixf(b, -a, h) + k*h*(1-h)
 	}
 	return nil
 }
 
 func (u *smoothIntersect) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
-	distS1S2, finalizer, err := evaluateShaders(pos, userData, u.s1, u.s2)
+	vp, err := gleval.GetVecPool(userData)
 	if err != nil {
 		return err
 	}
-	defer finalizer()
+	d1 := dist
+	d2 := vp.Float.Acquire(len(dist))
+	defer vp.Float.Release(d2)
+	err = evaluateSDF3(u.s1, pos, d1, userData)
+	if err != nil {
+		return err
+	}
+	err = evaluateSDF3(u.s2, pos, d2, userData)
+	if err != nil {
+		return err
+	}
 	k := u.k
-	D1, D2 := distS1S2[0], distS1S2[1]
 	for i := range dist {
-		d1, d2 := D1[i], D2[i]
-		h := clampf(0.5-0.5*(d2-d1)/k, 0, 1)
-		dist[i] = mixf(d2, d1, h) + k*h*(1-h)
+		a, b := d1[i], d2[i]
+		h := clampf(0.5-0.5*(b-a)/k, 0, 1)
+		dist[i] = mixf(b, a, h) + k*h*(1-h)
 	}
 	return nil
 }
@@ -555,12 +633,21 @@ func (p *poly2D) Evaluate(pos []ms2.Vec, dist []float32, userData any) error {
 }
 
 func (u *union2D) Evaluate(pos []ms2.Vec, dist []float32, userData any) error {
-	distS1S2, finalizer, err := evaluateShaders2D(pos, userData, u.s1, u.s2)
+	vp, err := gleval.GetVecPool(userData)
 	if err != nil {
 		return err
 	}
-	defer finalizer()
-	d1, d2 := distS1S2[0], distS1S2[1]
+	d1 := dist
+	d2 := vp.Float.Acquire(len(dist))
+	defer vp.Float.Release(d2)
+	err = evaluateSDF2(u.s1, pos, d1, userData)
+	if err != nil {
+		return err
+	}
+	err = evaluateSDF2(u.s2, pos, d2, userData)
+	if err != nil {
+		return err
+	}
 	for i := range dist {
 		dist[i] = minf(d1[i], d2[i])
 	}
@@ -568,12 +655,21 @@ func (u *union2D) Evaluate(pos []ms2.Vec, dist []float32, userData any) error {
 }
 
 func (u *intersect2D) Evaluate(pos []ms2.Vec, dist []float32, userData any) error {
-	distS1S2, finalizer, err := evaluateShaders2D(pos, userData, u.s1, u.s2)
+	vp, err := gleval.GetVecPool(userData)
 	if err != nil {
 		return err
 	}
-	defer finalizer()
-	d1, d2 := distS1S2[0], distS1S2[1]
+	d1 := dist
+	d2 := vp.Float.Acquire(len(dist))
+	defer vp.Float.Release(d2)
+	err = evaluateSDF2(u.s1, pos, d1, userData)
+	if err != nil {
+		return err
+	}
+	err = evaluateSDF2(u.s2, pos, d2, userData)
+	if err != nil {
+		return err
+	}
 	for i := range dist {
 		dist[i] = maxf(d1[i], d2[i])
 	}
@@ -581,28 +677,46 @@ func (u *intersect2D) Evaluate(pos []ms2.Vec, dist []float32, userData any) erro
 }
 
 func (u *diff2D) Evaluate(pos []ms2.Vec, dist []float32, userData any) error {
-	distS1S2, finalizer, err := evaluateShaders2D(pos, userData, u.s1, u.s2)
+	vp, err := gleval.GetVecPool(userData)
 	if err != nil {
 		return err
 	}
-	defer finalizer()
-	D1, D2 := distS1S2[0], distS1S2[1]
+	d1 := dist
+	d2 := vp.Float.Acquire(len(dist))
+	defer vp.Float.Release(d2)
+	err = evaluateSDF2(u.s1, pos, d1, userData)
+	if err != nil {
+		return err
+	}
+	err = evaluateSDF2(u.s2, pos, d2, userData)
+	if err != nil {
+		return err
+	}
 	for i := range dist {
-		dist[i] = maxf(-D1[i], D2[i])
+		dist[i] = maxf(-d1[i], d2[i])
 	}
 	return nil
 }
 
 func (u *xor2D) Evaluate(pos []ms2.Vec, dist []float32, userData any) error {
-	distS1S2, finalizer, err := evaluateShaders2D(pos, userData, u.s1, u.s2)
+	vp, err := gleval.GetVecPool(userData)
 	if err != nil {
 		return err
 	}
-	defer finalizer()
-	D1, D2 := distS1S2[0], distS1S2[1]
+	d1 := dist
+	d2 := vp.Float.Acquire(len(dist))
+	defer vp.Float.Release(d2)
+	err = evaluateSDF2(u.s1, pos, d1, userData)
+	if err != nil {
+		return err
+	}
+	err = evaluateSDF2(u.s2, pos, d2, userData)
+	if err != nil {
+		return err
+	}
 	for i := range dist {
-		d1, d2 := D1[i], D2[i]
-		dist[i] = maxf(minf(d1, d2), -maxf(d1, d2))
+		a, b := d1[i], d2[i]
+		dist[i] = maxf(minf(a, b), -maxf(a, b))
 	}
 	return nil
 }
@@ -654,64 +768,4 @@ func (a *array2D) Evaluate(pos []ms2.Vec, dist []float32, userData any) error {
 		}
 	}
 	return nil
-}
-
-// evaluateShaders is an auxiliary function to evaluate shaders in parallel required for situations where
-// the argument distance buffer cannot contain all of the data required for a distance calculation such
-// with operations on SDFs i.e: union and scale (binary operation and a positional transform operation).
-func evaluateShaders(pos []ms3.Vec, userData any, shaders ...glbuild.Shader3D) (distances [][]float32, finalizer func(), err error) {
-	vp, err := gleval.GetVecPool(userData)
-	if err != nil {
-		return nil, nil, err
-	}
-	finalizer = func() {
-		for i := range distances {
-			vp.Float.Release(distances[i])
-		}
-	}
-	for i := range shaders {
-		sdf, err := gleval.AssertSDF3(shaders[i])
-		if err != nil {
-			finalizer()
-			return nil, nil, err
-		}
-		aux := vp.Float.Acquire(len(pos))
-		distances = append(distances, aux)
-		err = sdf.Evaluate(pos, aux, userData)
-		if err != nil {
-			finalizer()
-			return nil, nil, err
-		}
-	}
-	return distances, finalizer, nil
-}
-
-// evaluateShaders is an auxiliary function to evaluate shaders in parallel required for situations where
-// the argument distance buffer cannot contain all of the data required for a distance calculation such
-// with operations on SDFs i.e: union and scale (binary operation and a positional transform operation).
-func evaluateShaders2D(pos []ms2.Vec, userData any, shaders ...glbuild.Shader2D) (distances [][]float32, finalizer func(), err error) {
-	vp, err := gleval.GetVecPool(userData)
-	if err != nil {
-		return nil, nil, err
-	}
-	finalizer = func() {
-		for i := range distances {
-			vp.Float.Release(distances[i])
-		}
-	}
-	for i := range shaders {
-		sdf, err := gleval.AssertSDF2(shaders[i])
-		if err != nil {
-			finalizer()
-			return nil, nil, err
-		}
-		aux := vp.Float.Acquire(len(pos))
-		distances = append(distances, aux)
-		err = sdf.Evaluate(pos, aux, userData)
-		if err != nil {
-			finalizer()
-			return nil, nil, err
-		}
-	}
-	return distances, finalizer, nil
 }
