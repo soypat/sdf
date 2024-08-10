@@ -42,6 +42,7 @@ type (
 )
 
 // NormalsCentralDiff uses central differences algorithm for normal calculation, which are stored in normals for each position.
+// The returned normals are not normalized (converted to unit length).
 func NormalsCentralDiff(s SDF3, pos []ms3.Vec, normals []ms3.Vec, step float32, userData any) error {
 	step *= 0.5
 	if step <= 0 {

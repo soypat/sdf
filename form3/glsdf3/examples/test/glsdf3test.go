@@ -282,17 +282,23 @@ func test_visualizer_generation() error {
 	const diam = 2 * r
 	const filename = "visual.glsl"
 	// A larger Octree Positional buffer and a smaller RenderAll triangle buffer cause bug.
-	s, err := glsdf3.NewBox(r/2, r/3, r, 0)
+	s, err := glsdf3.NewSphere(r)
+	// s, err := glsdf3.NewBox(r/2, r/3, r, 0)
 	if err != nil {
 		return err
 	}
-	// s = glsdf3.Elongate(s, 0, 0, 0)
+	envelope, err := glsdf3.NewBoundsBoxFrame(s.Bounds())
+	if err != nil {
+		return err
+	}
+	s = glsdf3.Union(s, envelope)
 	s, err = glsdf3.Array(s, diam, diam, diam, 3, 3, 2)
 	if err != nil {
 		return err
 	}
-	// b, _ := glsdf3.NewBoxFrame(diam, diam, diam, diam/32)
-	// s = glsdf3.Union(s, b)
+	b, _ := glsdf3.NewBoundsBoxFrame(s.Bounds())
+	s = glsdf3.Union(s, b)
+	// s = glsdf3.Union(s, unitSphere)
 	fp, err := os.Create(filename)
 	if err != nil {
 		return err

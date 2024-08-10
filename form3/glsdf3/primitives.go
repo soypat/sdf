@@ -19,7 +19,8 @@ func NewBoundsBoxFrame(bb ms3.Box) (glbuild.Shader3D, error) {
 	if err != nil {
 		return nil, err
 	}
-	bounding = Translate(bounding, -bb.Min.X, -bb.Min.Y, -bb.Min.Z)
+	center := bb.Center()
+	bounding = Translate(bounding, -center.X, -center.Y, -center.Z)
 	return bounding, nil
 }
 
@@ -93,10 +94,7 @@ return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0)-r;`...)
 }
 
 func (s *box) Bounds() ms3.Box {
-	return ms3.Box{
-		Min: ms3.Scale(-0.5, s.dims),
-		Max: ms3.Scale(0.5, s.dims),
-	}
+	return ms3.NewCenteredBox(ms3.Vec{}, s.dims)
 }
 
 func NewCylinder(r, h, rounding float32) (glbuild.Shader3D, error) {

@@ -3,6 +3,7 @@ package gleval
 import (
 	"errors"
 	"fmt"
+	"reflect"
 
 	"github.com/soypat/glgl/math/ms2"
 	"github.com/soypat/glgl/math/ms3"
@@ -176,4 +177,20 @@ func (bp *bufPool[T]) assertAllReleased() error {
 		return err
 	}
 	return nil
+}
+
+// NumBuffers returns quantity of buffers.
+func (bp *bufPool[T]) NumBuffers() int {
+	return len(bp._ins)
+}
+
+// TotalAlloc returns total amount of memory used by buffer in bytes.
+func (bp *bufPool[T]) TotalAlloc() uint64 {
+	var t T
+	size := uint64(reflect.TypeOf(t).Size())
+	var n uint64
+	for i := range bp._ins {
+		n += uint64(len(bp._ins[i]))
+	}
+	return size * n
 }
