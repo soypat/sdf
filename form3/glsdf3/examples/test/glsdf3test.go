@@ -59,11 +59,11 @@ func init() {
 
 var PremadePrimitives = []glbuild.Shader3D{
 	mustShader(glsdf3.NewSphere(1)),
+	mustShader(glsdf3.NewBoxFrame(1, 1.2, 2.2, .2)),
 	mustShader(glsdf3.NewBox(1, 1.2, 2.2, 0.3)),
 	mustShader(glsdf3.NewHexagonalPrism(1, 2)),
 	mustShader(glsdf3.NewTorus(3, .5)),
 	mustShader(glsdf3.NewTriangularPrism(1, 3)),
-	mustShader(glsdf3.NewBoxFrame(1, 1.2, 2.2, .2)),
 	mustShader(glsdf3.NewCylinder(1, 3, .1)),
 	mustShader(threads.Screw(5, threads.ISO{
 		D:   1,
@@ -278,26 +278,37 @@ func test_sdf_gpu_cpu() error {
 
 func test_visualizer_generation() error {
 	const r = 0.1 // 1.01
+	const boxdim = r / 1.2
 	const reps = 3
 	const diam = 2 * r
 	const filename = "visual.glsl"
+
+	point, _ := glsdf3.NewSphere(r / 32)
+	point2, _ := glsdf3.NewSphere(r / 33)
+	zbox, _ := glsdf3.NewBox(r/128, r/128, 10*r, r/256)
 	// A larger Octree Positional buffer and a smaller RenderAll triangle buffer cause bug.
-	s, err := glsdf3.NewSphere(r)
-	// s, err := glsdf3.NewBox(r/2, r/3, r, 0)
+	// s, err := glsdf3.NewBox(2*r, 2*r, 2*r, 0)
+	s, err := glsdf3.NewTriangularPrism(r, r/2)
+	s = glsdf3.Union(s, glsdf3.Translate(point, 0, r/2, 0))
+	s = glsdf3.Union(s, glsdf3.Translate(point2, 0, 0, r/4))
+	// s, err := glsdf3.NewSphere(r)
 	if err != nil {
 		return err
 	}
+	// s = glsdf3.Union(s, box)
 	envelope, err := glsdf3.NewBoundsBoxFrame(s.Bounds())
 	if err != nil {
 		return err
 	}
+	s = glsdf3.Union(s, zbox)
 	s = glsdf3.Union(s, envelope)
-	s, err = glsdf3.Array(s, diam, diam, diam, 3, 3, 2)
-	if err != nil {
-		return err
-	}
-	b, _ := glsdf3.NewBoundsBoxFrame(s.Bounds())
-	s = glsdf3.Union(s, b)
+	s = glsdf3.Scale(s, 5)
+	// s, err = glsdf3.Array(s, diam, diam, diam, 2, 1, 1)
+	// if err != nil {
+	// 	return err
+	// }
+	// b, _ := glsdf3.NewBoundsBoxFrame(s.Bounds())
+	// s = glsdf3.Union(s, b)
 	// s = glsdf3.Union(s, unitSphere)
 	fp, err := os.Create(filename)
 	if err != nil {
@@ -370,8 +381,28 @@ func test_bounds(sdf gleval.SDF3, scratchDist []float32, userData any) error {
 	if len(scratchDist) < 8 {
 		return errors.New("minimum len(scratchDist) not met")
 	}
+	// Evaluate the
 	bb := sdf.Bounds()
 	size := bb.Size()
+	const nxbb, nybb, nzbb = 16, 16, 16
+	var offs = [2]float32{-1, 1}
+	originalPos := meshgrid(bb, nxbb, nybb, nzbb)
+	newPos := make([]ms3.Vec, len(originalPos))
+	var offsize ms3.Vec
+	for _, xo := range offs {
+		offsize.X = xo * size.X
+		for _, yo := range offs {
+			offsize.X = yo * size.Y
+			for _, zo := range offs {
+				offsize.Z = zo * size.Z
+				newBB := bb.Add(offsize)
+				// New mesh lies outside of bounding box.
+				newPos = appendMeshgrid(newPos[:0], newBB, nxbb, nybb, nzbb)
+
+			}
+		}
+	}
+
 	vertices := bb.Vertices()
 	vertDist := scratchDist[:8]
 	err := sdf.Evaluate(vertices[:], vertDist, userData)
@@ -403,7 +434,7 @@ func test_bounds(sdf gleval.SDF3, scratchDist []float32, userData any) error {
 			if angle <= 0 {
 				return errors.New(msg) // Definitely have a surface outside of the bounding box.
 			} else {
-				fmt.Println(msg) // Is this possible with a surface contained within the bounding box? Maybe an ill-conditioned/pointy surface?
+				fmt.Println("WARN bad normal:", msg) // Is this possible with a surface contained within the bounding box? Maybe an ill-conditioned/pointy surface?
 			}
 		}
 	}
@@ -412,23 +443,23 @@ func test_bounds(sdf gleval.SDF3, scratchDist []float32, userData any) error {
 }
 
 func meshgrid(bounds ms3.Box, nx, ny, nz int) []ms3.Vec {
+	return appendMeshgrid(make([]ms3.Vec, 0, nx*ny*nz), bounds, nx, ny, nz)
+}
+
+func appendMeshgrid(dst []ms3.Vec, bounds ms3.Box, nx, ny, nz int) []ms3.Vec {
 	nxyz := ms3.Vec{X: float32(nx), Y: float32(ny), Z: float32(nz)}
 	dxyz := ms3.DivElem(bounds.Size(), nxyz)
-	positions := make([]ms3.Vec, nx*ny*nz)
 	for i := 0; i < nx; i++ {
-		ioff := i * ny * nz
 		x := dxyz.X * float32(i)
 		for j := 0; j < nx; j++ {
-			joff := j * nz
 			y := dxyz.Y * float32(j)
 			for k := 0; k < nx; k++ {
-				off := ioff + joff + k
 				z := dxyz.Z * float32(k)
-				positions[off] = ms3.Vec{X: x, Y: y, Z: z}
+				dst = append(dst, ms3.Vec{X: x, Y: y, Z: z})
 			}
 		}
 	}
-	return positions
+	return dst
 }
 
 func makeGPUSDF3(s glbuild.Shader3D) gleval.SDF3 {

@@ -101,7 +101,7 @@ func (c *hex2D) AppendShaderName(b []byte) []byte {
 
 func (c *hex2D) AppendShaderBody(b []byte) []byte {
 	b = appendFloatDecl(b, "r", c.side)
-	b = append(b, `const vec3 k = vec3(-0.866025404,0.5,0.577350269);
+	b = append(b, `const vec3 k = vec3(-0.8660254038,0.5,0.577350269);
 p = abs(p);
 p -= 2.0*min(dot(k.xy,p),0.0)*k.xy;
 p -= vec2(clamp(p.x, -k.z*r, k.z*r), r);

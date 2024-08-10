@@ -10,8 +10,11 @@ import (
 )
 
 const (
-	sqrt3    = 1.73205080757
-	largenum = 1e20
+	// For an equilateral triangle of side length L the length of bisector is L multiplied this number which is sqrt(1-0.25).
+	tribisect = 0.8660254037844386467637231707529361834714026269051903140279034897
+	sqrt2d2   = math32.Sqrt2 / 2
+	sqrt3     = 1.7320508075688772935274463415058723669428052538103806280558069794
+	largenum  = 1e20
 )
 
 // These interfaces are implemented by all SDF interfaces such as SDF3/2 and Shader3D/2D.

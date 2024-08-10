@@ -3,6 +3,7 @@ package glsdf3
 import (
 	"errors"
 
+	"github.com/soypat/glgl/math/ms2"
 	"github.com/soypat/glgl/math/ms3"
 	"github.com/soypat/sdf/form3/glsdf3/glbuild"
 )
@@ -87,7 +88,7 @@ func (s *box) AppendShaderName(b []byte) []byte {
 
 func (s *box) AppendShaderBody(b []byte) []byte {
 	b = appendFloatDecl(b, "r", s.round)
-	b = appendVec3Decl(b, "d", s.dims)
+	b = appendVec3Decl(b, "d", ms3.Scale(0.5, s.dims)) // Inigo's SDF is x2 size.
 	b = append(b, `vec3 q = abs(p)-d+r;
 return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0)-r;`...)
 	return b
@@ -108,7 +109,8 @@ func NewCylinder(r, h, rounding float32) (glbuild.Shader3D, error) {
 }
 
 type cylinder struct {
-	r, h  float32
+	r     float32
+	h     float32
 	round float32
 }
 
@@ -154,7 +156,16 @@ func NewHexagonalPrism(side, h float32) (glbuild.Shader3D, error) {
 }
 
 type hex struct {
-	side, h float32
+	side float32
+	h    float32
+}
+
+func (s *hex) Bounds() ms3.Box {
+	l := s.side * 2
+	return ms3.Box{
+		Min: ms3.Vec{X: -l, Y: -l, Z: -s.h},
+		Max: ms3.Vec{X: l, Y: l, Z: s.h},
+	}
 }
 
 func (s *hex) ForEachChild(userData any, fn func(userData any, s *glbuild.Shader3D) error) error {
@@ -172,7 +183,7 @@ func (s *hex) AppendShaderBody(b []byte) []byte {
 	b = appendFloatDecl(b, "_h", s.h)
 	b = appendFloatDecl(b, "side", s.side)
 	b = append(b, `vec2 h = vec2(side, _h);
-const vec3 k = vec3(-0.8660254, 0.5, 0.57735);
+const vec3 k = vec3(-0.8660254038, 0.5, 0.57735);
 p = abs(p);
 p.xy -= 2.0*min(dot(k.xy, p.xy), 0.0)*k.xy;
 vec2 aux = p.xy-vec2(clamp(p.x,-k.z*h.x,k.z*h.x), h.x);
@@ -181,51 +192,51 @@ return min(max(d.x,d.y),0.0) + length(max(d,0.0));`...)
 	return b
 }
 
-func (s *hex) Bounds() ms3.Box {
-	l := s.side * 2
-	return ms3.Box{
-		Min: ms3.Vec{X: -l, Y: -l, Z: -s.h},
-		Max: ms3.Vec{X: l, Y: l, Z: s.h},
-	}
-}
-
-func NewTriangularPrism(side, h float32) (glbuild.Shader3D, error) {
-	if side <= 0 || h <= 0 {
+func NewTriangularPrism(triHeight, extrudeLength float32) (glbuild.Shader3D, error) {
+	if triHeight <= 0 || extrudeLength <= 0 {
 		return nil, errors.New("invalid triangular prism parameter")
 	}
-	return &tri{side: side, h: h}, nil
+	return &tri{height: triHeight, extrudeLength: extrudeLength}, nil
 }
 
 type tri struct {
-	side, h float32
+	height        float32
+	extrudeLength float32
 }
 
-func (s *tri) ForEachChild(userData any, fn func(userData any, s *glbuild.Shader3D) error) error {
+func (t *tri) args() (h1, h2 float32) {
+	return t.height / 3, t.extrudeLength / 4
+}
+
+func (t *tri) Bounds() ms3.Box {
+	height := t.height
+	side := height / tribisect
+	longBisect := side / sqrt3    // (L/2)/cosd(30)
+	shortBisect := longBisect / 2 // (L/2)/tand(60)
+	hd2 := t.extrudeLength / 2
+	return ms3.Box{
+		Min: ms3.Vec{X: -side / 2, Y: -shortBisect, Z: -hd2},
+		Max: ms3.Vec{X: side / 2, Y: longBisect, Z: hd2},
+	}
+}
+
+func (t *tri) ForEachChild(userData any, fn func(userData any, s *glbuild.Shader3D) error) error {
 	return nil
 }
 
-func (s *tri) AppendShaderName(b []byte) []byte {
+func (t *tri) AppendShaderName(b []byte) []byte {
 	b = append(b, "tri"...)
-	b = fappend(b, s.side, 'n', 'p')
-	b = fappend(b, s.h, 'n', 'p')
+	b = fappend(b, t.height, 'n', 'p')
+	b = fappend(b, t.extrudeLength, 'n', 'p')
 	return b
 }
 
-func (s *tri) AppendShaderBody(b []byte) []byte {
-	b = appendFloatDecl(b, "_h", s.h)
-	b = appendFloatDecl(b, "side", s.side)
-	b = append(b, `vec2 h = vec2(side,_h);
-vec3 q = abs(p);
-return max(q.z-h.y,max(q.x*0.866025+p.y*0.5,-p.y)-h.x*0.5);`...)
+func (t *tri) AppendShaderBody(b []byte) []byte {
+	h1, h2 := t.args()
+	b = appendVec2Decl(b, "h", ms2.Vec{X: h1, Y: h2})
+	b = append(b, `vec3 q = abs(p);
+return max(q.z-h.y,max(q.x*0.8660254038+p.y*0.5,-p.y)-h.x);`...)
 	return b
-}
-
-func (s *tri) Bounds() ms3.Box {
-	l := s.side
-	return ms3.Box{
-		Min: ms3.Vec{X: -l, Y: -l, Z: -s.h},
-		Max: ms3.Vec{X: l, Y: l, Z: s.h},
-	}
 }
 
 type torus struct {
@@ -275,6 +286,9 @@ func NewBoxFrame(dimX, dimY, dimZ, e float32) (glbuild.Shader3D, error) {
 		return nil, errors.New("negative or zero BoxFrame dimension")
 	}
 	d := ms3.Scale(0.5, ms3.Vec{X: dimX, Y: dimY, Z: dimZ})
+	if e > d.Min() {
+		return nil, errors.New("BoxFrame edge thickness too large")
+	}
 	return &boxframe{dims: d, e: e}, nil
 }
 

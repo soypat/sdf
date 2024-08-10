@@ -16,7 +16,7 @@ func (u *sphere) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 }
 
 func (b *box) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
-	d := b.dims
+	d := ms3.Scale(0.5, b.dims)
 	r := b.round
 	for i, p := range pos {
 		q := ms3.AddScalar(r, ms3.Sub(ms3.AbsElem(p), d))
@@ -72,7 +72,7 @@ func (c *cylinder) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 }
 
 func (h *hex) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
-	const k1, k2, k3 = -0.8660254, 0.5, 0.57735
+	const k1, k2, k3 = -tribisect, 0.5, 0.57735
 	h1 := h.side
 	h2 := h.h
 	clm := k3 * h1
@@ -89,13 +89,11 @@ func (h *hex) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 }
 
 func (t *tri) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
-	h1 := t.side
-	h2 := t.h
-	h1d2 := h1 / 2
+	h1, h2 := t.args()
 	for i, p := range pos {
 		q := ms3.AbsElem(p)
-		m1 := maxf(q.X*0.866025+p.Y*0.5, -p.Y)
-		dist[i] = maxf(q.Z-h2, m1-h1d2)
+		m1 := maxf(q.X*tribisect+p.Y*0.5, -p.Y)
+		dist[i] = maxf(q.Z-h2, m1-h1)
 	}
 	return nil
 }
@@ -552,7 +550,7 @@ func (c *rect2D) Evaluate(pos []ms2.Vec, dist []float32, userData any) error {
 
 func (c *hex2D) Evaluate(pos []ms2.Vec, dist []float32, userData any) error {
 	r := c.side
-	k := ms2.Vec{X: -0.866025404, Y: 0.5}
+	k := ms2.Vec{X: -tribisect, Y: 0.5}
 	const kz = 0.577350269
 	for i, p := range pos {
 		p = ms2.AbsElem(p)

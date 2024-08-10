@@ -398,10 +398,8 @@ func (u *array) Bounds() ms3.Box {
 	size := ms3.MulElem(u.nvec3(), u.d)
 	bb := ms3.Box{Max: size}
 	halfd := ms3.Scale(0.5, u.d)
-	halfSize := ms3.Scale(-0.5, size)
-	offset := ms3.Add(halfSize, halfd)
-	bb = bb.Add(offset)
-	return bb
+	offset := ms3.Sub(halfd, size)
+	return bb.Add(offset)
 }
 
 func (s *array) ForEachChild(userData any, fn func(userData any, s *glbuild.Shader3D) error) error {
