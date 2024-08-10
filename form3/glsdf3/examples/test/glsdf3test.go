@@ -37,15 +37,15 @@ func main() {
 
 	err = test_visualizer_generation()
 	if err != nil {
-		log.Fatal("FAIL generating visualization GLSL:", err.Error())
+		log.Fatal("FAIL generating visualization GLSL: ", err.Error())
 	}
 	err = test_sdf_gpu_cpu()
 	if err != nil {
-		log.Fatal("FAIL testing CPU/GPU sdf comparisons:", err.Error())
+		log.Fatal("FAIL testing CPU/GPU sdf comparisons: ", err.Error())
 	}
 	err = test_stl_generation()
 	if err != nil {
-		log.Fatal("FAIL generating STL:", err.Error())
+		log.Fatal("FAIL generating STL: ", err.Error())
 	}
 
 	log.Println("PASS")
@@ -142,12 +142,12 @@ func test_sdf_gpu_cpu() error {
 		err = cmpDist(pos, distCPU, distGPU)
 		if err != nil {
 			description := sprintOpPrimitive(nil, primitive)
-			return fmt.Errorf("%s for %s", err, description)
+			return fmt.Errorf("%s: %s", description, err)
 		}
 		err = test_bounds(sdfcpu, scratchDist, vp)
 		if err != nil {
 			description := sprintOpPrimitive(nil, primitive)
-			return fmt.Errorf("%s for %s", err, description)
+			return fmt.Errorf("%s: %s", description, err)
 		}
 	}
 
@@ -176,12 +176,12 @@ func test_sdf_gpu_cpu() error {
 		err = cmpDist(pos, distCPU, distGPU)
 		if err != nil {
 			description := sprintOpPrimitive(op, p1, p2)
-			return fmt.Errorf("%s for %s", err, description)
+			return fmt.Errorf("%s: %s", description, err)
 		}
 		err = test_bounds(sdfcpu, scratchDist, vp)
 		if err != nil {
 			description := sprintOpPrimitive(op, p1, p2)
-			return fmt.Errorf("%s for %s", err, description)
+			return fmt.Errorf("%s: %s", description, err)
 		}
 	}
 
@@ -210,7 +210,7 @@ func test_sdf_gpu_cpu() error {
 		err = cmpDist(pos, distCPU, distGPU)
 		if err != nil {
 			description := sprintOpPrimitive(op, p1, p2)
-			return fmt.Errorf("%s for %s", err, description)
+			return fmt.Errorf("%s: %s", description, err)
 		}
 	}
 	rng := rand.New(rand.NewSource(1))
@@ -239,7 +239,7 @@ func test_sdf_gpu_cpu() error {
 			err = cmpDist(pos, distCPU, distGPU)
 			if err != nil {
 				description := sprintOpPrimitive(op, primitive)
-				return fmt.Errorf("%d %s for %s", i, err, description)
+				return fmt.Errorf("%d %s: %s", i, description, err)
 			}
 		}
 	}
@@ -268,7 +268,7 @@ func test_sdf_gpu_cpu() error {
 			err = cmpDist(pos, distCPU, distGPU)
 			if err != nil {
 				description := sprintOpPrimitive(op, primitive)
-				return fmt.Errorf("%s for %s", err, description)
+				return fmt.Errorf("%s: %s", description, err)
 			}
 		}
 	}
@@ -282,12 +282,12 @@ func test_visualizer_generation() error {
 	const diam = 2 * r
 	const filename = "visual.glsl"
 	// A larger Octree Positional buffer and a smaller RenderAll triangle buffer cause bug.
-	s, err := glsdf3.NewSphere(r)
+	s, err := glsdf3.NewBox(r/2, r/3, r, 0)
 	if err != nil {
 		return err
 	}
 	// s = glsdf3.Elongate(s, 0, 0, 0)
-	s, err = glsdf3.Array(s, diam, diam, diam, 1, 2, reps)
+	s, err = glsdf3.Array(s, diam, diam, diam, 3, 3, 2)
 	if err != nil {
 		return err
 	}
@@ -392,7 +392,14 @@ func test_bounds(sdf gleval.SDF3, scratchDist []float32, userData any) error {
 	for i, got := range gotNormals {
 		want := vertWantNorm[i]
 		angle := ms3.Cos(got, want)
-		fmt.Printf("got %v, want %v -> angle=%f\n", got, want, angle)
+		if angle < math32.Sqrt2/2 {
+			msg := fmt.Sprintf("got %v, want %v -> angle=%f", got, want, angle)
+			if angle <= 0 {
+				return errors.New(msg) // Definitely have a surface outside of the bounding box.
+			} else {
+				fmt.Println(msg) // Is this possible with a surface contained within the bounding box? Maybe an ill-conditioned/pointy surface?
+			}
+		}
 	}
 	// TODO: add normals test, normals should point outwards.
 	return nil

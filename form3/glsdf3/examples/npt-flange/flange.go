@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -21,8 +22,9 @@ func init() {
 	}
 }
 
+var useGPU = false
+
 const (
-	useGPU = false
 	// visualization is the name of the file with a GLSL
 	// generated visualization of the SDF which can be visualized in https://www.shadertoy.com/
 	// or using VSCode's ShaderToy extension. If visualization=="" then no file is generated.
@@ -35,7 +37,10 @@ const (
 )
 
 func main() {
+	flag.BoolVar(&useGPU, "gpu", useGPU, "Enable GPU usage")
+	flag.Parse()
 	if useGPU {
+		fmt.Println("enable GPU usage")
 		_, terminate, err := glgl.InitWithCurrentWindow33(glgl.WindowConfig{
 			Title:   "compute",
 			Version: [2]int{4, 6},
