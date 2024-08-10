@@ -2,8 +2,6 @@ package glsdf3
 
 import (
 	_ "embed"
-	"fmt"
-	"io"
 
 	"github.com/chewxy/math32"
 	"github.com/soypat/glgl/math/ms3"
@@ -20,90 +18,6 @@ type Programmer struct {
 	scratchNodes  []glbuild.Shader
 	scratch       []byte
 	computeHeader []byte
-}
-
-var defaultComputeHeader = []byte("#shader compute\n#version 430\n")
-
-// NewDefaultProgrammer returns a Programmer with reasonable default parameters for use with glgl package.
-func NewDefaultProgrammer() *Programmer {
-	return &Programmer{
-		scratchNodes:  make([]glbuild.Shader, 64),
-		scratch:       make([]byte, 1024),
-		computeHeader: defaultComputeHeader,
-	}
-}
-
-// WriteDistanceIO creates the bare bones I/O compute program for calculating SDF
-// and writes it to the writer.
-func (p *Programmer) WriteComputeSDF3(w io.Writer, obj glbuild.Shader) (int, error) {
-	baseName, nodes, err := glbuild.ParseAppendNodes(p.scratchNodes[:0], obj)
-	if err != nil {
-		return 0, err
-	}
-	// Begin writing shader source code.
-	n, err := w.Write(p.computeHeader)
-	if err != nil {
-		return n, err
-	}
-	ngot, err := glbuild.WriteShaders(w, nodes, p.scratch)
-	n += ngot
-	if err != nil {
-		return n, err
-	}
-
-	ngot, err = fmt.Fprintf(w, `
-
-layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
-layout(rgba32f, binding = 0) uniform image2D in_tex;
-// The binding argument refers to the textures Unit.
-layout(r32f, binding = 1) uniform image2D out_tex;
-
-void main() {
-	// get position to read/write data from.
-	ivec2 pos = ivec2( gl_GlobalInvocationID.xy );
-	// Get SDF position value.
-	vec3 p = imageLoad( in_tex, pos ).rgb;
-	float distance = %s(p);
-	// store new value in image
-	imageStore( out_tex, pos, vec4( distance, 0.0, 0.0, 0.0 ) );
-}
-`, baseName)
-
-	n += ngot
-	return n, err
-}
-
-func (p *Programmer) WriteFragVisualizer(w io.Writer, obj glbuild.Shader3D) (n int, err error) {
-	// Add boxFrame to draw bounding box.
-	bb := obj.Bounds()
-	dims := bb.Size()
-	bf, err := NewBoxFrame(dims.X, dims.Y, dims.Z, dims.Min()/64)
-	if err != nil {
-		return 0, err
-	}
-	bf = Translate(bf, -bb.Min.X, -bb.Min.Y, -bb.Min.Z)
-	obj = Union(obj, bf)
-
-	baseName, nodes, err := glbuild.ParseAppendNodes(p.scratchNodes[:0], obj)
-	if err != nil {
-		return 0, err
-	}
-	ngot, err := glbuild.WriteShaders(w, nodes, p.scratch)
-	n += ngot
-	if err != nil {
-		return n, err
-	}
-	ngot, err = w.Write([]byte("\nfloat sdf(vec3 p) { return " + baseName + "(p); }\n\n"))
-	n += ngot
-	if err != nil {
-		return n, err
-	}
-	ngot, err = w.Write(visualizerFooter)
-	n += ngot
-	if err != nil {
-		return n, err
-	}
-	return n, nil
 }
 
 func minf(a, b float32) float32 {

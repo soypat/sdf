@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"log"
@@ -50,7 +51,7 @@ func main() {
 	log.Println("PASS")
 }
 
-var programmer = glsdf3.NewDefaultProgrammer()
+var programmer = glbuild.NewDefaultProgrammer()
 
 func init() {
 	runtime.LockOSThread() // For GL.
@@ -75,7 +76,7 @@ var PremadePrimitives2D = []glbuild.Shader2D{
 	mustShader2D(glsdf3.NewCircle(1)),
 	mustShader2D(glsdf3.NewHexagon(1)),
 	mustShader2D(glsdf3.NewPolygon([]ms2.Vec{
-		{-1, -1}, {-1, 0}, {0.5, 2},
+		{X: -1, Y: -1}, {X: -1, Y: 0}, {X: 0.5, Y: 2},
 	})),
 	// mustShader2D(glsdf3.NewEllipse(1, 2)), // Ellipse seems to be very sensitive to position.
 }
@@ -132,9 +133,8 @@ func test_sdf_gpu_cpu() error {
 		if err != nil {
 			return err
 		}
-		glsdf3.NewDefaultProgrammer()
-		sdfgpu := gleval.NewComputeGPUSDF3()
-		err = evaluateGPU(primitive, pos, distGPU)
+		sdfgpu := makeGPUSDF3(primitive)
+		err = sdfgpu.Evaluate(pos, distGPU, nil)
 		if err != nil {
 			return err
 		}
@@ -154,15 +154,16 @@ func test_sdf_gpu_cpu() error {
 		pos := meshgrid(bounds, nx, ny, nz)
 		distCPU := make([]float32, len(pos))
 		distGPU := make([]float32, len(pos))
-		sdf, err := gleval.AssertSDF3(obj)
+		sdfcpu, err := gleval.AssertSDF3(obj)
 		if err != nil {
 			return err
 		}
-		err = sdf.Evaluate(pos, distCPU, vp)
+		err = sdfcpu.Evaluate(pos, distCPU, vp)
 		if err != nil {
 			return err
 		}
-		err = evaluateGPU(obj, pos, distGPU)
+		sdfgpu := makeGPUSDF3(obj)
+		err = sdfgpu.Evaluate(pos, distGPU, nil)
 		if err != nil {
 			return err
 		}
@@ -182,15 +183,16 @@ func test_sdf_gpu_cpu() error {
 		pos := meshgrid(bounds, nx, ny, nz)
 		distCPU := make([]float32, len(pos))
 		distGPU := make([]float32, len(pos))
-		sdf, err := gleval.AssertSDF3(obj)
+		sdfcpu, err := gleval.AssertSDF3(obj)
 		if err != nil {
 			return err
 		}
-		err = sdf.Evaluate(pos, distCPU, vp)
+		err = sdfcpu.Evaluate(pos, distCPU, vp)
 		if err != nil {
 			return err
 		}
-		err = evaluateGPU(obj, pos, distGPU)
+		sdfgpu := makeGPUSDF3(obj)
+		err = sdfgpu.Evaluate(pos, distGPU, nil)
 		if err != nil {
 			return err
 		}
@@ -210,15 +212,16 @@ func test_sdf_gpu_cpu() error {
 			pos := meshgrid(bounds, nx, ny, nz)
 			distCPU := make([]float32, len(pos))
 			distGPU := make([]float32, len(pos))
-			sdf, err := gleval.AssertSDF3(obj)
+			sdfcpu, err := gleval.AssertSDF3(obj)
 			if err != nil {
 				return err
 			}
-			err = sdf.Evaluate(pos, distCPU, vp)
+			err = sdfcpu.Evaluate(pos, distCPU, vp)
 			if err != nil {
 				return err
 			}
-			err = evaluateGPU(obj, pos, distGPU)
+			sdfgpu := makeGPUSDF3(obj)
+			err = sdfgpu.Evaluate(pos, distGPU, nil)
 			if err != nil {
 				return err
 			}
@@ -238,15 +241,16 @@ func test_sdf_gpu_cpu() error {
 			pos := meshgrid(bounds, nx, ny, nz)
 			distCPU := make([]float32, len(pos))
 			distGPU := make([]float32, len(pos))
-			sdf, err := gleval.AssertSDF3(obj)
+			sdfcpu, err := gleval.AssertSDF3(obj)
 			if err != nil {
 				return err
 			}
-			err = sdf.Evaluate(pos, distCPU, vp)
+			err = sdfcpu.Evaluate(pos, distCPU, vp)
 			if err != nil {
 				return err
 			}
-			err = evaluateGPU(obj, pos, distGPU)
+			sdfgpu := makeGPUSDF3(obj)
+			err = sdfgpu.Evaluate(pos, distGPU, nil)
 			if err != nil {
 				return err
 			}
@@ -283,7 +287,7 @@ func test_visualizer_generation() error {
 		return err
 	}
 	defer fp.Close()
-	written, err := programmer.WriteFragVisualizer(fp, s)
+	written, err := programmer.WriteFragVisualizerSDF3(fp, s)
 	if err != nil {
 		return err
 	}
@@ -306,8 +310,8 @@ func test_stl_generation() error {
 	// A larger Octree Positional buffer and a smaller RenderAll triangle buffer cause bug.
 	const bufsize = 1 << 12
 	obj, _ := glsdf3.NewSphere(r)
-	sdf := sdfgpu{s: obj}
-	renderer, err := glrender.NewOctreeRenderer(sdf, r/64, bufsize)
+	sdfgpu := makeGPUSDF3(obj)
+	renderer, err := glrender.NewOctreeRenderer(sdfgpu, r/64, bufsize)
 	if err != nil {
 		return err
 	}
@@ -379,6 +383,24 @@ func meshgrid(bounds ms3.Box, nx, ny, nz int) []ms3.Vec {
 		}
 	}
 	return positions
+}
+
+func makeGPUSDF3(s glbuild.Shader3D) gleval.SDF3 {
+	if s == nil {
+		panic("nil Shader3D")
+	}
+	var source bytes.Buffer
+	n, err := programmer.WriteComputeSDF3(&source, s)
+	if err != nil {
+		panic(err)
+	} else if n != source.Len() {
+		panic("bytes written mismatch")
+	}
+	sdfgpu, err := gleval.NewComputeGPUSDF3(&source, s.Bounds())
+	if err != nil {
+		panic(err)
+	}
+	return sdfgpu
 }
 
 func mustShader(s glbuild.Shader3D, err error) glbuild.Shader3D {

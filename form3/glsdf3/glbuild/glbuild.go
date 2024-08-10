@@ -2,6 +2,7 @@ package glbuild
 
 import (
 	"bytes"
+	_ "embed"
 	"errors"
 	"fmt"
 	"io"
