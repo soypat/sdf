@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"log"
@@ -13,7 +12,6 @@ import (
 	"time"
 
 	"github.com/chewxy/math32"
-	"github.com/go-gl/gl/all-core/gl"
 	"github.com/soypat/glgl/math/ms2"
 	"github.com/soypat/glgl/math/ms3"
 	"github.com/soypat/glgl/v4.6-core/glgl"
@@ -126,14 +124,16 @@ func test_sdf_gpu_cpu() error {
 		pos := meshgrid(bounds, nx, ny, nz)
 		distCPU := make([]float32, len(pos))
 		distGPU := make([]float32, len(pos))
-		sdf, err := gleval.AssertSDF3(primitive)
+		sdfcpu, err := gleval.AssertSDF3(primitive)
 		if err != nil {
 			return err
 		}
-		err = sdf.Evaluate(pos, distCPU, vp)
+		err = sdfcpu.Evaluate(pos, distCPU, vp)
 		if err != nil {
 			return err
 		}
+		glsdf3.NewDefaultProgrammer()
+		sdfgpu := gleval.NewComputeGPUSDF3()
 		err = evaluateGPU(primitive, pos, distGPU)
 		if err != nil {
 			return err
@@ -393,93 +393,6 @@ func mustShader2D(s glbuild.Shader2D, err error) glbuild.Shader2D {
 		panic(err.Error())
 	}
 	return s
-}
-
-func assertEvaluator(s glbuild.Shader3D) interface {
-	Evaluate(pos []ms3.Vec, dist []float32, userData any) error
-} {
-	evaluator, ok := s.(interface {
-		Evaluate(pos []ms3.Vec, dist []float32, userData any) error
-	})
-	if !ok {
-		panic(fmt.Sprintf("%T does not implement evaluator", s))
-	}
-	return evaluator
-}
-
-type sdfgpu struct {
-	s glbuild.Shader3D
-}
-
-func (sdf sdfgpu) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
-	return evaluateGPU(sdf.s, pos, dist)
-}
-
-func (sdf sdfgpu) Bounds() ms3.Box {
-	return sdf.s.Bounds()
-}
-
-func evaluateGPU(obj glbuild.Shader3D, pos []ms3.Vec, dist []float32) error {
-	if len(pos) != len(dist) {
-		return errors.New("mismatched position/distance lengths")
-	}
-	var source bytes.Buffer
-	_, err := programmer.WriteComputeDistanceIO(&source, obj)
-	if err != nil {
-		return err
-	}
-	combinedSource, err := glgl.ParseCombined(&source)
-	if err != nil {
-		return err
-	}
-	glprog, err := glgl.CompileProgram(combinedSource)
-	if err != nil {
-		return errors.New(string(combinedSource.Compute) + "\n" + err.Error())
-	}
-	glprog.Bind()
-
-	posCfg := glgl.TextureImgConfig{
-		Type:           glgl.Texture2D,
-		Width:          len(pos),
-		Height:         1,
-		Access:         glgl.ReadOnly,
-		Format:         gl.RGB,
-		MinFilter:      gl.NEAREST,
-		MagFilter:      gl.NEAREST,
-		Xtype:          gl.FLOAT,
-		InternalFormat: gl.RGBA32F,
-		ImageUnit:      0,
-	}
-	_, err = glgl.NewTextureFromImage(posCfg, pos)
-	if err != nil {
-		return err
-	}
-	distCfg := glgl.TextureImgConfig{
-		Type:           glgl.Texture2D,
-		Width:          len(dist),
-		Height:         1,
-		Access:         glgl.WriteOnly,
-		Format:         gl.RED,
-		MinFilter:      gl.NEAREST,
-		MagFilter:      gl.NEAREST,
-		Xtype:          gl.FLOAT,
-		InternalFormat: gl.R32F,
-		ImageUnit:      1,
-	}
-
-	distTex, err := glgl.NewTextureFromImage(distCfg, dist)
-	if err != nil {
-		return err
-	}
-	err = glprog.RunCompute(len(dist), 1, 1)
-	if err != nil {
-		return err
-	}
-	err = glgl.GetImage(dist, distTex, distCfg)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func cmpDist(pos []ms3.Vec, dcpu, dgpu []float32) error {

@@ -15,9 +15,6 @@ const (
 	largenum = 1e20
 )
 
-//go:embed visualizer_footer.tmpl
-var visualizerFooter []byte
-
 // Programmer implements shader generation logic for Shader type.
 type Programmer struct {
 	scratchNodes  []glbuild.Shader
@@ -38,8 +35,11 @@ func NewDefaultProgrammer() *Programmer {
 
 // WriteDistanceIO creates the bare bones I/O compute program for calculating SDF
 // and writes it to the writer.
-func (p *Programmer) WriteComputeDistanceIO(w io.Writer, obj glbuild.Shader) (int, error) {
+func (p *Programmer) WriteComputeSDF3(w io.Writer, obj glbuild.Shader) (int, error) {
 	baseName, nodes, err := glbuild.ParseAppendNodes(p.scratchNodes[:0], obj)
+	if err != nil {
+		return 0, err
+	}
 	// Begin writing shader source code.
 	n, err := w.Write(p.computeHeader)
 	if err != nil {
@@ -128,10 +128,6 @@ func clampf(v, Min, Max float32) float32 {
 		return Max
 	}
 	return v
-}
-
-func roundf(v float32) float32 {
-	return math32.Round(v)
 }
 
 func mixf(x, y, a float32) float32 {
