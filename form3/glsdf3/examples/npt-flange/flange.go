@@ -1,9 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"log"
 	"os"
+	"runtime"
 
+	"github.com/soypat/glgl/v4.6-core/glgl"
 	"github.com/soypat/sdf/form3/glsdf3"
 	"github.com/soypat/sdf/form3/glsdf3/glbuild"
 	"github.com/soypat/sdf/form3/glsdf3/gleval"
@@ -11,7 +15,18 @@ import (
 	"github.com/soypat/sdf/form3/glsdf3/threads"
 )
 
+func init() {
+	if useGPU {
+		runtime.LockOSThread() // For when using GPU this is required.
+	}
+}
+
 const (
+	useGPU = false
+	// visualization is the name of the file with a GLSL
+	// generated visualization of the SDF which can be visualized in https://www.shadertoy.com/
+	// or using VSCode's ShaderToy extension. If visualization=="" then no file is generated.
+	visualization = "nptflange.glsl"
 	// thread length
 	tlen             = 18. / 25.4
 	internalDiameter = 1.5 / 2.
@@ -20,6 +35,18 @@ const (
 )
 
 func main() {
+	if useGPU {
+		_, terminate, err := glgl.InitWithCurrentWindow33(glgl.WindowConfig{
+			Title:   "compute",
+			Version: [2]int{4, 6},
+			Width:   1,
+			Height:  1,
+		})
+		if err != nil {
+			log.Fatal("FAIL to start GLFW", err.Error())
+		}
+		defer terminate()
+	}
 	sdf, err := scene()
 	if err != nil {
 		fmt.Println("error making scene:", err)
@@ -66,6 +93,7 @@ func scene() (gleval.SDF3, error) {
 	}
 
 	flange, err = glsdf3.NewCylinder(flangeD/2, flangeH, flangeH/8)
+	return makeSDF(flange)
 	if err != nil {
 		return nil, err
 	}
@@ -77,5 +105,40 @@ func scene() (gleval.SDF3, error) {
 	}
 	flange = glsdf3.Difference(flange, hole) // Make through-hole in flange bottom
 	flange = glsdf3.Scale(flange, 25.4)      // convert to millimeters
-	return gleval.NewCPUSDF3(flange)
+	return makeSDF(flange)
+}
+
+func makeSDF(s glbuild.Shader3D) (gleval.SDF3, error) {
+	if visualization != "" {
+		const sceneSize = 0.5
+		// We include the bounding box in the visualization.
+		bb := s.Bounds()
+		envelope, err := glsdf3.NewBoundsBoxFrame(bb)
+		if err != nil {
+			return nil, err
+		}
+		s = glsdf3.Union(s, envelope)
+		// Scale size and translate to center so visualization is in camera range.
+		center := bb.Center()
+		s = glsdf3.Translate(s, center.X, center.Y, center.Z)
+		s = glsdf3.Scale(s, sceneSize/bb.Size().Max())
+		source := new(bytes.Buffer)
+		_, err = glbuild.NewDefaultProgrammer().WriteFragVisualizerSDF3(source, s)
+		if err != nil {
+			return nil, err
+		}
+		err = os.WriteFile(visualization, source.Bytes(), 0666)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if useGPU {
+		source := new(bytes.Buffer)
+		_, err := glbuild.NewDefaultProgrammer().WriteComputeSDF3(source, s)
+		if err != nil {
+			return nil, err
+		}
+		return gleval.NewComputeGPUSDF3(source, s.Bounds())
+	}
+	return gleval.NewCPUSDF3(s)
 }

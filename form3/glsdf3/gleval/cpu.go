@@ -127,33 +127,42 @@ func (vp *VecPool) AssertAllReleased() error {
 type bufPool[T any] struct {
 	_ins      [][]T
 	_acquired []bool
+	// releaseErr stores error on Release call since Release is usually used in concert with defer, thus losing the error.
+	releaseErr error
 }
 
-func (bp *bufPool[T]) Acquire(minLength int) []T {
+func (bp *bufPool[T]) Acquire(length int) []T {
 	for i, locked := range bp._acquired {
-		if !locked && len(bp._ins[i]) > minLength {
+		if !locked && len(bp._ins[i]) > length {
 			bp._acquired[i] = true
-			return bp._ins[i]
+			return bp._ins[i][:length]
 		}
 	}
-	newSlice := make([]T, minLength)
+	newSlice := make([]T, length)
 	newSlice = newSlice[:cap(newSlice)]
 	bp._ins = append(bp._ins, newSlice)
 	bp._acquired = append(bp._acquired, true)
-	return newSlice
+	return newSlice[:length]
 }
+
+var (
+	errBufpoolReleaseUnaqcuired  = errors.New("release of unacquired resource")
+	errBufpoolReleaseNonexistent = errors.New("release of nonexistent resource")
+)
 
 func (bp *bufPool[T]) Release(buf []T) error {
 	for i, instance := range bp._ins {
 		if &instance[0] == &buf[0] {
 			if !bp._acquired[i] {
-				return errors.New("release of unacquired resource")
+				bp.releaseErr = errBufpoolReleaseUnaqcuired
+				return bp.releaseErr
 			}
 			bp._acquired[i] = false
 			return nil
 		}
 	}
-	return errors.New("release of nonexistent resource")
+	bp.releaseErr = errBufpoolReleaseNonexistent
+	return bp.releaseErr
 }
 
 func (bp *bufPool[T]) assertAllReleased() error {
@@ -161,6 +170,10 @@ func (bp *bufPool[T]) assertAllReleased() error {
 		if locked {
 			return fmt.Errorf("locked %T resource found in glbuild.bufPool.assertAllReleased, memory leak?", *new(T))
 		}
+	}
+	err := bp.releaseErr
+	if err != nil {
+		return err
 	}
 	return nil
 }

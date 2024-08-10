@@ -48,7 +48,7 @@ func (oc *Octree) Reset(s gleval.SDF3, cubeResolution float32) error {
 	}
 	// Scale the bounding box about the center to make sure the boundaries
 	// aren't on the object surface.
-	bb := s.Bounds() //.ScaleCentered(ms3.Vec{X: 1.01, Y: 1.01, Z: 1.01})
+	bb := s.Bounds().ScaleCentered(ms3.Vec{X: 1.01, Y: 1.01, Z: 1.01})
 	longAxis := bb.Size().Max()
 
 	// how many cube levels for the octree?

@@ -1,6 +1,9 @@
 package gleval
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/soypat/glgl/math/ms2"
 	"github.com/soypat/glgl/math/ms3"
 )
@@ -37,3 +40,58 @@ type (
 	bounder2 = interface{ Bounds() ms2.Box }
 	bounder3 = interface{ Bounds() ms3.Box }
 )
+
+// NormalsCentralDiff uses central differences algorithm for normal calculation, which are stored in normals for each position.
+func NormalsCentralDiff(s SDF3, pos []ms3.Vec, normals []ms3.Vec, step float32, userData any) error {
+	step *= 0.5
+	if step <= 0 {
+		return errors.New("invalid step")
+	} else if len(pos) != len(normals) {
+		return errors.New("length of position must match length of normals")
+	} else if s == nil {
+		return errors.New("nil SDF3")
+	}
+	vp, err := GetVecPool(userData)
+	if err != nil {
+		return fmt.Errorf("VecPool required in both GPU and CPU situations for Normal calculation: %s", err)
+	}
+	d1 := vp.Float.Acquire(len(pos))
+	d2 := vp.Float.Acquire(len(pos))
+	auxPos := vp.V3.Acquire(len(pos))
+	defer vp.Float.Release(d1)
+	defer vp.Float.Release(d2)
+	defer vp.V3.Release(auxPos)
+	var vecs = [3]ms3.Vec{{X: step}, {Y: step}, {Z: step}}
+	for dim := 0; dim < 3; dim++ {
+		h := vecs[dim]
+		for i, p := range pos {
+			auxPos[i] = ms3.Add(p, h)
+		}
+		err = s.Evaluate(auxPos, d1, userData)
+		if err != nil {
+			return err
+		}
+		for i, p := range pos {
+			auxPos[i] = ms3.Sub(p, h)
+		}
+		err = s.Evaluate(auxPos, d2, userData)
+		if err != nil {
+			return err
+		}
+		switch dim {
+		case 0:
+			for i := range normals {
+				normals[i].X = d1[i] - d2[i]
+			}
+		case 1:
+			for i := range normals {
+				normals[i].Y = d1[i] - d2[i]
+			}
+		case 2:
+			for i := range normals {
+				normals[i].Z = d1[i] - d2[i]
+			}
+		}
+	}
+	return nil
+}

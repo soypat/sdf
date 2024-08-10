@@ -119,6 +119,7 @@ var OtherUnaryRandomizedOps2D3D = []func(a glbuild.Shader2D, rng *rand.Rand) glb
 func test_sdf_gpu_cpu() error {
 	const nx, ny, nz = 10, 10, 10
 	vp := &gleval.VecPool{}
+	scratchDist := make([]float32, 256)
 	for _, primitive := range PremadePrimitives {
 		log.Printf("begin evaluating %s\n", getBaseTypename(primitive))
 		bounds := primitive.Bounds()
@@ -139,6 +140,11 @@ func test_sdf_gpu_cpu() error {
 			return err
 		}
 		err = cmpDist(pos, distCPU, distGPU)
+		if err != nil {
+			description := sprintOpPrimitive(nil, primitive)
+			return fmt.Errorf("%s for %s", err, description)
+		}
+		err = test_bounds(sdfcpu, scratchDist, vp)
 		if err != nil {
 			description := sprintOpPrimitive(nil, primitive)
 			return fmt.Errorf("%s for %s", err, description)
@@ -168,6 +174,11 @@ func test_sdf_gpu_cpu() error {
 			return err
 		}
 		err = cmpDist(pos, distCPU, distGPU)
+		if err != nil {
+			description := sprintOpPrimitive(op, p1, p2)
+			return fmt.Errorf("%s for %s", err, description)
+		}
+		err = test_bounds(sdfcpu, scratchDist, vp)
 		if err != nil {
 			description := sprintOpPrimitive(op, p1, p2)
 			return fmt.Errorf("%s for %s", err, description)
@@ -271,11 +282,11 @@ func test_visualizer_generation() error {
 	const diam = 2 * r
 	const filename = "visual.glsl"
 	// A larger Octree Positional buffer and a smaller RenderAll triangle buffer cause bug.
-	s, err := glsdf3.NewTriangularPrism(r, r/4)
+	s, err := glsdf3.NewSphere(r)
 	if err != nil {
 		return err
 	}
-	s = glsdf3.Elongate(s, 0, 0, 0)
+	// s = glsdf3.Elongate(s, 0, 0, 0)
 	s, err = glsdf3.Array(s, diam, diam, diam, 1, 2, reps)
 	if err != nil {
 		return err
@@ -349,20 +360,42 @@ func test_stl_generation() error {
 	return err
 }
 
-func getFnName(fnPtr any) string {
-	name := runtime.FuncForPC(reflect.ValueOf(fnPtr).Pointer()).Name()
-	idx := strings.LastIndexByte(name, '.')
-	return name[idx+1:]
-}
-
-func isFn(fnPtr any) bool {
-	return reflect.ValueOf(fnPtr).Kind() == reflect.Func
-}
-
-func getBaseTypename(a any) string {
-	s := fmt.Sprintf("%T", a)
-	pointIdx := strings.LastIndexByte(s, '.')
-	return s[pointIdx+1:]
+func test_bounds(sdf gleval.SDF3, scratchDist []float32, userData any) error {
+	if len(scratchDist) < 8 {
+		return errors.New("minimum len(scratchDist) not met")
+	}
+	bb := sdf.Bounds()
+	size := bb.Size()
+	vertices := bb.Vertices()
+	vertDist := scratchDist[:8]
+	err := sdf.Evaluate(vertices[:], vertDist, userData)
+	if err != nil {
+		return err
+	}
+	maxDim := size.Max()
+	for i, d := range vertDist {
+		if d < 0 {
+			return fmt.Errorf("bounding box point %v (d=%f) within SDF", vertices[i], d)
+		} else if d > maxDim {
+			return fmt.Errorf("bounding box point %v (d=%f) at impossible distance from SDF", vertices[i], d)
+		}
+	}
+	// Testing Normals.
+	var gotNormals [8]ms3.Vec
+	err = gleval.NormalsCentralDiff(sdf, vertices[:], gotNormals[:], maxDim*1e-5, userData)
+	if err != nil {
+		return err
+	}
+	// Calculate expected normal directions.
+	bbOrigin := bb.Add(ms3.Scale(-1, bb.Center()))
+	vertWantNorm := bbOrigin.Vertices()
+	for i, got := range gotNormals {
+		want := vertWantNorm[i]
+		angle := ms3.Cos(got, want)
+		fmt.Printf("got %v, want %v -> angle=%f\n", got, want, angle)
+	}
+	// TODO: add normals test, normals should point outwards.
+	return nil
 }
 
 func meshgrid(bounds ms3.Box, nx, ny, nz int) []ms3.Vec {
@@ -532,19 +565,39 @@ func randomRevolve(a glbuild.Shader2D, rng *rand.Rand) glbuild.Shader3D {
 
 func sprintOpPrimitive(op any, primitives ...any) string {
 	var buf strings.Builder
-	if isFn(op) {
-		buf.WriteString(getFnName(op))
-	} else {
-		buf.WriteString(getBaseTypename(op))
-		// buf.WriteString(fmt.Sprintf("%+v", op))
+	if op != nil {
+		if isFn(op) {
+			buf.WriteString(getFnName(op))
+		} else {
+			buf.WriteString(getBaseTypename(op))
+			// buf.WriteString(fmt.Sprintf("%+v", op))
+		}
+		buf.WriteByte('(')
 	}
-	buf.WriteByte('(')
 	for i := range primitives {
 		buf.WriteString(getBaseTypename(primitives[i]))
 		if i < len(primitives)-1 {
 			buf.WriteByte(',')
 		}
 	}
-	buf.WriteByte(')')
+	if op != nil {
+		buf.WriteByte(')')
+	}
 	return buf.String()
+}
+
+func getFnName(fnPtr any) string {
+	name := runtime.FuncForPC(reflect.ValueOf(fnPtr).Pointer()).Name()
+	idx := strings.LastIndexByte(name, '.')
+	return name[idx+1:]
+}
+
+func isFn(fnPtr any) bool {
+	return reflect.ValueOf(fnPtr).Kind() == reflect.Func
+}
+
+func getBaseTypename(a any) string {
+	s := fmt.Sprintf("%T", a)
+	pointIdx := strings.LastIndexByte(s, '.')
+	return s[pointIdx+1:]
 }

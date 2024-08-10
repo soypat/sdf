@@ -7,6 +7,22 @@ import (
 	"github.com/soypat/sdf/form3/glsdf3/glbuild"
 )
 
+// NewBoundsBoxFrame creates a BoxFrame from a bb ([ms3.Box]) such that the BoxFrame envelops the bb.
+// Useful for debugging bounding boxes of [glbuild.Shader3D] primitives and operations.
+func NewBoundsBoxFrame(bb ms3.Box) (glbuild.Shader3D, error) {
+	const bbMarginMultiplier = 1.3
+	size := bb.Size()
+	maxDimension := size.Max()
+	frameThickness := maxDimension / 128
+	spacing := bbMarginMultiplier * frameThickness
+	bounding, err := NewBoxFrame(size.X+spacing, size.Y+spacing, size.Z+spacing, frameThickness)
+	if err != nil {
+		return nil, err
+	}
+	bounding = Translate(bounding, -bb.Min.X, -bb.Min.Y, -bb.Min.Z)
+	return bounding, nil
+}
+
 type sphere struct {
 	r float32
 }
@@ -98,6 +114,13 @@ type cylinder struct {
 	round float32
 }
 
+func (s *cylinder) Bounds() ms3.Box {
+	return ms3.Box{
+		Min: ms3.Vec{X: -s.r, Y: -s.r, Z: -s.h / 2},
+		Max: ms3.Vec{X: s.r, Y: s.r, Z: s.h / 2},
+	}
+}
+
 func (s *cylinder) ForEachChild(userData any, fn func(userData any, s *glbuild.Shader3D) error) error {
 	return nil
 }
@@ -111,6 +134,7 @@ func (s *cylinder) AppendShaderName(b []byte) []byte {
 }
 
 func (s *cylinder) AppendShaderBody(b []byte) []byte {
+	b = append(b, "p = p.xzy;\n"...)
 	b = appendFloatDecl(b, "r", s.r)
 	b = appendFloatDecl(b, "h", s.h-s.round) // Correct height for rounding effect.
 	if s.round == 0 {
@@ -122,13 +146,6 @@ return min(max(d.x,d.y),0.0) + length(max(d,0.0));`...)
 return min(max(d.x,d.y),0.0) + length(max(d,0.0)) - rd;`...)
 	}
 	return b
-}
-
-func (s *cylinder) Bounds() ms3.Box {
-	return ms3.Box{
-		Min: ms3.Vec{X: -s.r, Y: -s.r, Z: -s.h / 2},
-		Max: ms3.Vec{X: s.r, Y: s.r, Z: s.h / 2},
-	}
 }
 
 func NewHexagonalPrism(side, h float32) (glbuild.Shader3D, error) {
