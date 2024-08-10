@@ -488,7 +488,7 @@ func randomRound(a glbuild.Shader3D, rng *rand.Rand) glbuild.Shader3D {
 	minround := bb.Min() / 64
 	maxround := bb.Min() / 2
 	round := minround + (rng.Float32() * (maxround - minround))
-	return glsdf3.Round(a, round)
+	return glsdf3.Offset(a, -round)
 }
 
 func randomTranslate(a glbuild.Shader3D, rng *rand.Rand) glbuild.Shader3D {

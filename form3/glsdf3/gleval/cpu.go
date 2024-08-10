@@ -13,7 +13,7 @@ import (
 //
 // The returned [gleval.SDF3] should only require a [gleval.VecPool] as a userData argument,
 // this is automatically taken care of if a nil userData is passed in.
-func NewCPUSDF3(root any) (SDF3, error) {
+func NewCPUSDF3(root bounder3) (SDF3, error) {
 	sdf, err := AssertSDF3(root)
 	if err != nil {
 		return nil, fmt.Errorf("top level SDF cannot be CPU evaluated: %s", err.Error())
@@ -32,7 +32,7 @@ func NewCPUSDF3(root any) (SDF3, error) {
 
 // AssertSDF3 asserts the Shader3D as a SDF3 implementation
 // and returns the raw result. It provides readable errors beyond simply converting the interface.
-func AssertSDF3(s any) (SDF3, error) {
+func AssertSDF3(s bounder3) (SDF3, error) {
 	evaluator, ok := s.(SDF3)
 	if !ok {
 		return nil, fmt.Errorf("%T does not implement 3D evaluator", s)
@@ -42,7 +42,7 @@ func AssertSDF3(s any) (SDF3, error) {
 
 // AssertSDF2 asserts the argument as a SDF2 implementation
 // and returns the raw result. It provides readable errors beyond simply converting the interface.
-func AssertSDF2(s any) (SDF2, error) {
+func AssertSDF2(s bounder2) (SDF2, error) {
 	evaluator, ok := s.(SDF2)
 	if !ok {
 		return nil, fmt.Errorf("%T does not implement 2D evaluator", s)

@@ -37,6 +37,7 @@ func (sdf *computeSDF) Bounds() ms3.Box {
 
 func (sdf *computeSDF) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	sdf.prog.Bind()
+	defer sdf.prog.Unbind()
 	posCfg := glgl.TextureImgConfig{
 		Type:           glgl.Texture2D,
 		Width:          len(pos),

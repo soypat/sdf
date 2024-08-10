@@ -572,6 +572,48 @@ return d;`, s.d.X, s.d.Y,
 	return b
 }
 
+// Offset2D adds sdfAdd to the entire argument SDF. If sdfAdd is negative this will
+// round edges and increase the dimension of flat surfaces of the SDF by the absolute magnitude.
+// See [Inigo's youtube video] on the subject.
+//
+// [Inigo's youtube video]: https://www.youtube.com/watch?v=s5NGeUV2EyU
+func Offset2D(s glbuild.Shader2D, sdfAdd float32) glbuild.Shader2D {
+	return &offset2D{s: s, f: sdfAdd}
+}
+
+type offset2D struct {
+	s glbuild.Shader2D
+	f float32
+}
+
+func (u *offset2D) Bounds() ms2.Box {
+	bb := u.s.Bounds()
+	bb.Max = ms2.AddScalar(-u.f, bb.Max)
+	bb.Min = ms2.AddScalar(u.f, bb.Min)
+	return bb
+}
+
+func (s *offset2D) ForEach2DChild(userData any, fn func(userData any, s *glbuild.Shader2D) error) error {
+	return fn(userData, &s.s)
+}
+
+func (s *offset2D) AppendShaderName(b []byte) []byte {
+	b = append(b, "offset2D"...)
+	b = fappend(b, s.f, 'n', 'p')
+	b = append(b, '_')
+	b = s.s.AppendShaderName(b)
+	return b
+}
+
+func (s *offset2D) AppendShaderBody(b []byte) []byte {
+	b = append(b, "return "...)
+	b = s.s.AppendShaderName(b)
+	b = append(b, "(p)+("...)
+	b = fappend(b, s.f, '-', '.')
+	b = append(b, ')', ';')
+	return b
+}
+
 func appendVec2Decl(b []byte, name string, v ms2.Vec) []byte {
 	b = append(b, "vec2 "...)
 	b = append(b, name...)

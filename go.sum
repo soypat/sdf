@@ -59,6 +59,8 @@ github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZN
 github.com/ruudk/golang-pdf417 v0.0.0-20181029194003-1af4ab5afa58/go.mod h1:6lfFZQK844Gfx8o5WFuvpxWRwnSoipWe/p622j1v06w=
 github.com/soypat/glgl v0.0.0-20240809024808-f4421ddaeb28 h1:GNBTsw+7OsoOm8gN8dbdJ2jHuIn93P1bsVn63Rn//FY=
 github.com/soypat/glgl v0.0.0-20240809024808-f4421ddaeb28/go.mod h1:jcTX7fb8Y1WYrBfHyqZtzZyXzEQaOVp/z+ngMn9IQuk=
+github.com/soypat/glgl v0.0.0-20240810034153-00699c4179fb h1:1rAQ9OW1YI6oamG0PXzO2K6f444l/wbdBykbe5Udzr8=
+github.com/soypat/glgl v0.0.0-20240810034153-00699c4179fb/go.mod h1:jcTX7fb8Y1WYrBfHyqZtzZyXzEQaOVp/z+ngMn9IQuk=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
 github.com/stretchr/testify v1.7.0 h1:nwc3DEeHmmLAfoZucVR881uASk0Mfjw8xYJ99tb5CcY=

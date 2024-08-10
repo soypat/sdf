@@ -99,7 +99,7 @@ func (t *tri) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	return nil
 }
 
-func evaluateSDF3(obj any, pos []ms3.Vec, dist []float32, userData any) error {
+func evaluateSDF3(obj bounder3, pos []ms3.Vec, dist []float32, userData any) error {
 	sdf, err := gleval.AssertSDF3(obj)
 	if err != nil {
 		return err
@@ -107,7 +107,7 @@ func evaluateSDF3(obj any, pos []ms3.Vec, dist []float32, userData any) error {
 	return sdf.Evaluate(pos, dist, userData)
 }
 
-func evaluateSDF2(obj any, pos []ms2.Vec, dist []float32, userData any) error {
+func evaluateSDF2(obj bounder2, pos []ms2.Vec, dist []float32, userData any) error {
 	sdf, err := gleval.AssertSDF2(obj)
 	if err != nil {
 		return err
@@ -435,7 +435,7 @@ func (sh *shell) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	return nil
 }
 
-func (r *round) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
+func (r *offset) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	sdf, err := gleval.AssertSDF3(r.s)
 	if err != nil {
 		return err
@@ -446,7 +446,7 @@ func (r *round) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	}
 	radius := r.rad
 	for i, d := range dist {
-		dist[i] = d - radius
+		dist[i] = d + radius
 	}
 	return nil
 }
@@ -766,6 +766,22 @@ func (a *array2D) Evaluate(pos []ms2.Vec, dist []float32, userData any) error {
 				dist[i] = minf(d, auxdist[i])
 			}
 		}
+	}
+	return nil
+}
+
+func (r *offset2D) Evaluate(pos []ms2.Vec, dist []float32, userData any) error {
+	sdf, err := gleval.AssertSDF2(r.s)
+	if err != nil {
+		return err
+	}
+	err = sdf.Evaluate(pos, dist, userData)
+	if err != nil {
+		return err
+	}
+	radius := r.f
+	for i, d := range dist {
+		dist[i] = d + radius
 	}
 	return nil
 }

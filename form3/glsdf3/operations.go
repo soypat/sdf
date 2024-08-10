@@ -339,38 +339,42 @@ func (s *translate) AppendShaderBody(b []byte) []byte {
 	return b
 }
 
-// Round performs a rounding operation on the input SDF, rounding off all edges by radius.
-func Round(s glbuild.Shader3D, radius float32) glbuild.Shader3D {
-	return &round{s: s, rad: radius}
+// Offset adds sdfAdd to the entire argument SDF. If sdfAdd is negative this will
+// round edges and increase the dimension of flat surfaces of the SDF by the absolute magnitude.
+// See [Inigo's youtube video] on the subject.
+//
+// [Inigo's youtube video]: https://www.youtube.com/watch?v=s5NGeUV2EyU
+func Offset(s glbuild.Shader3D, sdfAdd float32) glbuild.Shader3D {
+	return &offset{s: s, rad: sdfAdd}
 }
 
-type round struct {
+type offset struct {
 	s   glbuild.Shader3D
 	rad float32
 }
 
-func (u *round) Bounds() ms3.Box {
+func (u *offset) Bounds() ms3.Box {
 	return u.s.Bounds()
 }
 
-func (s *round) ForEachChild(userData any, fn func(userData any, s *glbuild.Shader3D) error) error {
+func (s *offset) ForEachChild(userData any, fn func(userData any, s *glbuild.Shader3D) error) error {
 	return fn(userData, &s.s)
 }
 
-func (s *round) AppendShaderName(b []byte) []byte {
-	b = append(b, "round"...)
+func (s *offset) AppendShaderName(b []byte) []byte {
+	b = append(b, "offset"...)
 	b = fappend(b, s.rad, 'n', 'p')
 	b = append(b, '_')
 	b = s.s.AppendShaderName(b)
 	return b
 }
 
-func (s *round) AppendShaderBody(b []byte) []byte {
+func (s *offset) AppendShaderBody(b []byte) []byte {
 	b = append(b, "return "...)
 	b = s.s.AppendShaderName(b)
-	b = append(b, "(p)-"...)
+	b = append(b, "(p)+("...)
 	b = fappend(b, s.rad, '-', '.')
-	b = append(b, ';')
+	b = append(b, ')', ';')
 	return b
 }
 

@@ -4,6 +4,7 @@ import (
 	_ "embed"
 
 	"github.com/chewxy/math32"
+	"github.com/soypat/glgl/math/ms2"
 	"github.com/soypat/glgl/math/ms3"
 	"github.com/soypat/sdf/form3/glsdf3/glbuild"
 )
@@ -13,12 +14,12 @@ const (
 	largenum = 1e20
 )
 
-// Programmer implements shader generation logic for Shader type.
-type Programmer struct {
-	scratchNodes  []glbuild.Shader
-	scratch       []byte
-	computeHeader []byte
-}
+// These interfaces are implemented by all SDF interfaces such as SDF3/2 and Shader3D/2D.
+// Using these instead of `any` Aids in catching mistakes at compile time such as passing a Shader3D instead of Shader2D as an argument.
+type (
+	bounder2 = interface{ Bounds() ms2.Box }
+	bounder3 = interface{ Bounds() ms3.Box }
+)
 
 func minf(a, b float32) float32 {
 	return math32.Min(a, b)

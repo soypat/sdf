@@ -30,3 +30,10 @@ type SDF2 interface {
 	// Bounds returns the SDF's bounding box such that all of the shape is contained within.
 	Bounds() ms2.Box
 }
+
+// These interfaces are implemented by all SDF interfaces such as SDF3/2 and Shader3D/2D.
+// Using these instead of `any` Aids in catching mistakes at compile time such as passing a Shader3D instead of Shader2D as an argument.
+type (
+	bounder2 = interface{ Bounds() ms2.Box }
+	bounder3 = interface{ Bounds() ms3.Box }
+)

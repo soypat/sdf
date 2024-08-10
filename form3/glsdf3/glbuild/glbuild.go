@@ -44,6 +44,90 @@ type shader3D2D interface {
 	ForEach2DChild(userData any, fn func(userData any, s *Shader2D) error) error
 }
 
+// Programmer implements shader generation logic for Shader type.
+type Programmer struct {
+	scratchNodes  []Shader
+	scratch       []byte
+	computeHeader []byte
+}
+
+var defaultComputeHeader = []byte("#shader compute\n#version 430\n")
+
+// NewDefaultProgrammer returns a Programmer with reasonable default parameters for use with glgl package.
+func NewDefaultProgrammer() *Programmer {
+	return &Programmer{
+		scratchNodes:  make([]Shader, 64),
+		scratch:       make([]byte, 1024),
+		computeHeader: defaultComputeHeader,
+	}
+}
+
+// WriteDistanceIO creates the bare bones I/O compute program for calculating SDF
+// and writes it to the writer.
+func (p *Programmer) WriteComputeSDF3(w io.Writer, obj Shader) (int, error) {
+	baseName, nodes, err := ParseAppendNodes(p.scratchNodes[:0], obj)
+	if err != nil {
+		return 0, err
+	}
+	// Begin writing shader source code.
+	n, err := w.Write(p.computeHeader)
+	if err != nil {
+		return n, err
+	}
+	ngot, newScratch, err := WriteShaders(w, nodes, p.scratch)
+	p.scratch = newScratch
+	n += ngot
+	if err != nil {
+		return n, err
+	}
+
+	ngot, err = fmt.Fprintf(w, `
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout(rgba32f, binding = 0) uniform image2D in_tex;
+// The binding argument refers to the textures Unit.
+layout(r32f, binding = 1) uniform image2D out_tex;
+
+void main() {
+	// get position to read/write data from.
+	ivec2 pos = ivec2( gl_GlobalInvocationID.xy );
+	// Get SDF position value.
+	vec3 p = imageLoad( in_tex, pos ).rgb;
+	float distance = %s(p);
+	// store new value in image
+	imageStore( out_tex, pos, vec4( distance, 0.0, 0.0, 0.0 ) );
+}
+`, baseName)
+
+	n += ngot
+	return n, err
+}
+
+// WriteFragVisualizerSDF3 generates a OpenGL program that can be visualized in most shader visualizers such as ShaderToy.
+func (p *Programmer) WriteFragVisualizerSDF3(w io.Writer, obj Shader3D) (n int, err error) {
+	baseName, nodes, err := ParseAppendNodes(p.scratchNodes[:0], obj)
+	if err != nil {
+		return 0, err
+	}
+	ngot, newScratch, err := WriteShaders(w, nodes, p.scratch)
+	p.scratch = newScratch
+	n += ngot
+	if err != nil {
+		return n, err
+	}
+	ngot, err = w.Write([]byte("\nfloat sdf(vec3 p) { return " + baseName + "(p); }\n\n"))
+	n += ngot
+	if err != nil {
+		return n, err
+	}
+	ngot, err = w.Write(visualizerFooter)
+	n += ngot
+	if err != nil {
+		return n, err
+	}
+	return n, nil
+}
+
 // ParseAppendNodes parses the shader object tree and appends all nodes in Depth First order
 // to the dst Shader argument buffer and returns the result.
 func ParseAppendNodes(dst []Shader, root Shader) (baseName string, nodes []Shader, err error) {
@@ -63,22 +147,26 @@ func ParseAppendNodes(dst []Shader, root Shader) (baseName string, nodes []Shade
 
 // WriteShaders iterates over the argument nodes in reverse order and
 // writes their GL code to the writer. scratch is an auxiliary buffer to avoid heap allocations.
-func WriteShaders(w io.Writer, nodes []Shader, scratch []byte) (n int, err error) {
+//
+// WriteShaders does not check for
+func WriteShaders(w io.Writer, nodes []Shader, scratch []byte) (n int, newscratch []byte, err error) {
 	if scratch == nil {
 		scratch = make([]byte, 512)
 	}
+	var ngot int
 	for i := len(nodes) - 1; i >= 0; i-- {
-		ngot, err := WriteShader(w, nodes[i], scratch[:0])
+		ngot, scratch, err = WriteShader(w, nodes[i], scratch[:0])
 		n += ngot
 		if err != nil {
-			return n, err
+			return n, scratch, err
 		}
 	}
-	return n, nil
+	return n, scratch, nil
 }
 
-// WriteShader writes the GL code of a single shader to the writer. scratch is an auxiliary buffer to prevent allocations.
-func WriteShader(w io.Writer, s Shader, scratch []byte) (int, error) {
+// WriteShader writes the GL code of a single shader to the writer. scratch is an auxiliary buffer to prevent allocations. If scratch's
+// capacity is grown during the writing the buffer with augmented capacity is returned. If not the same input scratch is returned.
+func WriteShader(w io.Writer, s Shader, scratch []byte) (int, []byte, error) {
 	scratch = scratch[:0]
 	scratch = append(scratch, "float "...)
 	scratch = s.AppendShaderName(scratch)
@@ -89,11 +177,15 @@ func WriteShader(w io.Writer, s Shader, scratch []byte) (int, error) {
 	}
 	scratch = s.AppendShaderBody(scratch)
 	scratch = append(scratch, "\n}\n\n"...)
-	return w.Write(scratch)
+	n, err := w.Write(scratch)
+	return n, scratch, err
 }
 
-// AppendAllNodes DFS iterates over all of root's descendants and appends all nodes
+// AppendAllNodes BFS iterates over all of root's descendants and appends all nodes
 // found to dst.
+//
+// To generate shaders one must iterate over nodes in reverse order to ensure
+// the first iterated nodes are the nodes with no dependencies on other nodes.
 func AppendAllNodes(dst []Shader, root Shader) ([]Shader, error) {
 	var userData any
 	children := []Shader{root}
@@ -103,10 +195,14 @@ func AppendAllNodes(dst []Shader, root Shader) ([]Shader, error) {
 		newChildren := children[nextChild:]
 		for _, obj := range newChildren {
 			nextChild++
-			var err error
 			obj3, ok3 := obj.(Shader3D)
 			obj2, ok2 := obj.(Shader2D)
+			if !ok2 && !ok3 {
+				return nil, fmt.Errorf("found shader %T that does not implement Shader3D nor Shader2D", obj)
+			}
+			var err error
 			if ok3 {
+				// Got Shader3D in obj.
 				err = obj3.ForEachChild(userData, func(userData any, s *Shader3D) error {
 					if s == nil || *s == nil {
 						return nilChild
@@ -115,6 +211,7 @@ func AppendAllNodes(dst []Shader, root Shader) ([]Shader, error) {
 					return nil
 				})
 				if obj32, ok32 := obj.(shader3D2D); ok32 {
+					// The Shader3D obj contains Shader2D children, such is case for 2D->3D operations i.e: revolution and extrusion operations.
 					err = obj32.ForEach2DChild(userData, func(userData any, s *Shader2D) error {
 						if s == nil || *s == nil {
 							return nilChild
@@ -124,7 +221,8 @@ func AppendAllNodes(dst []Shader, root Shader) ([]Shader, error) {
 					})
 				}
 			}
-			if err == nil && ok2 {
+			if err == nil && !ok3 && ok2 {
+				// Got Shader2D in obj.
 				err = obj2.ForEach2DChild(userData, func(userData any, s *Shader2D) error {
 					if s == nil || *s == nil {
 						return nilChild
@@ -133,9 +231,6 @@ func AppendAllNodes(dst []Shader, root Shader) ([]Shader, error) {
 					return nil
 				})
 			}
-			if !ok2 && !ok3 {
-				return nil, errors.New("found shader that does not implement Shader3D nor Shader2D")
-			}
 			if err != nil {
 				return nil, err
 			}
@@ -143,6 +238,17 @@ func AppendAllNodes(dst []Shader, root Shader) ([]Shader, error) {
 	}
 	dst = append(dst, children...)
 	return dst, nil
+}
+
+func AppendDistanceDecl(b []byte, s Shader, name, input string) []byte {
+	b = append(b, "float "...)
+	b = append(b, name...)
+	b = append(b, '=')
+	b = s.AppendShaderName(b)
+	b = append(b, '(')
+	b = append(b, input...)
+	b = append(b, ");\n"...)
+	return b
 }
 
 func AppendVec3Decl(b []byte, name string, v ms3.Vec) []byte {
@@ -250,111 +356,9 @@ func (xyz XYZBits) AppendMapped(b []byte, Map [3]byte) []byte {
 	return b
 }
 
-func AppendDistanceDecl(b []byte, s Shader, name, input string) []byte {
-	b = append(b, "float "...)
-	b = append(b, name...)
-	b = append(b, '=')
-	b = s.AppendShaderName(b)
-	b = append(b, '(')
-	b = append(b, input...)
-	b = append(b, ");\n"...)
-	return b
-}
-
 func b2i(b bool) int {
 	if b {
 		return 1
 	}
 	return 0
-}
-
-// Programmer implements shader generation logic for Shader type.
-type Programmer struct {
-	scratchNodes  []Shader
-	scratch       []byte
-	computeHeader []byte
-}
-
-var defaultComputeHeader = []byte("#shader compute\n#version 430\n")
-
-// NewDefaultProgrammer returns a Programmer with reasonable default parameters for use with glgl package.
-func NewDefaultProgrammer() *Programmer {
-	return &Programmer{
-		scratchNodes:  make([]Shader, 64),
-		scratch:       make([]byte, 1024),
-		computeHeader: defaultComputeHeader,
-	}
-}
-
-// WriteDistanceIO creates the bare bones I/O compute program for calculating SDF
-// and writes it to the writer.
-func (p *Programmer) WriteComputeSDF3(w io.Writer, obj Shader) (int, error) {
-	baseName, nodes, err := ParseAppendNodes(p.scratchNodes[:0], obj)
-	if err != nil {
-		return 0, err
-	}
-	// Begin writing shader source code.
-	n, err := w.Write(p.computeHeader)
-	if err != nil {
-		return n, err
-	}
-	ngot, err := WriteShaders(w, nodes, p.scratch)
-	n += ngot
-	if err != nil {
-		return n, err
-	}
-
-	ngot, err = fmt.Fprintf(w, `
-
-layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
-layout(rgba32f, binding = 0) uniform image2D in_tex;
-// The binding argument refers to the textures Unit.
-layout(r32f, binding = 1) uniform image2D out_tex;
-
-void main() {
-	// get position to read/write data from.
-	ivec2 pos = ivec2( gl_GlobalInvocationID.xy );
-	// Get SDF position value.
-	vec3 p = imageLoad( in_tex, pos ).rgb;
-	float distance = %s(p);
-	// store new value in image
-	imageStore( out_tex, pos, vec4( distance, 0.0, 0.0, 0.0 ) );
-}
-`, baseName)
-
-	n += ngot
-	return n, err
-}
-
-func (p *Programmer) WriteFragVisualizerSDF3(w io.Writer, obj Shader3D) (n int, err error) {
-	// // Add boxFrame to draw bounding box.
-	// bb := obj.Bounds()
-	// dims := bb.Size()
-	// bf, err := NewBoxFrame(dims.X, dims.Y, dims.Z, dims.Min()/64)
-	// if err != nil {
-	// 	return 0, err
-	// }
-	// bf = Translate(bf, -bb.Min.X, -bb.Min.Y, -bb.Min.Z)
-	// obj = Union(obj, bf)
-
-	baseName, nodes, err := ParseAppendNodes(p.scratchNodes[:0], obj)
-	if err != nil {
-		return 0, err
-	}
-	ngot, err := WriteShaders(w, nodes, p.scratch)
-	n += ngot
-	if err != nil {
-		return n, err
-	}
-	ngot, err = w.Write([]byte("\nfloat sdf(vec3 p) { return " + baseName + "(p); }\n\n"))
-	n += ngot
-	if err != nil {
-		return n, err
-	}
-	ngot, err = w.Write(visualizerFooter)
-	n += ngot
-	if err != nil {
-		return n, err
-	}
-	return n, nil
 }
