@@ -149,7 +149,7 @@ return min(max(d.x,d.y),0.0) + length(max(d,0.0)) - rd;`...)
 }
 
 func (c *cylinder) args() (r, h, round float32) {
-	return c.r, (c.h - c.round) / 2, c.round
+	return c.r, (c.h - 2*c.round) / 2, c.round
 }
 
 func NewHexagonalPrism(face2Face, h float32) (glbuild.Shader3D, error) {
@@ -269,7 +269,7 @@ func (s *torus) AppendShaderName(b []byte) []byte {
 }
 
 func (s *torus) AppendShaderBody(b []byte) []byte {
-	b = appendFloatDecl(b, "t1", s.rGreater-s.rRing) // Counteract rounding effect.
+	b = appendFloatDecl(b, "t1", s.rGreater) // Counteract rounding effect.
 	b = appendFloatDecl(b, "t2", s.rRing)
 	b = append(b, `p = p.xzy;
 vec2 t = vec2(t1, t2);

@@ -47,12 +47,12 @@ func (bf *boxframe) Evaluate(pos []ms3.Vec, dist []float32, userData any) error 
 }
 
 func (t *torus) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
-	t1 := t.rGreater - t.rRing
+	t1 := t.rGreater
 	t2 := t.rRing
 	for i, p := range pos {
 		p = ms3.Vec{X: p.X, Y: p.Z, Z: p.Y}
-		q1 := hypotf(p.X, p.Z) - t1
-		dist[i] = hypotf(q1, p.Y) - t2
+		q := ms2.Vec{X: hypotf(p.X, p.Z) - t1, Y: p.Y}
+		dist[i] = ms2.Norm(q) - t2
 	}
 	return nil
 }
