@@ -25,9 +25,8 @@ func (b *box) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 	return nil
 }
 
-func (t *boxframe) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
-	b := t.dims
-	e := t.e
+func (bf *boxframe) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
+	e, b := bf.args()
 	var z3 ms3.Vec
 	for i, p := range pos {
 		p = ms3.Sub(ms3.AbsElem(p), b)

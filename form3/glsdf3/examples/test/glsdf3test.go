@@ -277,45 +277,42 @@ func test_sdf_gpu_cpu() error {
 }
 
 func test_visualizer_generation() error {
+	var s glbuild.Shader3D
 	const r = 0.1 // 1.01
 	const boxdim = r / 1.2
 	const reps = 3
 	const diam = 2 * r
 	const filename = "visual.glsl"
 
-	point, _ := glsdf3.NewSphere(r / 32)
+	point1, _ := glsdf3.NewSphere(r / 32)
 	point2, _ := glsdf3.NewSphere(r / 33)
+	point3, _ := glsdf3.NewSphere(r / 35)
+	point4, _ := glsdf3.NewSphere(r / 38)
 	zbox, _ := glsdf3.NewBox(r/128, r/128, 10*r, r/256)
+	point1 = glsdf3.Translate(point1, r, 0, 0)
+	s = glsdf3.Union(zbox, point1)
+	s = glsdf3.Union(s, glsdf3.Translate(point2, 0, r, 0))
+	s = glsdf3.Union(s, glsdf3.Translate(point3, 0, 0, r))
+	s = glsdf3.Union(s, glsdf3.Translate(point4, r, r, r))
 	// A larger Octree Positional buffer and a smaller RenderAll triangle buffer cause bug.
-	// s, err := glsdf3.NewBox(2*r, 2*r, 2*r, 0)
-	s, err := glsdf3.NewTriangularPrism(r, r/2)
-	s = glsdf3.Union(s, glsdf3.Translate(point, 0, r/2, 0))
-	s = glsdf3.Union(s, glsdf3.Translate(point2, 0, 0, r/4))
-	// s, err := glsdf3.NewSphere(r)
+	bf, err := glsdf3.NewBoxFrame(2*r, 2*r, 2*r, r/1000)
 	if err != nil {
 		return err
 	}
+	s = glsdf3.Union(s, bf)
 	// s = glsdf3.Union(s, box)
-	envelope, err := glsdf3.NewBoundsBoxFrame(s.Bounds())
+	envelope, err := glsdf3.NewBoundsBoxFrame(bf.Bounds())
 	if err != nil {
 		return err
 	}
-	s = glsdf3.Union(s, zbox)
 	s = glsdf3.Union(s, envelope)
-	s = glsdf3.Scale(s, 5)
-	// s, err = glsdf3.Array(s, diam, diam, diam, 2, 1, 1)
-	// if err != nil {
-	// 	return err
-	// }
-	// b, _ := glsdf3.NewBoundsBoxFrame(s.Bounds())
-	// s = glsdf3.Union(s, b)
-	// s = glsdf3.Union(s, unitSphere)
+
 	fp, err := os.Create(filename)
 	if err != nil {
 		return err
 	}
 	defer fp.Close()
-	written, err := programmer.WriteFragVisualizerSDF3(fp, s)
+	written, err := programmer.WriteFragVisualizerSDF3(fp, glsdf3.Scale(s, 4))
 	if err != nil {
 		return err
 	}
@@ -398,7 +395,6 @@ func test_bounds(sdf gleval.SDF3, scratchDist []float32, userData any) error {
 				newBB := bb.Add(offsize)
 				// New mesh lies outside of bounding box.
 				newPos = appendMeshgrid(newPos[:0], newBB, nxbb, nybb, nzbb)
-
 			}
 		}
 	}

@@ -11,17 +11,16 @@ import (
 // NewBoundsBoxFrame creates a BoxFrame from a bb ([ms3.Box]) such that the BoxFrame envelops the bb.
 // Useful for debugging bounding boxes of [glbuild.Shader3D] primitives and operations.
 func NewBoundsBoxFrame(bb ms3.Box) (glbuild.Shader3D, error) {
-	const bbMarginMultiplier = 1.3
 	size := bb.Size()
-	maxDimension := size.Max()
-	frameThickness := maxDimension / 128
-	spacing := bbMarginMultiplier * frameThickness
-	bounding, err := NewBoxFrame(size.X+spacing, size.Y+spacing, size.Z+spacing, frameThickness)
+	frameThickness := size.Max() / 256
+	// Bounding box's frames protrude.
+	size = ms3.AddScalar(2*frameThickness, size)
+	bounding, err := NewBoxFrame(size.X, size.Y, size.Z, frameThickness)
 	if err != nil {
 		return nil, err
 	}
 	center := bb.Center()
-	bounding = Translate(bounding, -center.X, -center.Y, -center.Z)
+	bounding = Translate(bounding, center.X, center.Y, center.Z)
 	return bounding, nil
 }
 
@@ -282,11 +281,12 @@ func (s *torus) Bounds() ms3.Box {
 }
 
 func NewBoxFrame(dimX, dimY, dimZ, e float32) (glbuild.Shader3D, error) {
+	e /= 2
 	if dimX <= 0 || dimY <= 0 || dimZ <= 0 || e <= 0 {
 		return nil, errors.New("negative or zero BoxFrame dimension")
 	}
-	d := ms3.Scale(0.5, ms3.Vec{X: dimX, Y: dimY, Z: dimZ})
-	if e > d.Min() {
+	d := ms3.Vec{X: dimX, Y: dimY, Z: dimZ}
+	if 2*e > d.Min() {
 		return nil, errors.New("BoxFrame edge thickness too large")
 	}
 	return &boxframe{dims: d, e: e}, nil
@@ -297,20 +297,21 @@ type boxframe struct {
 	e    float32
 }
 
-func (s *boxframe) ForEachChild(userData any, fn func(userData any, s *glbuild.Shader3D) error) error {
+func (bf *boxframe) ForEachChild(userData any, fn func(userData any, s *glbuild.Shader3D) error) error {
 	return nil
 }
 
-func (s *boxframe) AppendShaderName(b []byte) []byte {
+func (bf *boxframe) AppendShaderName(b []byte) []byte {
 	b = append(b, "boxframe"...)
-	b = vecappend(b, s.dims, 'i', 'n', 'p')
-	b = fappend(b, s.e, 'n', 'p')
+	b = vecappend(b, bf.dims, 'i', 'n', 'p')
+	b = fappend(b, bf.e, 'n', 'p')
 	return b
 }
 
-func (s *boxframe) AppendShaderBody(b []byte) []byte {
-	b = appendFloatDecl(b, "e", s.e)
-	b = appendVec3Decl(b, "b", s.dims)
+func (bf *boxframe) AppendShaderBody(b []byte) []byte {
+	e, bb := bf.args()
+	b = appendFloatDecl(b, "e", e)
+	b = appendVec3Decl(b, "b", bb)
 	b = append(b, `p = abs(p)-b;
 vec3 q = abs(p+e)-e;
 return min(min(
@@ -320,9 +321,13 @@ return min(min(
 	return b
 }
 
-func (s *boxframe) Bounds() ms3.Box {
-	return ms3.Box{
-		Min: ms3.Scale(-0.5, s.dims),
-		Max: ms3.Scale(0.5, s.dims),
-	}
+func (bf *boxframe) Bounds() ms3.Box {
+	return ms3.NewCenteredBox(ms3.Vec{}, bf.dims)
+}
+
+func (bf *boxframe) args() (e float32, b ms3.Vec) {
+	dd, e := bf.dims, bf.e
+	dd = ms3.Scale(0.5, dd)
+	dd = ms3.AddScalar(-2*e, dd)
+	return e, dd
 }
