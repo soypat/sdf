@@ -294,11 +294,13 @@ return min(max(w.x,w.y),0.0) + length(max(w,0.0));`...)
 }
 
 // Revolve revolves a 2D SDF around the y axis, offsetting the axis of revolution by axisOffset.
-func Revolve(s glbuild.Shader2D, axisOffset float32) glbuild.Shader3D {
+func Revolve(s glbuild.Shader2D, axisOffset float32) (glbuild.Shader3D, error) {
 	if s == nil {
-		panic("nil argument to Revolve")
+		return nil, errors.New("nil argument to Revolve")
+	} else if axisOffset < 0 {
+		return nil, errors.New("negative axis offset")
 	}
-	return &revolution{s: s, off: axisOffset}
+	return &revolution{s: s, off: axisOffset}, nil
 }
 
 type revolution struct {

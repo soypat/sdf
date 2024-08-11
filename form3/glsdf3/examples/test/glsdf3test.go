@@ -353,14 +353,14 @@ func test_visualizer_generation() error {
 		return err
 	}
 	s = glsdf3.Union(s, shape)
-	s, _ = glsdf3.Rotate(s, math.Pi/2, ms3.Vec{Y: 1})
+
 	// s = glsdf3.Union(s, box)
 	envelope, err := glsdf3.NewBoundsBoxFrame(shape.Bounds())
 	if err != nil {
 		return err
 	}
 	s = glsdf3.Union(s, envelope)
-
+	s, _ = glsdf3.Rotate(s, math.Pi/2, ms3.Vec{X: 1})
 	fp, err := os.Create(filename)
 	if err != nil {
 		return err
@@ -615,9 +615,13 @@ func randomExtrude(a glbuild.Shader2D, rng *rand.Rand) glbuild.Shader3D {
 }
 
 func randomRevolve(a glbuild.Shader2D, rng *rand.Rand) glbuild.Shader3D {
-	const minOff, maxOff = 0.01, 40.
+	const minOff, maxOff = 0, 40.
 	off := minOff + rng.Float32()*(maxOff-minOff)
-	return glsdf3.Revolve(a, off)
+	rev, err := glsdf3.Revolve(a, off)
+	if err != nil {
+		panic(err)
+	}
+	return rev
 }
 
 func sprintOpPrimitive(op any, primitives ...any) string {
