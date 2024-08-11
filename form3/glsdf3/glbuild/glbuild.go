@@ -25,20 +25,22 @@ type Shader interface {
 	AppendShaderBody(b []byte) []byte
 }
 
-// Shader3D can create SDF shader source code for an arbitrary shape.
+// Shader3D can create SDF shader source code for an arbitrary 3D shape.
 type Shader3D interface {
 	Shader
 	ForEachChild(userData any, fn func(userData any, s *Shader3D) error) error
 	Bounds() ms3.Box
 }
 
-// Shader2D can create SDF shader source code for an arbitrary shape.
+// Shader2D can create SDF shader source code for an arbitrary 2D shape.
 type Shader2D interface {
 	Shader
 	ForEach2DChild(userData any, fn func(userData any, s *Shader2D) error) error
 	Bounds() ms2.Box
 }
 
+// shader3D2D can create SDF shader source code for a operation that receives 2D
+// shaders to generate a 3D shape.
 type shader3D2D interface {
 	Shader3D
 	ForEach2DChild(userData any, fn func(userData any, s *Shader2D) error) error
@@ -361,4 +363,86 @@ func b2i(b bool) int {
 		return 1
 	}
 	return 0
+}
+
+var _ Shader3D = (*CachedShader3D)(nil) // Interface implementation compile-time check.
+
+// CachedShader3D implements the Shader3D interface with results it caches for another Shader3D on a call to RefreshCache.
+type CachedShader3D struct {
+	Shader     Shader3D
+	bb         ms3.Box
+	data       []byte
+	bodyOffset int
+}
+
+// RefreshCache updates the cache with current values of the underlying shader.
+func (c3 *CachedShader3D) RefreshCache() {
+	c3.bb = c3.Shader.Bounds()
+	c3.data = c3.Shader.AppendShaderName(c3.data[:0])
+	c3.bodyOffset = len(c3.data)
+	c3.data = c3.Shader.AppendShaderBody(c3.data)
+}
+
+// Bounds returns the cached 3D bounds. Implements [Shader3D]. Update by calling RefreshCache.
+func (c3 *CachedShader3D) Bounds() ms3.Box { return c3.bb }
+
+// ForEachChild calls the underlying Shader's ForEachChild. Implements [Shader3D].
+func (c3 *CachedShader3D) ForEachChild(userData any, fn func(userData any, s *Shader3D) error) error {
+	return c3.Shader.ForEachChild(userData, fn)
+}
+
+// AppendShaderName returns the cached Shader name. Implements [Shader]. Update by calling RefreshCache.
+func (c3 *CachedShader3D) AppendShaderName(b []byte) []byte {
+	return append(b, c3.data[:c3.bodyOffset]...)
+}
+
+// AppendShaderBody returns the cached Shader function body. Implements [Shader]. Update by calling RefreshCache.
+func (c3 *CachedShader3D) AppendShaderBody(b []byte) []byte {
+	return append(b, c3.data[c3.bodyOffset:]...)
+}
+
+// ForEach2DChild calls the underlying Shader's ForEach2DChild. This method is called for 3D shapes that
+// use 2D shaders such as extrude and revolution. Implements [Shader2D].
+func (c3 *CachedShader3D) ForEach2DChild(userData any, fn func(userData any, s *Shader2D) error) (err error) {
+	s2, ok := c3.Shader.(shader3D2D)
+	if ok {
+		err = s2.ForEach2DChild(userData, fn)
+	}
+	return err
+}
+
+var _ Shader2D = (*CachedShader2D)(nil) // Interface implementation compile-time check.
+
+// CachedShader2D implements the Shader2D interface with results it caches for another Shader2D on a call to RefreshCache.
+type CachedShader2D struct {
+	Shader     Shader2D
+	bb         ms2.Box
+	data       []byte
+	bodyOffset int
+}
+
+// RefreshCache updates the cache with current values of the underlying shader.
+func (c2 *CachedShader2D) RefreshCache() {
+	c2.bb = c2.Shader.Bounds()
+	c2.data = c2.Shader.AppendShaderName(c2.data[:0])
+	c2.bodyOffset = len(c2.data)
+	c2.data = c2.Shader.AppendShaderBody(c2.data)
+}
+
+// Bounds returns the cached 2D bounds. Implements [Shader3D]. Update by calling RefreshCache.
+func (c2 *CachedShader2D) Bounds() ms2.Box { return c2.bb }
+
+// ForEachChild calls the underlying Shader's ForEachChild. Implements [Shader3D].
+func (c2 *CachedShader2D) ForEach2DChild(userData any, fn func(userData any, s *Shader2D) error) error {
+	return c2.Shader.ForEach2DChild(userData, fn)
+}
+
+// AppendShaderName returns the cached Shader name. Implements [Shader]. Update by calling RefreshCache.
+func (c2 *CachedShader2D) AppendShaderName(b []byte) []byte {
+	return append(b, c2.data[:c2.bodyOffset]...)
+}
+
+// AppendShaderBody returns the cached Shader function body. Implements [Shader]. Update by calling RefreshCache.
+func (c2 *CachedShader2D) AppendShaderBody(b []byte) []byte {
+	return append(b, c2.data[c2.bodyOffset:]...)
 }
