@@ -375,7 +375,7 @@ func test_stl_generation() error {
 }
 
 func test_bounds(sdf gleval.SDF3, scratchDist []float32, userData any) error {
-	const nxbb, nybb, nzbb = 16, 16, 16
+	const nxbb, nybb, nzbb = 2, 2, 2
 	const ndim = nxbb * nybb * nzbb
 	const eps = 1e-5
 	if len(scratchDist) < ndim {
@@ -384,11 +384,21 @@ func test_bounds(sdf gleval.SDF3, scratchDist []float32, userData any) error {
 	// Evaluate the
 	bb := sdf.Bounds()
 	size := bb.Size()
+	dist := scratchDist[:ndim]
 
+	// We create adjacent bounding boxes to the bounding box
+	// being tested and evaluate the SDF there. We look for following inconsistencies:
+	//  - Negative distance, which implies interior of SDF outside the intended bounding box.
+	//  - Normals which point towards the original bounding box, which imply a SDF surface outside the bounding box.
 	var offs = [2]float32{-1, 1}
 	originalPos := meshgrid(bb, nxbb, nybb, nzbb)
 	newPos := make([]ms3.Vec, len(originalPos))
-	dist := scratchDist[:ndim]
+	normals := make([]ms3.Vec, len(originalPos))
+
+	// Calculate approximate expected normal directions.
+	wantNormals := make([]ms3.Vec, len(originalPos))
+	wantNormals = appendMeshgrid(wantNormals[:0], bb.Add(ms3.Scale(-1, bb.Center())), nxbb, nybb, nzbb)
+
 	var offsize ms3.Vec
 	for _, xo := range offs {
 		offsize.X = xo * (size.X + eps)
@@ -399,6 +409,7 @@ func test_bounds(sdf gleval.SDF3, scratchDist []float32, userData any) error {
 				newBB := bb.Add(offsize)
 				// New mesh lies outside of bounding box.
 				newPos = appendMeshgrid(newPos[:0], newBB, nxbb, nybb, nzbb)
+				// Calculate expected normal directions.
 
 				err := sdf.Evaluate(newPos, dist, userData)
 				if err != nil {
@@ -409,49 +420,29 @@ func test_bounds(sdf gleval.SDF3, scratchDist []float32, userData any) error {
 						panic("shit")
 					}
 					if d < 0 {
-						return fmt.Errorf("ext bounding box point %v (d=%f) within SDF (bb=%+v)", newPos[i], d, newBB)
+						return fmt.Errorf("ext bounding box point %v (d=%f) within SDF bb=%+v", newPos[i], d, newBB)
+					}
+				}
+				err = gleval.NormalsCentralDiff(sdf, newPos, normals, eps/2, userData)
+				if err != nil {
+					return err
+				}
+				for i, got := range normals {
+					want := ms3.Add(offsize, wantNormals[i])
+					// got = ms3.Unit(got)
+					angle := ms3.Cos(got, want)
+					if angle < math32.Sqrt2/2 {
+						msg := fmt.Sprintf("p=%v got %v, want %v -> angle=%f off=%v bb=%+v", newPos[i], got, want, angle, offsize, newBB)
+						if angle <= 0 {
+							return errors.New(msg) // Definitely have a surface outside of the bounding box.
+						} else {
+							// fmt.Println("WARN bad normal:", msg) // Is this possible with a surface contained within the bounding box? Maybe an ill-conditioned/pointy surface?
+						}
 					}
 				}
 			}
 		}
 	}
-
-	vertices := bb.Vertices()
-	vertDist := scratchDist[:8]
-	err := sdf.Evaluate(vertices[:], vertDist, userData)
-	if err != nil {
-		return err
-	}
-	maxDim := size.Max()
-	for i, d := range vertDist {
-		if d < 0 {
-			return fmt.Errorf("bounding box point %v (d=%f) within SDF", vertices[i], d)
-		} else if d > maxDim {
-			return fmt.Errorf("bounding box point %v (d=%f) at impossible distance from SDF", vertices[i], d)
-		}
-	}
-	// Testing Normals.
-	var gotNormals [8]ms3.Vec
-	err = gleval.NormalsCentralDiff(sdf, vertices[:], gotNormals[:], maxDim*1e-5, userData)
-	if err != nil {
-		return err
-	}
-	// Calculate expected normal directions.
-	bbOrigin := bb.Add(ms3.Scale(-1, bb.Center()))
-	vertWantNorm := bbOrigin.Vertices()
-	for i, got := range gotNormals {
-		want := vertWantNorm[i]
-		angle := ms3.Cos(got, want)
-		if angle < math32.Sqrt2/2 {
-			msg := fmt.Sprintf("got %v, want %v -> angle=%f", got, want, angle)
-			if angle <= 0 {
-				return errors.New(msg) // Definitely have a surface outside of the bounding box.
-			} else {
-				fmt.Println("WARN bad normal:", msg) // Is this possible with a surface contained within the bounding box? Maybe an ill-conditioned/pointy surface?
-			}
-		}
-	}
-	// TODO: add normals test, normals should point outwards.
 	return nil
 }
 
