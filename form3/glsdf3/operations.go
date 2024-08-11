@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/chewxy/math32"
+	"github.com/soypat/glgl/math/ms2"
 	"github.com/soypat/glgl/math/ms3"
 	"github.com/soypat/sdf/form3/glsdf3/glbuild"
 )
@@ -617,19 +618,56 @@ func (s *shell) AppendShaderBody(b []byte) []byte {
 	return b
 }
 
-func hashf(values []float32) float32 {
-	const prime = 31.0
-	var hashA float32 = 0.0
-	var hashB float32 = 1.0
-	for _, num := range values {
-		hashA += num
-		hashB *= (prime + num)
-		hashA = hashfint(hashA)
-		hashB = hashfint(hashB)
+// circularArray is the circular domain repetition operation around Z axis.
+// It repeats domain centered around (x,y)=(0,0) around the Z axis.
+func circularArray(s glbuild.Shader3D, angle float32, n int) (glbuild.Shader3D, error) {
+	if n <= 0 {
+		return nil, errors.New("invalid circarray repeat param")
+	} else if s == nil {
+		return nil, errors.New("nil argument to circarray")
 	}
-	return hashfint(hashA + hashB)
+	return nil, errors.New("TODO")
+	return &circarray{s: s, n: n, angle: angle}, nil
 }
 
-func hashfint(f float32) float32 {
-	return float32(int(f*1000000)%1000000) / 1000000 // Keep within [0.0, 1.0)
+type circarray struct {
+	s     glbuild.Shader3D
+	n     int
+	angle float32
+}
+
+func (ca *circarray) Bounds() ms3.Box {
+	// Naive solution, place bounding box N times
+	// and take the union of all bounds.
+	bb := ca.s.Bounds()
+	size := bb.Size()
+	center := bb.Center()
+	v := ms2.Vec{X: center.X, Y: center.Y}
+	m := ms2.RotationMat2(ca.angle)
+	for i := 0; i < ca.n; i++ {
+		v = ms2.MulMatVec(m, v)
+		centerV := ms3.Vec{X: v.X, Y: v.Y, Z: center.Z}
+		bb = bb.Union(ms3.NewCenteredBox(centerV, size))
+	}
+	return bb
+}
+
+func (ca *circarray) ForEachChild(userData any, fn func(userData any, s *glbuild.Shader3D) error) error {
+	return fn(userData, &ca.s)
+}
+
+// func (ca *circarray) angle() float32 { return 2 * math32.Pi / float32(ca.n) }
+
+func (ca *circarray) AppendShaderName(b []byte) []byte {
+	b = append(b, "circarray"...)
+	b = fappend(b, float32(ca.n), 'n', 'p')
+	b = fappend(b, ca.angle, 'n', 'p')
+	b = append(b, '_')
+	b = ca.s.AppendShaderName(b)
+	return b
+}
+
+func (ca *circarray) AppendShaderBody(b []byte) []byte {
+
+	return b
 }

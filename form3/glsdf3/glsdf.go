@@ -88,3 +88,20 @@ func sliceappend(b []byte, s []float32, sep, neg, decimal byte) []byte {
 func appendDistanceDecl(b []byte, s glbuild.Shader, name, input string) []byte {
 	return glbuild.AppendDistanceDecl(b, s, name, input)
 }
+
+func hashf(values []float32) float32 {
+	const prime = 31.0
+	var hashA float32 = 0.0
+	var hashB float32 = 1.0
+	for _, num := range values {
+		hashA += num
+		hashB *= (prime + num)
+		hashA = hashfint(hashA)
+		hashB = hashfint(hashB)
+	}
+	return hashfint(hashA + hashB)
+}
+
+func hashfint(f float32) float32 {
+	return float32(int(f*1000000)%1000000) / 1000000 // Keep within [0.0, 1.0)
+}

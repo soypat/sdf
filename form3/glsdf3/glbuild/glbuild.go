@@ -28,14 +28,22 @@ type Shader interface {
 // Shader3D can create SDF shader source code for an arbitrary 3D shape.
 type Shader3D interface {
 	Shader
+	// ForEachChild iterats over the Shader3D's direct Shader3D children.
+	// Unary operations have one child i.e: Translate, Transform, Scale.
+	// Binary operations have two children i.e: Union, Intersection, Difference.
 	ForEachChild(userData any, fn func(userData any, s *Shader3D) error) error
+	// Bounds returns the Shader3D's bounding box where the SDF is negative.
 	Bounds() ms3.Box
 }
 
 // Shader2D can create SDF shader source code for an arbitrary 2D shape.
 type Shader2D interface {
 	Shader
+	// ForEachChild iterats over the Shader2D's direct Shader2D children.
+	// Unary operations have one child i.e: Translate, Scale.
+	// Binary operations have two children i.e: Union, Intersection, Difference.
 	ForEach2DChild(userData any, fn func(userData any, s *Shader2D) error) error
+	// Bounds returns the Shader2D's bounding box where the SDF is negative.
 	Bounds() ms2.Box
 }
 
