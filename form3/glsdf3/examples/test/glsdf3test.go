@@ -119,7 +119,7 @@ var OtherUnaryRandomizedOps2D3D = []func(a glbuild.Shader2D, rng *rand.Rand) glb
 func test_sdf_gpu_cpu() error {
 	const nx, ny, nz = 10, 10, 10
 	vp := &gleval.VecPool{}
-	scratchDist := make([]float32, 256)
+	scratchDist := make([]float32, 16*16*16)
 	for _, primitive := range PremadePrimitives {
 		log.Printf("begin evaluating %s\n", getBaseTypename(primitive))
 		bounds := primitive.Bounds()
@@ -295,13 +295,13 @@ func test_visualizer_generation() error {
 	s = glsdf3.Union(s, glsdf3.Translate(point3, 0, 0, r))
 	s = glsdf3.Union(s, glsdf3.Translate(point4, r, r, r))
 	// A larger Octree Positional buffer and a smaller RenderAll triangle buffer cause bug.
-	bf, err := glsdf3.NewBoxFrame(2*r, 2*r, 2*r, r/1000)
+	shape, err := glsdf3.NewTriangularPrism(r, 2*r)
 	if err != nil {
 		return err
 	}
-	s = glsdf3.Union(s, bf)
+	s = glsdf3.Union(s, shape)
 	// s = glsdf3.Union(s, box)
-	envelope, err := glsdf3.NewBoundsBoxFrame(bf.Bounds())
+	envelope, err := glsdf3.NewBoundsBoxFrame(shape.Bounds())
 	if err != nil {
 		return err
 	}
@@ -375,26 +375,43 @@ func test_stl_generation() error {
 }
 
 func test_bounds(sdf gleval.SDF3, scratchDist []float32, userData any) error {
-	if len(scratchDist) < 8 {
+	const nxbb, nybb, nzbb = 16, 16, 16
+	const ndim = nxbb * nybb * nzbb
+	const eps = 1e-5
+	if len(scratchDist) < ndim {
 		return errors.New("minimum len(scratchDist) not met")
 	}
 	// Evaluate the
 	bb := sdf.Bounds()
 	size := bb.Size()
-	const nxbb, nybb, nzbb = 16, 16, 16
+
 	var offs = [2]float32{-1, 1}
 	originalPos := meshgrid(bb, nxbb, nybb, nzbb)
 	newPos := make([]ms3.Vec, len(originalPos))
+	dist := scratchDist[:ndim]
 	var offsize ms3.Vec
 	for _, xo := range offs {
-		offsize.X = xo * size.X
+		offsize.X = xo * (size.X + eps)
 		for _, yo := range offs {
-			offsize.X = yo * size.Y
+			offsize.Y = yo * (size.Y + eps)
 			for _, zo := range offs {
-				offsize.Z = zo * size.Z
+				offsize.Z = zo * (size.Z + eps)
 				newBB := bb.Add(offsize)
 				// New mesh lies outside of bounding box.
 				newPos = appendMeshgrid(newPos[:0], newBB, nxbb, nybb, nzbb)
+
+				err := sdf.Evaluate(newPos, dist, userData)
+				if err != nil {
+					return err
+				}
+				for i, d := range dist {
+					if !newBB.Contains(newPos[i]) {
+						panic("shit")
+					}
+					if d < 0 {
+						return fmt.Errorf("ext bounding box point %v (d=%f) within SDF (bb=%+v)", newPos[i], d, newBB)
+					}
+				}
 			}
 		}
 	}
@@ -445,13 +462,14 @@ func meshgrid(bounds ms3.Box, nx, ny, nz int) []ms3.Vec {
 func appendMeshgrid(dst []ms3.Vec, bounds ms3.Box, nx, ny, nz int) []ms3.Vec {
 	nxyz := ms3.Vec{X: float32(nx), Y: float32(ny), Z: float32(nz)}
 	dxyz := ms3.DivElem(bounds.Size(), nxyz)
-	for i := 0; i < nx; i++ {
-		x := dxyz.X * float32(i)
+	var xyz ms3.Vec
+	for k := 0; k < nx; k++ {
+		xyz.Z = bounds.Min.Z + dxyz.Z*float32(k)
 		for j := 0; j < nx; j++ {
-			y := dxyz.Y * float32(j)
-			for k := 0; k < nx; k++ {
-				z := dxyz.Z * float32(k)
-				dst = append(dst, ms3.Vec{X: x, Y: y, Z: z})
+			xyz.Y = bounds.Min.Y + dxyz.Y*float32(j)
+			for i := 0; i < nx; i++ {
+				xyz.X = bounds.Min.X + dxyz.X*float32(i)
+				dst = append(dst, xyz)
 			}
 		}
 	}

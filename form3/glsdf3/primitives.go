@@ -133,18 +133,23 @@ func (s *cylinder) AppendShaderName(b []byte) []byte {
 }
 
 func (s *cylinder) AppendShaderBody(b []byte) []byte {
+	r, h, round := s.args()
 	b = append(b, "p = p.xzy;\n"...)
-	b = appendFloatDecl(b, "r", s.r)
-	b = appendFloatDecl(b, "h", s.h-s.round) // Correct height for rounding effect.
+	b = appendFloatDecl(b, "r", r)
+	b = appendFloatDecl(b, "h", h) // Correct height for rounding effect.
 	if s.round == 0 {
 		b = append(b, `vec2 d = abs(vec2(length(p.xz),p.y)) - vec2(r,h);
 return min(max(d.x,d.y),0.0) + length(max(d,0.0));`...)
 	} else {
-		b = appendFloatDecl(b, "rd", s.round)
+		b = appendFloatDecl(b, "rd", round)
 		b = append(b, `vec2 d = vec2( length(p.xz)-r+rd, abs(p.y) - h );
 return min(max(d.x,d.y),0.0) + length(max(d,0.0)) - rd;`...)
 	}
 	return b
+}
+
+func (c *cylinder) args() (r, h, round float32) {
+	return c.r, (c.h - c.round) / 2, c.round
 }
 
 func NewHexagonalPrism(side, h float32) (glbuild.Shader3D, error) {
@@ -204,7 +209,7 @@ type tri struct {
 }
 
 func (t *tri) args() (h1, h2 float32) {
-	return t.height / 3, t.extrudeLength / 4
+	return t.height / 3, t.extrudeLength / 2
 }
 
 func (t *tri) Bounds() ms3.Box {

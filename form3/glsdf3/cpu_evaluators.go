@@ -58,14 +58,12 @@ func (t *torus) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
 }
 
 func (c *cylinder) Evaluate(pos []ms3.Vec, dist []float32, userData any) error {
-	h := c.h - c.round
-	ra := c.r
-	rb := c.round
+	r, h, round := c.args()
 	for i, p := range pos {
 		p = ms3.Vec{X: p.X, Y: p.Z, Z: p.Y}
-		d1 := hypotf(p.X, p.Z) - ra + rb
+		d1 := hypotf(p.X, p.Z) - r + round
 		d2 := p.Y - h
-		dist[i] = minf(maxf(d1, d2), 0) + hypotf(maxf(d1, 0), maxf(d2, 0)) - rb
+		dist[i] = minf(maxf(d1, d2), 0) + hypotf(maxf(d1, 0), maxf(d2, 0)) - round
 	}
 	return nil
 }
