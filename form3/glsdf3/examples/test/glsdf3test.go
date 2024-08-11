@@ -58,10 +58,10 @@ func init() {
 }
 
 var PremadePrimitives = []glbuild.Shader3D{
+	mustShader(glsdf3.NewHexagonalPrism(1, 2)),
 	mustShader(glsdf3.NewSphere(1)),
 	mustShader(glsdf3.NewBoxFrame(1, 1.2, 2.2, .2)),
 	mustShader(glsdf3.NewBox(1, 1.2, 2.2, 0.3)),
-	mustShader(glsdf3.NewHexagonalPrism(1, 2)),
 	mustShader(glsdf3.NewTorus(3, .5)),
 	mustShader(glsdf3.NewTriangularPrism(1, 3)),
 	mustShader(glsdf3.NewCylinder(1, 3, .1)),
@@ -295,7 +295,7 @@ func test_visualizer_generation() error {
 	s = glsdf3.Union(s, glsdf3.Translate(point3, 0, 0, r))
 	s = glsdf3.Union(s, glsdf3.Translate(point4, r, r, r))
 	// A larger Octree Positional buffer and a smaller RenderAll triangle buffer cause bug.
-	shape, err := glsdf3.NewTriangularPrism(r, 2*r)
+	shape, err := glsdf3.NewHexagonalPrism(r, r)
 	if err != nil {
 		return err
 	}
@@ -375,7 +375,7 @@ func test_stl_generation() error {
 }
 
 func test_bounds(sdf gleval.SDF3, scratchDist []float32, userData any) error {
-	const nxbb, nybb, nzbb = 2, 2, 2
+	const nxbb, nybb, nzbb = 16, 16, 16
 	const ndim = nxbb * nybb * nzbb
 	const eps = 1e-5
 	if len(scratchDist) < ndim {
@@ -390,7 +390,7 @@ func test_bounds(sdf gleval.SDF3, scratchDist []float32, userData any) error {
 	// being tested and evaluate the SDF there. We look for following inconsistencies:
 	//  - Negative distance, which implies interior of SDF outside the intended bounding box.
 	//  - Normals which point towards the original bounding box, which imply a SDF surface outside the bounding box.
-	var offs = [2]float32{-1, 1}
+	var offs = [3]float32{-1, 0, 1}
 	originalPos := meshgrid(bb, nxbb, nybb, nzbb)
 	newPos := make([]ms3.Vec, len(originalPos))
 	normals := make([]ms3.Vec, len(originalPos))
@@ -406,6 +406,9 @@ func test_bounds(sdf gleval.SDF3, scratchDist []float32, userData any) error {
 			offsize.Y = yo * (size.Y + eps)
 			for _, zo := range offs {
 				offsize.Z = zo * (size.Z + eps)
+				if xo == 0 && yo == 0 && zo == 0 {
+					continue // Would perform not change to bounding box.
+				}
 				newBB := bb.Add(offsize)
 				// New mesh lies outside of bounding box.
 				newPos = appendMeshgrid(newPos[:0], newBB, nxbb, nybb, nzbb)
@@ -416,11 +419,8 @@ func test_bounds(sdf gleval.SDF3, scratchDist []float32, userData any) error {
 					return err
 				}
 				for i, d := range dist {
-					if !newBB.Contains(newPos[i]) {
-						panic("shit")
-					}
 					if d < 0 {
-						return fmt.Errorf("ext bounding box point %v (d=%f) within SDF bb=%+v", newPos[i], d, newBB)
+						return fmt.Errorf("ext bounding box point %v (d=%f) within SDF off=%+v", newPos[i], d, offsize)
 					}
 				}
 				err = gleval.NormalsCentralDiff(sdf, newPos, normals, eps/2, userData)

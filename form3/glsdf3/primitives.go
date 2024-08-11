@@ -152,11 +152,11 @@ func (c *cylinder) args() (r, h, round float32) {
 	return c.r, (c.h - c.round) / 2, c.round
 }
 
-func NewHexagonalPrism(side, h float32) (glbuild.Shader3D, error) {
-	if side <= 0 || h <= 0 {
+func NewHexagonalPrism(face2Face, h float32) (glbuild.Shader3D, error) {
+	if face2Face <= 0 || h <= 0 {
 		return nil, errors.New("invalid hexagonal prism parameter")
 	}
-	return &hex{side: side, h: h}, nil
+	return &hex{side: face2Face, h: h}, nil
 }
 
 type hex struct {
@@ -165,10 +165,11 @@ type hex struct {
 }
 
 func (s *hex) Bounds() ms3.Box {
-	l := s.side * 2
+	l := s.side
+	lx := l / tribisect
 	return ms3.Box{
-		Min: ms3.Vec{X: -l, Y: -l, Z: -s.h},
-		Max: ms3.Vec{X: l, Y: l, Z: s.h},
+		Min: ms3.Vec{X: -lx, Y: -l, Z: -s.h},
+		Max: ms3.Vec{X: lx, Y: l, Z: s.h},
 	}
 }
 
