@@ -2,6 +2,13 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/soypat/sdf)](https://goreportcard.com/report/github.com/soypat/sdf)
 [![GoDoc](https://godoc.org/github.com/soypat/sdf?status.svg)](https://godoc.org/github.com/soypat/sdf)
 
+## ⚠️ ARCHIVED ⚠️
+Development has moved to https://github.com/soypat/gsdf.
+
+This project has been archived in favor of developing a more advanced solution. gsdf redesigns APIs to be vectorised speeding things up considerably and enabling usage of GPU which enables real-time visualization of shapes with infinite detail (no triangle rendering step required).
+
+Most functionality in sdf has already been reimplemented at the time of archiving. Feel free to ask questions in the [issue tracker](https://github.com/soypat/gsdf/pulls)! 
+
 # sdf (originally sdfx)
 
 <img align="right" width="220px" src="https://user-images.githubusercontent.com/26156425/167976351-ae377891-a215-4711-b202-e973b815b6bb.png">
